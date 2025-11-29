@@ -5,6 +5,7 @@ import OpenAI from 'openai';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 dotenv.config();
 
@@ -24,6 +25,10 @@ const ollama = new OpenAI({
     baseURL: process.env.OLLAMA_URL || 'http://localhost:11434/v1'
 });
 
+// Gemini Setup (optional, for better vision results)
+const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+const genAI = geminiApiKey ? new GoogleGenerativeAI(geminiApiKey) : null;
+
 // Routes
 app.post('/api/grade', upload.single('exam'), async (req: Request, res: Response) => {
     try {
@@ -36,32 +41,100 @@ app.post('/api/grade', upload.single('exam'), async (req: Request, res: Response
         const base64Image = imageBuffer.toString('base64');
         const mimeType = req.file.mimetype;
 
-        const prompt = `You are an expert teacher. 
-Please grade this handwritten exam paper.
+        // Use Gemini if available, otherwise fall back to Ollama
+        const useGemini = genAI && process.env.USE_GEMINI !== 'false';
 
-1. Identify the subject and likely grade level.
-2. Identify the language of the handwriting.
-3. Transcribe the student's answers (briefly).
-4. Evaluate the correctness of each answer.
-5. Assign a score (e.g., 8/10).
-6. Provide constructive feedback and point out specific mistakes.
+        if (useGemini) {
+            // Use Gemini Vision for better OCR and structured output
+            const model = genAI!.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-Return the response in the following JSON format ONLY:
+            const prompt = `You are a mathematics teacher grading an exam. Analyze this image and respond with ONLY valid JSON.
+
+Carefully examine the mathematical problems, solutions, and work shown. Identify the language, transcribe what you see, evaluate correctness, and provide scores.
+
+Output ONLY this JSON structure (no other text):
 {
-  "subject": "Subject Name",
-  "language": "Language (e.g., Hindi, English)",
-  "totalScore": "X/Y",
-  "feedback": "Overall feedback...",
+  "subject": "Mathematics",
+  "language": "actual language (Bengali/Hindi/English/etc)",
+  "gradeLevel": "estimate based on difficulty",
+  "totalScore": "calculated score like 8/10",
+  "feedback": "overall assessment of mathematical work",
   "detailedAnalysis": [
     {
-      "question": "Question number or inferred question",
-      "studentAnswer": "Transcribed answer",
-      "correct": boolean,
-      "score": "score for this question",
-      "remarks": "Specific feedback"
+      "question": "question number and problem",
+      "studentAnswer": "student's work/solution",
+      "correct": true or false,
+      "score": "points earned",
+      "remarks": "specific feedback"
     }
   ]
 }`;
+
+            const imagePart = {
+                inlineData: {
+                    data: base64Image,
+                    mimeType: mimeType
+                }
+            };
+
+            const result = await model.generateContent([prompt, imagePart]);
+            const text = result.response.text();
+
+            // Clean up uploaded file
+            fs.unlinkSync(req.file.path);
+
+            // Parse JSON from response
+            let jsonStr = text;
+            if (text.includes('```json')) {
+                jsonStr = text.split('```json')[1].split('```')[0];
+            } else if (text.includes('```')) {
+                jsonStr = text.split('```')[1].split('```')[0];
+            }
+
+            try {
+                const jsonResponse = JSON.parse(jsonStr.trim());
+                res.json(jsonResponse);
+            } catch (e) {
+                console.error("Failed to parse JSON:", text);
+                res.json({
+                    rawResponse: text,
+                    error: "Failed to parse structured response",
+                    subject: "Unknown",
+                    language: "Unknown",
+                    totalScore: "?",
+                    feedback: text,
+                    detailedAnalysis: []
+                });
+            }
+            return;
+        }
+
+        const prompt = `You are a mathematics teacher grading an exam. Analyze the image carefully and respond with ONLY valid JSON.
+
+Look at the mathematical problems, solutions, and work shown in this exam paper.
+Identify the language, transcribe what you see, evaluate the correctness, and provide scores.
+
+DO NOT write explanatory text. START with { and END with }
+
+Required JSON format:
+{
+  "subject": "Mathematics",
+  "language": "the actual language you see (Bengali/Hindi/English/etc)",
+  "gradeLevel": "your estimate based on problem difficulty",
+  "totalScore": "your calculated score like 8/10",
+  "feedback": "your actual assessment of this student's mathematical work and understanding",
+  "detailedAnalysis": [
+    {
+      "question": "actual question number and problem you see",
+      "studentAnswer": "actual work/solution the student wrote",
+      "correct": your evaluation true/false,
+      "score": "points for this problem",
+      "remarks": "your specific feedback on this solution"
+    }
+  ]
+}
+
+Analyze the image now and output ONLY the JSON.`;
 
         // Ollama uses the llava model for vision
         const response = await ollama.chat.completions.create({
@@ -177,5 +250,10 @@ app.post('/api/chat', async (req: Request, res: Response) => {
 
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
-    console.log(`Connecting to Ollama at ${process.env.OLLAMA_URL || 'http://localhost:11434/v1'}`);
+    if (genAI) {
+        console.log(`Using Gemini Vision API for exam grading`);
+    } else {
+        console.log(`Connecting to Ollama at ${process.env.OLLAMA_URL || 'http://localhost:11434/v1'}`);
+        console.log(`Tip: Add GEMINI_API_KEY to .env for better OCR results`);
+    }
 });
