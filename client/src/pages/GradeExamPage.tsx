@@ -5,10 +5,16 @@ import GradingResult from '../components/GradingResult';
 const GradeExamPage: React.FC = () => {
     const [isUploading, setIsUploading] = useState(false);
     const [result, setResult] = useState<any>(null);
+    const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
 
     const handleUpload = async (file: File) => {
         console.log('handleUpload called with file:', file.name);
         setIsUploading(true);
+        
+        // Create object URL for the uploaded image
+        const imageUrl = URL.createObjectURL(file);
+        setUploadedImageUrl(imageUrl);
+        
         const formData = new FormData();
         formData.append('exam', file);
 
@@ -33,6 +39,10 @@ const GradeExamPage: React.FC = () => {
 
     const handleReset = () => {
         setResult(null);
+        if (uploadedImageUrl) {
+            URL.revokeObjectURL(uploadedImageUrl);
+            setUploadedImageUrl(null);
+        }
     };
 
     return (
@@ -49,7 +59,11 @@ const GradeExamPage: React.FC = () => {
                     <ExamUpload onUpload={handleUpload} isUploading={isUploading} />
                 </>
             ) : (
-                <GradingResult result={result} onReset={handleReset} />
+                <GradingResult 
+                    result={result} 
+                    imageUrl={uploadedImageUrl || undefined}
+                    onReset={handleReset} 
+                />
             )}
         </div>
     );

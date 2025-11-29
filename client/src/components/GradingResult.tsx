@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { CheckCircle, XCircle, AlertCircle, BookOpen, Languages } from 'lucide-react';
+import AnnotatedExamViewer from './AnnotatedExamViewer';
 
 interface DetailedAnalysis {
     question: string;
@@ -9,6 +10,16 @@ interface DetailedAnalysis {
     remarks: string;
 }
 
+interface Annotation {
+    id: string;
+    type: 'checkmark' | 'cross' | 'score' | 'comment';
+    position: { x: number; y: number };
+    color: 'green' | 'red' | 'yellow';
+    text?: string;
+    questionId: string;
+    clickable: boolean;
+}
+
 interface GradingResultProps {
     result: {
         subject: string;
@@ -16,13 +27,24 @@ interface GradingResultProps {
         totalScore: string;
         feedback: string;
         detailedAnalysis: DetailedAnalysis[];
+        imageDimensions?: { width: number; height: number };
+        annotations?: Annotation[];
         rawResponse?: string;
         error?: string;
     };
+    imageUrl?: string;
     onReset: () => void;
 }
 
-const GradingResult: React.FC<GradingResultProps> = ({ result, onReset }) => {
+const GradingResult: React.FC<GradingResultProps> = ({ result, imageUrl, onReset }) => {
+    const [selectedQuestion, setSelectedQuestion] = useState<DetailedAnalysis | null>(null);
+
+    const handleAnnotationClick = (annotation: Annotation, question: DetailedAnalysis) => {
+        setSelectedQuestion(question);
+        // TODO: Open voice chat modal
+        console.log('Annotation clicked:', annotation, question);
+    };
+
     if (result.error) {
         return (
             <div className="max-w-4xl mx-auto p-6 bg-red-900/20 border border-red-700 rounded-xl text-center">
@@ -41,6 +63,15 @@ const GradingResult: React.FC<GradingResultProps> = ({ result, onReset }) => {
 
     return (
         <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* Annotated Exam Viewer (if image available) */}
+            {imageUrl && result.annotations && (
+                <AnnotatedExamViewer
+                    imageUrl={imageUrl}
+                    gradingResult={result}
+                    onAnnotationClick={handleAnnotationClick}
+                />
+            )}
+
             {/* Header Card */}
             <div className="card bg-surface border-l-4 border-l-primary">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">

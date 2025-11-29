@@ -9,6 +9,40 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 dotenv.config();
 
+// Types for enhanced grading response
+interface Annotation {
+    id: string;
+    type: 'checkmark' | 'cross' | 'score' | 'comment';
+    position: { x: number; y: number };
+    color: 'green' | 'red' | 'yellow';
+    text?: string;
+    questionId: string;
+    clickable: boolean;
+}
+
+interface QuestionAnalysis {
+    id: string;
+    question: string;
+    studentAnswer: string;
+    correct: boolean;
+    score: string;
+    remarks: string;
+    topic?: string;
+    concept?: string;
+    position?: { x: number; y: number };
+}
+
+interface GradingResponse {
+    subject: string;
+    language: string;
+    gradeLevel: string;
+    totalScore: string;
+    feedback: string;
+    imageDimensions?: { width: number; height: number };
+    annotations?: Annotation[];
+    detailedAnalysis: QuestionAnalysis[];
+}
+
 const app = express();
 const port = process.env.PORT || 3001;
 
@@ -28,6 +62,54 @@ const ollama = new OpenAI({
 // Gemini Setup (optional, for better vision results)
 const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 const genAI = geminiApiKey ? new GoogleGenerativeAI(geminiApiKey) : null;
+
+// Helper function to generate default annotations if AI doesn't provide them
+function generateDefaultAnnotations(detailedAnalysis: QuestionAnalysis[]): Annotation[] {
+    const annotations: Annotation[] = [];
+    const questionsPerPage = detailedAnalysis.length;
+    const spacing = 100 / (questionsPerPage + 1);
+
+    detailedAnalysis.forEach((question, index) => {
+        const yPosition = question.position?.y || (spacing * (index + 1));
+        const xPosition = question.position?.x || 10;
+
+        // Add checkmark or cross
+        annotations.push({
+            id: `ann-${question.id}-mark`,
+            type: question.correct ? 'checkmark' : 'cross',
+            position: { x: xPosition, y: yPosition },
+            color: question.correct ? 'green' : 'red',
+            questionId: question.id,
+            clickable: true
+        });
+
+        // Add score
+        annotations.push({
+            id: `ann-${question.id}-score`,
+            type: 'score',
+            position: { x: xPosition - 5, y: yPosition },
+            text: question.score,
+            color: question.correct ? 'green' : 'red',
+            questionId: question.id,
+            clickable: true
+        });
+
+        // Add comment for incorrect answers
+        if (!question.correct && question.remarks) {
+            annotations.push({
+                id: `ann-${question.id}-comment`,
+                type: 'comment',
+                position: { x: xPosition + 30, y: yPosition + 2 },
+                text: question.remarks.substring(0, 50) + (question.remarks.length > 50 ? '...' : ''),
+                color: 'red',
+                questionId: question.id,
+                clickable: true
+            });
+        }
+    });
+
+    return annotations;
+}
 
 // Routes
 app.post('/api/grade', upload.single('exam'), async (req: Request, res: Response) => {
@@ -50,7 +132,13 @@ app.post('/api/grade', upload.single('exam'), async (req: Request, res: Response
 
             const prompt = `You are a mathematics teacher grading an exam. Analyze this image and respond with ONLY valid JSON.
 
-Carefully examine the mathematical problems, solutions, and work shown. Identify the language, transcribe what you see, evaluate correctness, and provide scores.
+IMPORTANT: You must also identify the approximate position of each question in the image.
+
+Carefully examine the mathematical problems, solutions, and work shown. For each question:
+1. Identify its approximate position in the image (as percentage from top-left corner)
+2. Evaluate correctness
+3. Provide specific feedback
+4. Identify the topic/concept
 
 Output ONLY this JSON structure (no other text):
 {
@@ -59,16 +147,58 @@ Output ONLY this JSON structure (no other text):
   "gradeLevel": "estimate based on difficulty",
   "totalScore": "calculated score like 8/10",
   "feedback": "overall assessment of mathematical work",
+  "imageDimensions": {
+    "width": 1200,
+    "height": 1600
+  },
+  "annotations": [
+    {
+      "id": "ann-1",
+      "type": "checkmark",
+      "position": { "x": 10, "y": 25 },
+      "color": "green",
+      "questionId": "q1",
+      "clickable": true
+    },
+    {
+      "id": "ann-2",
+      "type": "score",
+      "position": { "x": 5, "y": 25 },
+      "text": "5/5",
+      "color": "green",
+      "questionId": "q1",
+      "clickable": true
+    }
+  ],
   "detailedAnalysis": [
     {
+      "id": "q1",
       "question": "question number and problem",
       "studentAnswer": "student's work/solution",
       "correct": true or false,
       "score": "points earned",
-      "remarks": "specific feedback"
+      "remarks": "specific feedback",
+      "topic": "Geometry/Algebra/etc",
+      "concept": "specific concept like 'Basic Proportionality Theorem'",
+      "position": { "x": 10, "y": 25 }
     }
   ]
-}`;
+}
+
+Position guidelines:
+- x and y are percentages (0-100) from top-left corner
+- Estimate where each question starts in the image
+- Place checkmarks/crosses at the left margin of each question
+- Place scores slightly to the left of checkmarks
+- For comments, position them near the relevant part of the answer
+
+Annotation types:
+- "checkmark" for correct answers (green)
+- "cross" for incorrect answers (red)
+- "score" for point values (green if full marks, red if partial/zero)
+- "comment" for specific feedback on errors (red, with text field)
+
+Generate annotations for EVERY question you identify.`;
 
             const imagePart = {
                 inlineData: {
@@ -92,7 +222,25 @@ Output ONLY this JSON structure (no other text):
             }
 
             try {
-                const jsonResponse = JSON.parse(jsonStr.trim());
+                const jsonResponse: GradingResponse = JSON.parse(jsonStr.trim());
+                
+                // Ensure annotations exist, generate defaults if not provided
+                if (!jsonResponse.annotations || jsonResponse.annotations.length === 0) {
+                    console.log('No annotations provided by AI, generating defaults');
+                    jsonResponse.annotations = generateDefaultAnnotations(jsonResponse.detailedAnalysis);
+                }
+
+                // Ensure imageDimensions exist (use defaults if not provided)
+                if (!jsonResponse.imageDimensions) {
+                    jsonResponse.imageDimensions = { width: 1200, height: 1600 };
+                }
+
+                // Ensure each question has an ID
+                jsonResponse.detailedAnalysis = jsonResponse.detailedAnalysis.map((q, index) => ({
+                    ...q,
+                    id: q.id || `q${index + 1}`
+                }));
+
                 res.json(jsonResponse);
             } catch (e) {
                 console.error("Failed to parse JSON:", text);
@@ -103,6 +251,8 @@ Output ONLY this JSON structure (no other text):
                     language: "Unknown",
                     totalScore: "?",
                     feedback: text,
+                    imageDimensions: { width: 1200, height: 1600 },
+                    annotations: [],
                     detailedAnalysis: []
                 });
             }
