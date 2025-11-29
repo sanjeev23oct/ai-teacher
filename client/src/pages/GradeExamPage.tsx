@@ -7,17 +7,21 @@ const GradeExamPage: React.FC = () => {
     const [result, setResult] = useState<any>(null);
 
     const handleUpload = async (file: File) => {
+        console.log('handleUpload called with file:', file.name);
         setIsUploading(true);
         const formData = new FormData();
         formData.append('exam', file);
 
         try {
+            console.log('Sending request to API...');
             const response = await fetch('http://localhost:3001/api/grade', {
                 method: 'POST',
                 body: formData,
             });
 
+            console.log('Response received:', response.status);
             const data = await response.json();
+            console.log('Data:', data);
             setResult(data);
         } catch (error) {
             console.error("Upload failed", error);

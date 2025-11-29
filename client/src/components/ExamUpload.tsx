@@ -37,8 +37,12 @@ const ExamUpload: React.FC<ExamUploadProps> = ({ onUpload, isUploading }) => {
     }, []);
 
     const handleSubmit = () => {
+        console.log('handleSubmit called, file:', file);
         if (file) {
+            console.log('Calling onUpload with file:', file.name);
             onUpload(file);
+        } else {
+            console.log('No file selected');
         }
     };
 
@@ -60,10 +64,11 @@ const ExamUpload: React.FC<ExamUploadProps> = ({ onUpload, isUploading }) => {
             >
                 <input
                     type="file"
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer pointer-events-none"
                     onChange={handleChange}
                     accept="image/*,.pdf"
                     disabled={isUploading || !!file}
+                    style={{ pointerEvents: file ? 'none' : 'auto' }}
                 />
 
                 {!file ? (
@@ -100,10 +105,13 @@ const ExamUpload: React.FC<ExamUploadProps> = ({ onUpload, isUploading }) => {
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
+                                e.preventDefault();
+                                console.log('Button clicked!');
                                 handleSubmit();
                             }}
                             disabled={isUploading}
-                            className="btn-primary w-full max-w-xs flex items-center justify-center space-x-2 mt-4"
+                            className="btn-primary w-full max-w-xs flex items-center justify-center space-x-2 mt-4 relative z-10"
+                            style={{ pointerEvents: 'auto' }}
                         >
                             {isUploading ? (
                                 <>
