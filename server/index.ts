@@ -342,7 +342,87 @@ Analyze the image now and output ONLY the JSON.`;
     }
 });
 
-// Chat Endpoint
+// Voice Chat Endpoint (context-aware)
+app.post('/api/voice/chat', async (req: Request, res: Response) => {
+    try {
+        const { context, message, conversationHistory } = req.body;
+
+        if (!message) {
+            return res.status(400).json({ error: 'Message is required' });
+        }
+
+        const useGemini = genAI && process.env.USE_GEMINI !== 'false';
+
+        if (useGemini) {
+            const model = genAI!.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+            // Build context-aware prompt
+            const systemPrompt = `You are a helpful mathematics teacher. A student is asking about a specific question from their exam.
+
+Question: ${context.question}
+Student's Answer: ${context.studentAnswer}
+Your Feedback: ${context.feedback}
+Topic: ${context.topic || 'Mathematics'}
+${context.concept ? `Concept: ${context.concept}` : ''}
+
+The student is asking for help understanding this specific problem. Provide clear, concise explanations. Reference the specific mistake they made. Be encouraging and supportive.
+
+If they ask for practice, acknowledge that you can help generate similar problems.`;
+
+            // Build conversation history
+            const conversationText = conversationHistory && conversationHistory.length > 0
+                ? '\n\nPrevious conversation:\n' + conversationHistory.map((msg: any) => 
+                    `${msg.role === 'user' ? 'Student' : 'Teacher'}: ${msg.content}`
+                  ).join('\n')
+                : '';
+
+            const fullPrompt = `${systemPrompt}${conversationText}\n\nStudent: ${message}\n\nTeacher:`;
+
+            const result = await model.generateContent(fullPrompt);
+            const text = result.response.text();
+
+            res.json({ text });
+        } else {
+            // Fallback to Ollama
+            const messages: any[] = [
+                {
+                    role: "system",
+                    content: `You are a helpful mathematics teacher. A student is asking about: ${context.question}. Their answer was: ${context.studentAnswer}. Your feedback: ${context.feedback}. Help them understand their mistake.`
+                }
+            ];
+
+            if (conversationHistory && Array.isArray(conversationHistory)) {
+                conversationHistory.forEach((msg: any) => {
+                    messages.push({
+                        role: msg.role === 'user' ? 'user' : 'assistant',
+                        content: msg.content
+                    });
+                });
+            }
+
+            messages.push({
+                role: 'user',
+                content: message
+            });
+
+            const response = await ollama.chat.completions.create({
+                model: "llava:13b",
+                messages: messages,
+                max_tokens: 500,
+                temperature: 0.7
+            });
+
+            const text = response.choices[0].message.content || '';
+            res.json({ text });
+        }
+
+    } catch (error) {
+        console.error('Error in voice chat:', error);
+        res.status(500).json({ error: 'Failed to process chat request.' });
+    }
+});
+
+// Chat Endpoint (general, for voice tutor page)
 app.post('/api/chat', async (req: Request, res: Response) => {
     try {
         const { message, history } = req.body;

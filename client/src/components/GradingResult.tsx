@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
 import { CheckCircle, XCircle, AlertCircle, BookOpen, Languages } from 'lucide-react';
 import AnnotatedExamViewer from './AnnotatedExamViewer';
+import VoiceChatModal from './VoiceChatModal';
 
 interface DetailedAnalysis {
+    id?: string;
     question: string;
     studentAnswer: string;
     correct: boolean;
     score: string;
     remarks: string;
+    topic?: string;
+    concept?: string;
+    position?: { x: number; y: number };
 }
 
 interface Annotation {
@@ -40,9 +45,16 @@ const GradingResult: React.FC<GradingResultProps> = ({ result, imageUrl, onReset
     const [selectedQuestion, setSelectedQuestion] = useState<DetailedAnalysis | null>(null);
 
     const handleAnnotationClick = (annotation: Annotation, question: DetailedAnalysis) => {
-        setSelectedQuestion(question);
-        // TODO: Open voice chat modal
-        console.log('Annotation clicked:', annotation, question);
+        // Ensure question has an ID
+        const questionWithId = {
+            ...question,
+            id: question.id || `q-${Date.now()}`
+        };
+        setSelectedQuestion(questionWithId);
+    };
+
+    const handleCloseVoiceChat = () => {
+        setSelectedQuestion(null);
     };
 
     if (result.error) {
@@ -138,6 +150,14 @@ const GradingResult: React.FC<GradingResultProps> = ({ result, imageUrl, onReset
             <div className="flex justify-center pt-8">
                 <button onClick={onReset} className="btn-primary px-8">Grade Another Exam</button>
             </div>
+
+            {/* Voice Chat Modal */}
+            {selectedQuestion && (
+                <VoiceChatModal
+                    questionContext={selectedQuestion as any}
+                    onClose={handleCloseVoiceChat}
+                />
+            )}
         </div>
     );
 };
