@@ -131,6 +131,7 @@ export async function incrementUsageCount(id: string) {
  * Store grading result
  */
 export async function storeGrading(data: {
+  userId?: string;
   questionPaperId?: string;
   answerSheetUrl: string;
   subject: string;
@@ -155,6 +156,7 @@ export async function storeGrading(data: {
 }) {
   const grading = await prisma.grading.create({
     data: {
+      userId: data.userId,
       questionPaperId: data.questionPaperId,
       answerSheetUrl: data.answerSheetUrl,
       subject: data.subject,

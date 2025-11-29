@@ -51,6 +51,33 @@
 - Clean separation of questions and answers
 - Foundation for batch grading
 
+## Completed ✅
+
+### Phase 6: User Authentication & Exam History (Week 4) ✅
+**Goal:** Add user accounts to track exam history and progress
+
+**Completed Tasks:**
+- ✅ Database schema with User model
+- ✅ Auth service (signup, login, JWT tokens)
+- ✅ Auth middleware
+- ✅ Auth endpoints (signup, login, logout, me)
+- ✅ Exam history endpoints (list, details, stats)
+- ✅ AuthContext for frontend
+- ✅ Signup page
+- ✅ Login page
+- ✅ History page with stats
+- ✅ Exam detail page
+- ✅ Navigation with user dropdown
+- ✅ Grading saves userId when logged in
+- ✅ Documentation (AUTH_SETUP.md)
+
+**Results:**
+- Users can create accounts and log in
+- Exam history tracked per user
+- Stats dashboard shows progress
+- Secure JWT-based authentication
+- Guest users can still grade without account
+
 ## In Progress 🚧
 
 *No active tasks - ready for next phase*

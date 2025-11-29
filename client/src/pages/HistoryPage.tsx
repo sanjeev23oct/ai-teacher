@@ -1,0 +1,198 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { Clock, BookOpen, TrendingUp } from 'lucide-react';
+
+interface Exam {
+  id: string;
+  date: string;
+  subject: string;
+  language: string;
+  gradeLevel: string;
+  totalScore: string;
+  questionPaperId?: string;
+  questionPaperTitle?: string;
+  mode: string;
+}
+
+interface Stats {
+  totalExams: number;
+  averageScore: number;
+  bySubject: Record<string, { count: number; avgScore: number }>;
+  recentExams: Array<{ id: string; date: string; subject: string; totalScore: string }>;
+}
+
+export default function HistoryPage() {
+  const [exams, setExams] = useState<Exam[]>([]);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const { token } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+
+    fetchData();
+  }, [token, navigate]);
+
+  const fetchData = async () => {
+    try {
+      const [historyRes, statsRes] = await Promise.all([
+        fetch('http://localhost:3001/api/exams/history', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch('http://localhost:3001/api/exams/stats', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+      ]);
+
+      if (!historyRes.ok || !statsRes.ok) {
+        throw new Error('Failed to fetch data');
+      }
+
+      const historyData = await historyRes.json();
+      const statsData = await statsRes.json();
+
+      setExams(historyData.exams);
+      setStats(statsData);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load exam history');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-white text-xl">Loading...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="bg-red-500/10 border border-red-500 text-red-500 rounded-lg p-4">
+          {error}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background p-6">
+      <div className="max-w-6xl mx-auto">
+        <h1 className="text-3xl font-bold text-white mb-8">Exam History</h1>
+
+        {/* Stats Cards */}
+        {stats && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="bg-surface rounded-lg p-6">
+              <div className="flex items-center gap-3 mb-2">
+                <BookOpen className="text-primary" size={24} />
+                <h3 className="text-gray-400 text-sm">Total Exams</h3>
+              </div>
+              <p className="text-3xl font-bold text-white">{stats.totalExams}</p>
+            </div>
+
+            <div className="bg-surface rounded-lg p-6">
+              <div className="flex items-center gap-3 mb-2">
+                <TrendingUp className="text-green-500" size={24} />
+                <h3 className="text-gray-400 text-sm">Average Score</h3>
+              </div>
+              <p className="text-3xl font-bold text-white">{stats.averageScore.toFixed(1)}%</p>
+            </div>
+
+            <div className="bg-surface rounded-lg p-6">
+              <h3 className="text-gray-400 text-sm mb-3">By Subject</h3>
+              <div className="space-y-2">
+                {Object.entries(stats.bySubject).map(([subject, data]) => (
+                  <div key={subject} className="flex justify-between items-center">
+                    <span className="text-white text-sm">{subject}</span>
+                    <span className="text-gray-400 text-sm">
+                      {data.avgScore.toFixed(1)}% ({data.count})
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Exam List */}
+        <div className="bg-surface rounded-lg overflow-hidden">
+          <div className="p-6 border-b border-gray-700">
+            <h2 className="text-xl font-semibold text-white">All Exams</h2>
+          </div>
+
+          {exams.length === 0 ? (
+            <div className="p-12 text-center">
+              <p className="text-gray-400 mb-4">No exams yet</p>
+              <button
+                onClick={() => navigate('/grade')}
+                className="btn-primary"
+              >
+                Grade Your First Exam
+              </button>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-700">
+              {exams.map((exam) => (
+                <div
+                  key={exam.id}
+                  onClick={() => navigate(`/exams/${exam.id}`)}
+                  className="p-6 hover:bg-background/50 cursor-pointer transition-colors"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg font-semibold text-white">
+                          {exam.subject}
+                        </h3>
+                        <span className="px-2 py-1 bg-primary/20 text-primary text-xs rounded">
+                          {exam.mode}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-gray-400">
+                        <span className="flex items-center gap-1">
+                          <Clock size={14} />
+                          {formatDate(exam.date)}
+                        </span>
+                        <span>{exam.language}</span>
+                        <span>{exam.gradeLevel}</span>
+                      </div>
+                      {exam.questionPaperTitle && (
+                        <p className="text-sm text-gray-500 mt-1">
+                          {exam.questionPaperTitle}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-white">
+                        {exam.totalScore}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

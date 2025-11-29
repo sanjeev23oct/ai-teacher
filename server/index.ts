@@ -8,7 +8,10 @@ import path from 'path';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as questionPaperService from './services/questionPaperService';
 import * as gradingService from './services/gradingService';
+import * as authService from './services/authService';
 import { calculateImageHash } from './lib/imageHash';
+import { authMiddleware, optionalAuthMiddleware } from './middleware/auth';
+import prisma from './lib/prisma';
 
 dotenv.config();
 
@@ -117,6 +120,255 @@ function generateDefaultAnnotations(detailedAnalysis: QuestionAnalysis[]): Annot
 
     return annotations;
 }
+
+// ============================================
+// AUTH ENDPOINTS
+// ============================================
+
+// Signup
+app.post('/api/auth/signup', async (req: Request, res: Response) => {
+    try {
+        const { name, email, password, grade, school } = req.body;
+
+        // Validation
+        if (!name || !email || !password) {
+            return res.status(400).json({ error: 'Name, email, and password are required' });
+        }
+
+        if (password.length < 8) {
+            return res.status(400).json({ error: 'Password must be at least 8 characters' });
+        }
+
+        const result = await authService.signup({
+            name,
+            email,
+            password,
+            grade,
+            school
+        });
+
+        res.json(result);
+    } catch (error: any) {
+        console.error('Signup error:', error);
+        if (error.message.includes('already exists')) {
+            return res.status(409).json({ error: error.message });
+        }
+        res.status(500).json({ error: 'Failed to create account' });
+    }
+});
+
+// Login
+app.post('/api/auth/login', async (req: Request, res: Response) => {
+    try {
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).json({ error: 'Email and password are required' });
+        }
+
+        const result = await authService.login({ email, password });
+        res.json(result);
+    } catch (error: any) {
+        console.error('Login error:', error);
+        if (error.message.includes('Invalid')) {
+            return res.status(401).json({ error: error.message });
+        }
+        res.status(500).json({ error: 'Failed to log in' });
+    }
+});
+
+// Get current user
+app.get('/api/auth/me', authMiddleware, async (req: Request, res: Response) => {
+    try {
+        res.json({ user: req.user });
+    } catch (error) {
+        console.error('Get user error:', error);
+        res.status(500).json({ error: 'Failed to get user info' });
+    }
+});
+
+// Logout (client-side token removal, but we can track it)
+app.post('/api/auth/logout', authMiddleware, async (req: Request, res: Response) => {
+    try {
+        // In a more advanced setup, we'd invalidate the token here
+        // For now, client just removes the token
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Logout error:', error);
+        res.status(500).json({ error: 'Failed to log out' });
+    }
+});
+
+// ============================================
+// EXAM HISTORY ENDPOINTS
+// ============================================
+
+// Get exam history for logged-in user
+app.get('/api/exams/history', authMiddleware, async (req: Request, res: Response) => {
+    try {
+        const userId = req.user!.id;
+        const limit = parseInt(req.query.limit as string) || 20;
+        const offset = parseInt(req.query.offset as string) || 0;
+
+        const gradings = await prisma.grading.findMany({
+            where: { userId },
+            orderBy: { createdAt: 'desc' },
+            take: limit,
+            skip: offset,
+            include: {
+                questionPaper: {
+                    select: {
+                        id: true,
+                        title: true,
+                        subject: true
+                    }
+                }
+            }
+        });
+
+        const total = await prisma.grading.count({
+            where: { userId }
+        });
+
+        const exams = gradings.map(g => ({
+            id: g.id,
+            date: g.createdAt,
+            subject: g.subject,
+            language: g.language,
+            gradeLevel: g.gradeLevel,
+            totalScore: g.totalScore,
+            questionPaperId: g.questionPaperId,
+            questionPaperTitle: g.questionPaper?.title,
+            mode: g.matchingMode || 'single'
+        }));
+
+        res.json({
+            exams,
+            total,
+            hasMore: offset + limit < total
+        });
+    } catch (error) {
+        console.error('Error fetching exam history:', error);
+        res.status(500).json({ error: 'Failed to fetch exam history' });
+    }
+});
+
+// Get specific exam details
+app.get('/api/exams/:id', authMiddleware, async (req: Request, res: Response) => {
+    try {
+        const userId = req.user!.id;
+        const examId = req.params.id;
+
+        const grading = await prisma.grading.findFirst({
+            where: {
+                id: examId,
+                userId
+            },
+            include: {
+                answers: true,
+                questionPaper: {
+                    include: {
+                        questions: true
+                    }
+                }
+            }
+        });
+
+        if (!grading) {
+            return res.status(404).json({ error: 'Exam not found' });
+        }
+
+        res.json(grading);
+    } catch (error) {
+        console.error('Error fetching exam details:', error);
+        res.status(500).json({ error: 'Failed to fetch exam details' });
+    }
+});
+
+// Get user stats
+app.get('/api/exams/stats', authMiddleware, async (req: Request, res: Response) => {
+    try {
+        const userId = req.user!.id;
+
+        const gradings = await prisma.grading.findMany({
+            where: { userId },
+            orderBy: { createdAt: 'desc' },
+            take: 100 // Last 100 exams for stats
+        });
+
+        const totalExams = gradings.length;
+
+        // Calculate average score (parse "8/10" format)
+        const scores = gradings.map(g => {
+            const match = g.totalScore.match(/(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/);
+            if (match) {
+                const earned = parseFloat(match[1]);
+                const total = parseFloat(match[2]);
+                return total > 0 ? (earned / total) * 100 : 0;
+            }
+            return 0;
+        });
+
+        const averageScore = scores.length > 0
+            ? scores.reduce((a, b) => a + b, 0) / scores.length
+            : 0;
+
+        // Group by subject
+        const bySubject: Record<string, { count: number; avgScore: number; scores: number[] }> = {};
+        gradings.forEach(g => {
+            if (!bySubject[g.subject]) {
+                bySubject[g.subject] = { count: 0, avgScore: 0, scores: [] };
+            }
+            bySubject[g.subject].count++;
+            
+            const match = g.totalScore.match(/(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/);
+            if (match) {
+                const earned = parseFloat(match[1]);
+                const total = parseFloat(match[2]);
+                const percentage = total > 0 ? (earned / total) * 100 : 0;
+                bySubject[g.subject].scores.push(percentage);
+            }
+        });
+
+        // Calculate average for each subject
+        Object.keys(bySubject).forEach(subject => {
+            const scores = bySubject[subject].scores;
+            bySubject[subject].avgScore = scores.length > 0
+                ? scores.reduce((a, b) => a + b, 0) / scores.length
+                : 0;
+        });
+
+        // Recent exams
+        const recentExams = gradings.slice(0, 5).map(g => ({
+            id: g.id,
+            date: g.createdAt,
+            subject: g.subject,
+            totalScore: g.totalScore
+        }));
+
+        res.json({
+            totalExams,
+            averageScore: Math.round(averageScore * 10) / 10,
+            bySubject: Object.fromEntries(
+                Object.entries(bySubject).map(([subject, data]) => [
+                    subject,
+                    {
+                        count: data.count,
+                        avgScore: Math.round(data.avgScore * 10) / 10
+                    }
+                ])
+            ),
+            recentExams
+        });
+    } catch (error) {
+        console.error('Error fetching stats:', error);
+        res.status(500).json({ error: 'Failed to fetch stats' });
+    }
+});
+
+// ============================================
+// QUESTION PAPER ENDPOINTS
+// ============================================
 
 // Question Paper Extraction Endpoint
 app.post('/api/question-papers/extract', upload.single('questionPaper'), async (req: Request, res: Response) => {
@@ -275,7 +527,7 @@ app.get('/api/question-papers/:id', async (req: Request, res: Response) => {
 const uploadAny = multer({ dest: 'uploads/' }).any();
 
 // Enhanced Grading Endpoint (supports single and dual mode)
-app.post('/api/grade', uploadAny, async (req: Request, res: Response) => {
+app.post('/api/grade', optionalAuthMiddleware, uploadAny, async (req: Request, res: Response) => {
     try {
         const files = (req.files as Express.Multer.File[]) || [];
         const mode = req.body.mode || 'single';
@@ -710,20 +962,23 @@ async function handleDualModeGrading(
     try {
         let gradingResult;
         let usedQuestionPaperId = questionPaperId;
+        const userId = req.user?.id;
 
         if (questionPaperId) {
             // Use existing question paper
             console.log('Using stored question paper:', questionPaperId);
             gradingResult = await gradingService.gradeWithStoredQuestions(
                 answerSheetFile.path,
-                questionPaperId
+                questionPaperId,
+                userId
             );
         } else if (questionPaperFile) {
             // Extract new question paper and grade
             console.log('Extracting new question paper and grading');
             const result = await gradingService.gradeWithNewQuestionPaper(
                 questionPaperFile.path,
-                answerSheetFile.path
+                answerSheetFile.path,
+                userId
             );
             usedQuestionPaperId = result.questionPaperId;
             gradingResult = result.gradingResult;

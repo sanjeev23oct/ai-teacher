@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { CheckCircle, XCircle, AlertCircle, BookOpen, Languages } from 'lucide-react';
+import { CheckCircle, XCircle, AlertCircle, BookOpen, Languages, UserPlus } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { Link } from 'react-router-dom';
 import AnnotatedExamViewer from './AnnotatedExamViewer';
 import VoiceChatModal from './VoiceChatModal';
 
@@ -43,6 +45,7 @@ interface GradingResultProps {
 
 const GradingResult: React.FC<GradingResultProps> = ({ result, imageUrl, onReset }) => {
     const [selectedQuestion, setSelectedQuestion] = useState<DetailedAnalysis | null>(null);
+    const { user } = useAuth();
 
     const handleAnnotationClick = (annotation: Annotation, question: DetailedAnalysis) => {
         // Ensure question has an ID
@@ -110,6 +113,29 @@ const GradingResult: React.FC<GradingResultProps> = ({ result, imageUrl, onReset
                     <p className="text-gray-300 leading-relaxed">{result.feedback}</p>
                 </div>
             </div>
+
+            {/* Signup Prompt for Guest Users */}
+            {!user && (
+                <div className="card bg-gradient-to-r from-primary/10 to-purple-600/10 border-primary/30">
+                    <div className="flex items-start gap-4">
+                        <UserPlus className="h-8 w-8 text-primary flex-shrink-0 mt-1" />
+                        <div className="flex-grow">
+                            <h3 className="text-xl font-bold text-white mb-2">Save Your Progress!</h3>
+                            <p className="text-gray-300 mb-4">
+                                Create a free account to save this result, track your exam history, and see your progress over time.
+                            </p>
+                            <div className="flex gap-3">
+                                <Link to="/signup" className="btn-primary">
+                                    Sign Up Free
+                                </Link>
+                                <Link to="/login" className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-md text-white transition-colors font-medium border border-gray-700">
+                                    Log In
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Detailed Analysis */}
             <div className="space-y-4">

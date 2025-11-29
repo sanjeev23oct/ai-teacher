@@ -23,7 +23,8 @@ interface GradingResult {
  */
 export async function gradeWithStoredQuestions(
     answerSheetPath: string,
-    questionPaperId: string
+    questionPaperId: string,
+    userId?: string
 ): Promise<GradingResult> {
     if (!genAI) {
         throw new Error('Gemini API not configured');
@@ -129,6 +130,7 @@ Return ONLY valid JSON:
 
     // Store grading in database
     await questionPaperService.storeGrading({
+        userId: userId,
         questionPaperId: questionPaperId,
         answerSheetUrl: answerSheetPath,
         subject: gradingResult.subject,
@@ -160,7 +162,8 @@ Return ONLY valid JSON:
  */
 export async function gradeWithNewQuestionPaper(
     questionPaperPath: string,
-    answerSheetPath: string
+    answerSheetPath: string,
+    userId?: string
 ): Promise<{ questionPaperId: string; gradingResult: GradingResult }> {
     if (!genAI) {
         throw new Error('Gemini API not configured');
@@ -231,7 +234,7 @@ export async function gradeWithNewQuestionPaper(
     }
 
     // Now grade with stored question paper
-    const gradingResult = await gradeWithStoredQuestions(answerSheetPath, questionPaper.id);
+    const gradingResult = await gradeWithStoredQuestions(answerSheetPath, questionPaper.id, userId);
 
     return {
         questionPaperId: questionPaper.id,
