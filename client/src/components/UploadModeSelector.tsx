@@ -1,0 +1,105 @@
+import React from 'react';
+import { FileText, Files } from 'lucide-react';
+
+export type UploadMode = 'single' | 'dual';
+
+interface UploadModeSelectorProps {
+    onModeSelect: (mode: UploadMode) => void;
+}
+
+const UploadModeSelector: React.FC<UploadModeSelectorProps> = ({ onModeSelect }) => {
+    return (
+        <div className="max-w-4xl mx-auto space-y-6">
+            <div className="text-center space-y-2">
+                <h2 className="text-3xl font-bold text-white">How would you like to upload your exam?</h2>
+                <p className="text-gray-400">Choose the option that matches your exam format</p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+                {/* Single Image Mode */}
+                <button
+                    onClick={() => onModeSelect('single')}
+                    className="group relative bg-surface border-2 border-gray-700 hover:border-primary rounded-xl p-8 transition-all hover:scale-105 text-left"
+                >
+                    <div className="flex flex-col items-center text-center space-y-4">
+                        <div className="p-4 bg-gray-800 rounded-full group-hover:bg-primary/20 transition-colors">
+                            <FileText className="w-12 h-12 text-primary" />
+                        </div>
+                        
+                        <div>
+                            <h3 className="text-xl font-bold text-white mb-2">Single Image</h3>
+                            <p className="text-gray-400 text-sm mb-4">
+                                Questions + Answers in one image
+                            </p>
+                        </div>
+
+                        <div className="text-left w-full space-y-2">
+                            <p className="text-sm font-semibold text-gray-300">Best for:</p>
+                            <ul className="text-sm text-gray-400 space-y-1">
+                                <li>• Practice tests</li>
+                                <li>• Homework assignments</li>
+                                <li>• Quick checks</li>
+                                <li>• Combined question-answer sheets</li>
+                            </ul>
+                        </div>
+
+                        <div className="w-full pt-4">
+                            <div className="btn-primary w-full text-center">
+                                Select
+                            </div>
+                        </div>
+                    </div>
+                </button>
+
+                {/* Dual Image Mode */}
+                <button
+                    onClick={() => onModeSelect('dual')}
+                    className="group relative bg-surface border-2 border-gray-700 hover:border-primary rounded-xl p-8 transition-all hover:scale-105 text-left"
+                >
+                    <div className="absolute top-4 right-4">
+                        <span className="px-2 py-1 bg-primary/20 text-primary text-xs font-bold rounded">
+                            RECOMMENDED
+                        </span>
+                    </div>
+
+                    <div className="flex flex-col items-center text-center space-y-4">
+                        <div className="p-4 bg-gray-800 rounded-full group-hover:bg-primary/20 transition-colors">
+                            <Files className="w-12 h-12 text-primary" />
+                        </div>
+                        
+                        <div>
+                            <h3 className="text-xl font-bold text-white mb-2">Two Images</h3>
+                            <p className="text-gray-400 text-sm mb-4">
+                                Question Paper + Answer Sheet
+                            </p>
+                        </div>
+
+                        <div className="text-left w-full space-y-2">
+                            <p className="text-sm font-semibold text-gray-300">Best for:</p>
+                            <ul className="text-sm text-gray-400 space-y-1">
+                                <li>• School exams</li>
+                                <li>• Formal tests</li>
+                                <li>• Separate answer sheets</li>
+                                <li>• Reusable question papers</li>
+                            </ul>
+                        </div>
+
+                        <div className="w-full pt-4">
+                            <div className="btn-primary w-full text-center">
+                                Select
+                            </div>
+                        </div>
+                    </div>
+                </button>
+            </div>
+
+            <div className="text-center">
+                <p className="text-sm text-gray-500">
+                    💡 Tip: Dual mode is faster if you're grading multiple students with the same question paper
+                </p>
+            </div>
+        </div>
+    );
+};
+
+export default UploadModeSelector;

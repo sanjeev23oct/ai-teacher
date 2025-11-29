@@ -6,6 +6,9 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import * as questionPaperService from './services/questionPaperService';
+import * as gradingService from './services/gradingService';
+import { calculateImageHash } from './lib/imageHash';
 
 dotenv.config();
 
@@ -52,6 +55,10 @@ app.use(express.json());
 
 // Multer setup for file uploads
 const upload = multer({ dest: 'uploads/' });
+const uploadMultiple = multer({ dest: 'uploads/' }).fields([
+    { name: 'questionPaper', maxCount: 1 },
+    { name: 'answerSheet', maxCount: 1 }
+]);
 
 // Ollama Setup (local server)
 const ollama = new OpenAI({
@@ -111,17 +118,231 @@ function generateDefaultAnnotations(detailedAnalysis: QuestionAnalysis[]): Annot
     return annotations;
 }
 
-// Routes
-app.post('/api/grade', upload.single('exam'), async (req: Request, res: Response) => {
+// Question Paper Extraction Endpoint
+app.post('/api/question-papers/extract', upload.single('questionPaper'), async (req: Request, res: Response) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
         }
 
-        // Read the image file and convert to base64
         const imageBuffer = fs.readFileSync(req.file.path);
         const base64Image = imageBuffer.toString('base64');
         const mimeType = req.file.mimetype;
+
+        // Check if question paper already exists
+        const imageHash = calculateImageHash(req.file.path);
+        const existing = await questionPaperService.findQuestionPaperByHash(imageHash);
+
+        if (existing) {
+            fs.unlinkSync(req.file.path);
+            return res.json({
+                id: existing.id,
+                title: existing.title,
+                subject: existing.subject,
+                gradeLevel: existing.gradeLevel,
+                language: existing.language,
+                totalQuestions: existing.totalQuestions,
+                questions: existing.questions,
+                cached: true,
+                message: 'Question paper already exists in database'
+            });
+        }
+
+        // Extract questions using Gemini
+        const useGemini = genAI && process.env.USE_GEMINI !== 'false';
+        if (!useGemini) {
+            fs.unlinkSync(req.file.path);
+            return res.status(400).json({ error: 'Gemini API required for question extraction' });
+        }
+
+        const model = genAI!.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+        const prompt = `You are analyzing a question paper. Extract all questions with their details.
+
+IMPORTANT: Return ONLY valid JSON, no other text.
+
+{
+  "subject": "Mathematics/Physics/Chemistry/etc",
+  "language": "English/Hindi/Bengali/etc",
+  "gradeLevel": "Grade 9-10/High School/etc",
+  "questions": [
+    {
+      "questionNumber": "1",
+      "questionText": "Full question text",
+      "maxScore": 5,
+      "topic": "Algebra/Geometry/etc",
+      "concept": "Linear Equations/etc",
+      "position": { "x": 10, "y": 25 }
+    }
+  ]
+}
+
+Extract ALL questions you can see. Include question numbers, full text, and estimated positions (x, y as percentages 0-100).`;
+
+        const imagePart = {
+            inlineData: {
+                data: base64Image,
+                mimeType: mimeType
+            }
+        };
+
+        const result = await model.generateContent([prompt, imagePart]);
+        const text = result.response.text();
+
+        // Parse JSON
+        let jsonStr = text;
+        if (text.includes('```json')) {
+            jsonStr = text.split('```json')[1].split('```')[0];
+        } else if (text.includes('```')) {
+            jsonStr = text.split('```')[1].split('```')[0];
+        }
+
+        const extracted = JSON.parse(jsonStr.trim());
+
+        // Move uploaded file to permanent storage
+        const permanentPath = path.join('uploads', 'question-papers', `${imageHash}.jpg`);
+        const permanentDir = path.dirname(permanentPath);
+        if (!fs.existsSync(permanentDir)) {
+            fs.mkdirSync(permanentDir, { recursive: true });
+        }
+        fs.renameSync(req.file.path, permanentPath);
+
+        // Store in database
+        const questionPaper = await questionPaperService.storeQuestionPaper(permanentPath, {
+            title: req.body.title,
+            subject: extracted.subject,
+            gradeLevel: extracted.gradeLevel,
+            language: extracted.language,
+            imageUrl: permanentPath,
+            questions: extracted.questions.map((q: any) => ({
+                questionNumber: q.questionNumber,
+                questionText: q.questionText,
+                maxScore: q.maxScore,
+                topic: q.topic,
+                concept: q.concept,
+                positionX: q.position?.x,
+                positionY: q.position?.y
+            }))
+        });
+
+        res.json({
+            id: questionPaper.id,
+            title: questionPaper.title,
+            subject: questionPaper.subject,
+            gradeLevel: questionPaper.gradeLevel,
+            language: questionPaper.language,
+            totalQuestions: questionPaper.totalQuestions,
+            questions: questionPaper.questions,
+            cached: false,
+            message: 'Question paper extracted and stored'
+        });
+
+    } catch (error) {
+        console.error('Error extracting question paper:', error);
+        if (req.file) {
+            fs.unlinkSync(req.file.path);
+        }
+        res.status(500).json({ error: 'Failed to extract question paper' });
+    }
+});
+
+// List Question Papers Endpoint
+app.get('/api/question-papers', async (req: Request, res: Response) => {
+    try {
+        const questionPapers = await questionPaperService.listQuestionPapers(20);
+        res.json({ questionPapers });
+    } catch (error) {
+        console.error('Error listing question papers:', error);
+        res.status(500).json({ error: 'Failed to list question papers' });
+    }
+});
+
+// Get Question Paper Endpoint
+app.get('/api/question-papers/:id', async (req: Request, res: Response) => {
+    try {
+        const questionPaper = await questionPaperService.getQuestionPaper(req.params.id);
+        if (!questionPaper) {
+            return res.status(404).json({ error: 'Question paper not found' });
+        }
+        res.json(questionPaper);
+    } catch (error) {
+        console.error('Error getting question paper:', error);
+        res.status(500).json({ error: 'Failed to get question paper' });
+    }
+});
+
+// Multer middleware that accepts any field
+const uploadAny = multer({ dest: 'uploads/' }).any();
+
+// Enhanced Grading Endpoint (supports single and dual mode)
+app.post('/api/grade', uploadAny, async (req: Request, res: Response) => {
+    try {
+        const files = (req.files as Express.Multer.File[]) || [];
+        const mode = req.body.mode || 'single';
+        const questionPaperId = req.body.questionPaperId;
+
+        let questionPaperFile: Express.Multer.File | undefined;
+        let answerSheetFile: Express.Multer.File | undefined;
+        let examFile: Express.Multer.File | undefined;
+
+        // Parse files by fieldname
+        for (const file of files) {
+            if (file.fieldname === 'questionPaper') {
+                questionPaperFile = file;
+            } else if (file.fieldname === 'answerSheet') {
+                answerSheetFile = file;
+            } else if (file.fieldname === 'exam') {
+                examFile = file;
+            }
+        }
+
+        // Determine which files we have
+        if (mode === 'dual') {
+            if (!answerSheetFile) {
+                return res.status(400).json({ error: 'Answer sheet is required for dual mode' });
+            }
+            
+            if (!questionPaperId && !questionPaperFile) {
+                return res.status(400).json({ error: 'Question paper or questionPaperId is required for dual mode' });
+            }
+        } else {
+            // Single mode
+            if (!examFile) {
+                return res.status(400).json({ error: 'No file uploaded' });
+            }
+        }
+
+        // Handle dual mode with stored or new question paper
+        if (mode === 'dual') {
+            return await handleDualModeGrading(
+                req,
+                res,
+                questionPaperId,
+                questionPaperFile,
+                answerSheetFile!
+            );
+        }
+
+        // Handle single mode (existing behavior)
+        return await handleSingleModeGrading(req, res, examFile!);
+
+    } catch (error) {
+        console.error('Error in grading:', error);
+        res.status(500).json({ error: 'Failed to process grading request' });
+    }
+});
+
+// Single mode grading (existing behavior)
+async function handleSingleModeGrading(
+    req: Request,
+    res: Response,
+    examFile: Express.Multer.File
+) {
+    try {
+        // Read the image file and convert to base64
+        const imageBuffer = fs.readFileSync(examFile.path);
+        const base64Image = imageBuffer.toString('base64');
+        const mimeType = examFile.mimetype;
 
         // Use Gemini if available, otherwise fall back to Ollama
         const useGemini = genAI && process.env.USE_GEMINI !== 'false';
@@ -211,7 +432,7 @@ Generate annotations for EVERY question you identify.`;
             const text = result.response.text();
 
             // Clean up uploaded file
-            fs.unlinkSync(req.file.path);
+            fs.unlinkSync(examFile.path);
 
             // Parse JSON from response
             let jsonStr = text;
@@ -310,7 +531,7 @@ Analyze the image now and output ONLY the JSON.`;
         const text = response.choices[0].message.content || '';
 
         // Clean up uploaded file
-        fs.unlinkSync(req.file.path);
+        fs.unlinkSync(examFile.path);
 
         // Parse JSON from response
         let jsonStr = text;
@@ -340,7 +561,7 @@ Analyze the image now and output ONLY the JSON.`;
         console.error('Error processing exam:', error);
         res.status(500).json({ error: 'Failed to process exam. Make sure Ollama is running and llava model is pulled.' });
     }
-});
+}
 
 // Voice Chat Endpoint (context-aware)
 app.post('/api/voice/chat', async (req: Request, res: Response) => {
@@ -478,6 +699,66 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     }
 });
 
+// Dual mode grading handler
+async function handleDualModeGrading(
+    req: Request,
+    res: Response,
+    questionPaperId: string | undefined,
+    questionPaperFile: Express.Multer.File | undefined,
+    answerSheetFile: Express.Multer.File
+) {
+    try {
+        let gradingResult;
+        let usedQuestionPaperId = questionPaperId;
+
+        if (questionPaperId) {
+            // Use existing question paper
+            console.log('Using stored question paper:', questionPaperId);
+            gradingResult = await gradingService.gradeWithStoredQuestions(
+                answerSheetFile.path,
+                questionPaperId
+            );
+        } else if (questionPaperFile) {
+            // Extract new question paper and grade
+            console.log('Extracting new question paper and grading');
+            const result = await gradingService.gradeWithNewQuestionPaper(
+                questionPaperFile.path,
+                answerSheetFile.path
+            );
+            usedQuestionPaperId = result.questionPaperId;
+            gradingResult = result.gradingResult;
+        } else {
+            throw new Error('No question paper provided');
+        }
+
+        // Clean up uploaded files
+        if (questionPaperFile) {
+            fs.unlinkSync(questionPaperFile.path);
+        }
+        fs.unlinkSync(answerSheetFile.path);
+
+        // Add question paper ID to response
+        res.json({
+            ...gradingResult,
+            questionPaperId: usedQuestionPaperId,
+            mode: 'dual'
+        });
+
+    } catch (error) {
+        console.error('Error in dual mode grading:', error);
+        
+        // Clean up files on error
+        if (questionPaperFile && fs.existsSync(questionPaperFile.path)) {
+            fs.unlinkSync(questionPaperFile.path);
+        }
+        if (fs.existsSync(answerSheetFile.path)) {
+            fs.unlinkSync(answerSheetFile.path);
+        }
+        
+        throw error;
+    }
+}
+
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
     if (genAI) {
@@ -486,4 +767,5 @@ app.listen(port, () => {
         console.log(`Connecting to Ollama at ${process.env.OLLAMA_URL || 'http://localhost:11434/v1'}`);
         console.log(`Tip: Add GEMINI_API_KEY to .env for better OCR results`);
     }
+    console.log(`Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
 });
