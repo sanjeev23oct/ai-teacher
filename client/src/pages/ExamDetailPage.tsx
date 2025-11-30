@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { ArrowLeft, Calendar, BookOpen } from 'lucide-react';
+import AnnotatedExamViewer from '../components/AnnotatedExamViewer';
 
 interface ExamDetail {
   id: string;
@@ -13,6 +14,8 @@ interface ExamDetail {
   feedback: string;
   answerSheetUrl: string;
   matchingMode: string;
+  annotations?: string;
+  imageDimensions?: string;
   answers: Array<{
     id: string;
     questionNumber: string;
@@ -100,6 +103,10 @@ export default function ExamDetailPage() {
     );
   }
 
+  // Parse annotations if available
+  const annotations = exam.annotations ? JSON.parse(exam.annotations) : null;
+  const imageDimensions = exam.imageDimensions ? JSON.parse(exam.imageDimensions) : null;
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-6xl mx-auto">
@@ -110,6 +117,34 @@ export default function ExamDetailPage() {
           <ArrowLeft size={20} />
           Back to History
         </button>
+
+        {/* Show annotated exam viewer if we have annotations */}
+        {annotations && exam.answerSheetUrl && (
+          <div className="mb-6">
+            <AnnotatedExamViewer
+              imageUrl={`http://localhost:3001/${exam.answerSheetUrl}`}
+              gradingResult={{
+                subject: exam.subject,
+                language: exam.language,
+                gradeLevel: exam.gradeLevel,
+                totalScore: exam.totalScore,
+                feedback: exam.feedback,
+                annotations: annotations,
+                imageDimensions: imageDimensions,
+                detailedAnalysis: exam.answers.map((a: any) => ({
+                  id: a.questionNumber,
+                  question: exam.questionPaper?.questions.find((q: any) => q.questionNumber === a.questionNumber)?.questionText || `Question ${a.questionNumber}`,
+                  studentAnswer: a.studentAnswer || 'Not attempted',
+                  correct: a.correct,
+                  score: a.score,
+                  remarks: a.remarks,
+                  position: a.positionX && a.positionY ? { x: a.positionX, y: a.positionY } : undefined
+                }))
+              }}
+              onAnnotationClick={() => {}}
+            />
+          </div>
+        )}
 
         <div className="bg-surface rounded-lg p-6 mb-6">
           <div className="flex items-start justify-between mb-4">

@@ -142,6 +142,8 @@ export async function storeGrading(data: {
   matchingMode?: string;
   totalQuestions?: number;
   answeredQuestions?: number;
+  annotations?: any[];
+  imageDimensions?: { width: number; height: number };
   answers: Array<{
     questionNumber: string;
     studentAnswer: string | null;
@@ -167,6 +169,8 @@ export async function storeGrading(data: {
       matchingMode: data.matchingMode,
       totalQuestions: data.totalQuestions,
       answeredQuestions: data.answeredQuestions,
+      annotations: data.annotations ? JSON.stringify(data.annotations) : null,
+      imageDimensions: data.imageDimensions ? JSON.stringify(data.imageDimensions) : null,
       answers: {
         create: data.answers.map(a => ({
           questionNumber: a.questionNumber,

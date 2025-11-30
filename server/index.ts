@@ -253,39 +253,7 @@ app.get('/api/exams/history', authMiddleware, async (req: Request, res: Response
     }
 });
 
-// Get specific exam details
-app.get('/api/exams/:id', authMiddleware, async (req: Request, res: Response) => {
-    try {
-        const userId = req.user!.id;
-        const examId = req.params.id;
-
-        const grading = await prisma.grading.findFirst({
-            where: {
-                id: examId,
-                userId
-            },
-            include: {
-                answers: true,
-                questionPaper: {
-                    include: {
-                        questions: true
-                    }
-                }
-            }
-        });
-
-        if (!grading) {
-            return res.status(404).json({ error: 'Exam not found' });
-        }
-
-        res.json(grading);
-    } catch (error) {
-        console.error('Error fetching exam details:', error);
-        res.status(500).json({ error: 'Failed to fetch exam details' });
-    }
-});
-
-// Get user stats
+// Get user stats (must be before /:id route)
 app.get('/api/exams/stats', authMiddleware, async (req: Request, res: Response) => {
     try {
         const userId = req.user!.id;
@@ -363,6 +331,38 @@ app.get('/api/exams/stats', authMiddleware, async (req: Request, res: Response) 
     } catch (error) {
         console.error('Error fetching stats:', error);
         res.status(500).json({ error: 'Failed to fetch stats' });
+    }
+});
+
+// Get specific exam details
+app.get('/api/exams/:id', authMiddleware, async (req: Request, res: Response) => {
+    try {
+        const userId = req.user!.id;
+        const examId = req.params.id;
+
+        const grading = await prisma.grading.findFirst({
+            where: {
+                id: examId,
+                userId
+            },
+            include: {
+                answers: true,
+                questionPaper: {
+                    include: {
+                        questions: true
+                    }
+                }
+            }
+        });
+
+        if (!grading) {
+            return res.status(404).json({ error: 'Exam not found' });
+        }
+
+        res.json(grading);
+    } catch (error) {
+        console.error('Error fetching exam details:', error);
+        res.status(500).json({ error: 'Failed to fetch exam details' });
     }
 });
 
@@ -528,6 +528,11 @@ const uploadAny = multer({ dest: 'uploads/' }).any();
 
 // Enhanced Grading Endpoint (supports single and dual mode)
 app.post('/api/grade', optionalAuthMiddleware, uploadAny, async (req: Request, res: Response) => {
+    console.log('=== GRADING REQUEST RECEIVED ===');
+    console.log('User:', req.user?.email || 'Guest');
+    console.log('Files:', (req.files as Express.Multer.File[])?.length || 0);
+    console.log('Mode:', req.body.mode || 'single');
+    
     try {
         const files = (req.files as Express.Multer.File[]) || [];
         const mode = req.body.mode || 'single';
@@ -683,9 +688,6 @@ Generate annotations for EVERY question you identify.`;
             const result = await model.generateContent([prompt, imagePart]);
             const text = result.response.text();
 
-            // Clean up uploaded file
-            fs.unlinkSync(examFile.path);
-
             // Parse JSON from response
             let jsonStr = text;
             if (text.includes('```json')) {
@@ -713,6 +715,43 @@ Generate annotations for EVERY question you identify.`;
                     ...q,
                     id: q.id || `q${index + 1}`
                 }));
+
+                // Save to database if user is logged in
+                const userId = req.user?.id;
+                if (userId) {
+                    // Move file to permanent storage
+                    const permanentPath = path.join('uploads', 'exams', `${Date.now()}-${examFile.filename}`);
+                    const permanentDir = path.dirname(permanentPath);
+                    if (!fs.existsSync(permanentDir)) {
+                        fs.mkdirSync(permanentDir, { recursive: true });
+                    }
+                    fs.renameSync(examFile.path, permanentPath);
+
+                    await questionPaperService.storeGrading({
+                        userId: userId,
+                        answerSheetUrl: permanentPath,
+                        subject: jsonResponse.subject,
+                        language: jsonResponse.language,
+                        gradeLevel: jsonResponse.gradeLevel || 'Unknown',
+                        totalScore: jsonResponse.totalScore,
+                        feedback: jsonResponse.feedback,
+                        matchingMode: 'single',
+                        annotations: jsonResponse.annotations,
+                        imageDimensions: jsonResponse.imageDimensions,
+                        answers: jsonResponse.detailedAnalysis.map((a: any) => ({
+                            questionNumber: a.id || 'unknown',
+                            studentAnswer: a.studentAnswer,
+                            correct: a.correct,
+                            score: a.score,
+                            remarks: a.remarks,
+                            positionX: a.position?.x,
+                            positionY: a.position?.y
+                        }))
+                    });
+                } else {
+                    // Clean up uploaded file if not logged in
+                    fs.unlinkSync(examFile.path);
+                }
 
                 res.json(jsonResponse);
             } catch (e) {
@@ -809,9 +848,14 @@ Analyze the image now and output ONLY the JSON.`;
             });
         }
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error processing exam:', error);
-        res.status(500).json({ error: 'Failed to process exam. Make sure Ollama is running and llava model is pulled.' });
+        console.error('Error stack:', error.stack);
+        res.status(500).json({ 
+            error: 'Failed to process exam', 
+            details: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
     }
 }
 

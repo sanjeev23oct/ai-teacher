@@ -3,6 +3,7 @@ import ExamUpload from '../components/ExamUpload';
 import GradingResult from '../components/GradingResult';
 import UploadModeSelector from '../components/UploadModeSelector';
 import DualUpload from '../components/DualUpload';
+import { useAuth } from '../contexts/AuthContext';
 
 type UploadMode = 'single' | 'dual';
 
@@ -11,6 +12,7 @@ const GradeExamPage: React.FC = () => {
     const [isUploading, setIsUploading] = useState(false);
     const [result, setResult] = useState<any>(null);
     const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+    const { token } = useAuth();
 
     const handleUpload = async (file: File) => {
         console.log('handleUpload called with file:', file.name);
@@ -25,8 +27,14 @@ const GradeExamPage: React.FC = () => {
 
         try {
             console.log('Sending request to API...');
+            const headers: HeadersInit = {};
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            
             const response = await fetch('http://localhost:3001/api/grade', {
                 method: 'POST',
+                headers,
                 body: formData,
             });
 
@@ -57,8 +65,14 @@ const GradeExamPage: React.FC = () => {
 
         try {
             console.log('Sending dual mode request to API...');
+            const headers: HeadersInit = {};
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            
             const response = await fetch('http://localhost:3001/api/grade', {
                 method: 'POST',
+                headers,
                 body: formData,
             });
 
