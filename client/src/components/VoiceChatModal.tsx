@@ -153,8 +153,9 @@ const VoiceChatModal: React.FC<VoiceChatModalProps> = ({ questionContext, onClos
 
             setMessages(prev => [...prev, assistantMessage]);
 
-            // Speak the response only if auto-speak is enabled
+            // Speak the response immediately if auto-speak is enabled (no delay)
             if (autoSpeak) {
+                // Start speaking immediately without waiting for state update
                 speakText(data.text);
             }
 
@@ -175,7 +176,7 @@ const VoiceChatModal: React.FC<VoiceChatModalProps> = ({ questionContext, onClos
         return text
             // Remove markdown bold/italic
             .replace(/\*\*\*(.+?)\*\*\*/g, '$1')
-            .replace(/\*\*(.+?)\*\*/g, '$1')
+            .replace(/\*\*(.+?)\*\*\*/g, '$1')
             .replace(/\*(.+?)\*/g, '$1')
             .replace(/_(.+?)_/g, '$1')
             // Remove markdown headers
@@ -188,6 +189,36 @@ const VoiceChatModal: React.FC<VoiceChatModalProps> = ({ questionContext, onClos
             .replace(/`(.+?)`/g, '$1')
             // Remove links but keep text
             .replace(/\[(.+?)\]\(.+?\)/g, '$1')
+            // Convert math symbols to spoken words
+            .replace(/θ/g, 'theta')
+            .replace(/α/g, 'alpha')
+            .replace(/β/g, 'beta')
+            .replace(/γ/g, 'gamma')
+            .replace(/π/g, 'pi')
+            .replace(/Σ/g, 'sigma')
+            .replace(/Δ/g, 'delta')
+            .replace(/∞/g, 'infinity')
+            .replace(/√/g, 'square root of')
+            .replace(/≈/g, 'approximately equals')
+            .replace(/≠/g, 'not equals')
+            .replace(/≤/g, 'less than or equal to')
+            .replace(/≥/g, 'greater than or equal to')
+            .replace(/×/g, 'times')
+            .replace(/÷/g, 'divided by')
+            .replace(/²/g, ' squared')
+            .replace(/³/g, ' cubed')
+            // Convert common math terms
+            .replace(/sin\s*θ/gi, 'sine theta')
+            .replace(/cos\s*θ/gi, 'cosine theta')
+            .replace(/tan\s*θ/gi, 'tangent theta')
+            .replace(/cosec\s*θ/gi, 'cosecant theta')
+            .replace(/sec\s*θ/gi, 'secant theta')
+            .replace(/cot\s*θ/gi, 'cotangent theta')
+            .replace(/sin²\s*θ/gi, 'sine squared theta')
+            .replace(/cos²\s*θ/gi, 'cosine squared theta')
+            .replace(/\bsinθ\b/gi, 'sine theta')
+            .replace(/\bcosθ\b/gi, 'cosine theta')
+            .replace(/\btanθ\b/gi, 'tangent theta')
             // Remove extra whitespace
             .replace(/\n{3,}/g, '\n\n')
             .trim();

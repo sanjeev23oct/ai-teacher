@@ -337,6 +337,36 @@ app.get('/api/exams/stats', authMiddleware, async (req: Request, res: Response) 
     }
 });
 
+// Delete exam
+app.delete('/api/exams/:id', authMiddleware, async (req: Request, res: Response) => {
+    try {
+        const userId = req.user!.id;
+        const examId = req.params.id;
+
+        // Check if exam belongs to user
+        const grading = await prisma.grading.findFirst({
+            where: {
+                id: examId,
+                userId
+            }
+        });
+
+        if (!grading) {
+            return res.status(404).json({ error: 'Exam not found' });
+        }
+
+        // Delete the exam (cascade will delete answers)
+        await prisma.grading.delete({
+            where: { id: examId }
+        });
+
+        res.json({ success: true, message: 'Exam deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting exam:', error);
+        res.status(500).json({ error: 'Failed to delete exam' });
+    }
+});
+
 // Get specific exam details
 app.get('/api/exams/:id', authMiddleware, async (req: Request, res: Response) => {
     try {
@@ -611,14 +641,22 @@ async function handleSingleModeGrading(
             // Use Gemini Vision for better OCR and structured output
             const model = genAI!.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-            const prompt = `You are a mathematics teacher grading an exam. Analyze this image and respond with ONLY valid JSON.
+            const prompt = `You are a warm, caring mathematics teacher who genuinely wants your students to succeed. You're reviewing your student's work with encouragement and support.
+
+TONE GUIDELINES:
+- Be conversational and friendly, like talking to a friend
+- Use "you" and "your" to make it personal
+- Show genuine excitement for successes
+- Be gentle and supportive about mistakes
+- Use phrases like "Great job!", "You're on the right track!", "Let's work on this together"
+- Avoid robotic language like "demonstrates", "adequate", "satisfactory"
 
 IMPORTANT: You must also identify the approximate position of each question in the image.
 
 Carefully examine the mathematical problems, solutions, and work shown. For each question:
 1. Identify its approximate position in the image (as percentage from top-left corner)
 2. Evaluate correctness
-3. Provide specific feedback
+3. Provide warm, specific feedback
 4. Identify the topic/concept
 
 Output ONLY this JSON structure (no other text):
@@ -627,7 +665,7 @@ Output ONLY this JSON structure (no other text):
   "language": "actual language (Bengali/Hindi/English/etc)",
   "gradeLevel": "estimate based on difficulty",
   "totalScore": "calculated score like 8/10",
-  "feedback": "overall assessment of mathematical work",
+  "feedback": "Warm, encouraging feedback in BULLET POINTS. Format:\n\n🎯 Overall: [Brief warm opening with score]\n\n✨ What You Nailed:\n• [Specific strength 1]\n• [Specific strength 2]\n\n💪 Let's Improve Together:\n• [Area 1 with gentle guidance]\n• [Area 2 with helpful tip]\n\n🚀 Keep Going: [Motivational closing]\n\nUse emojis naturally and keep each bullet concise and specific.",
   "imageDimensions": {
     "width": 1200,
     "height": 1600
@@ -658,7 +696,7 @@ Output ONLY this JSON structure (no other text):
       "studentAnswer": "student's work/solution",
       "correct": true or false,
       "score": "points earned",
-      "remarks": "specific feedback",
+      "remarks": "Warm, specific feedback. If correct: celebrate specifically (e.g., 'Brilliant! Your method here was spot-on! ✨'). If incorrect: be encouraging (e.g., 'You're so close! Here's a tip: [specific guidance]. You've got this! 💪'). Always be supportive and constructive.",
       "topic": "Geometry/Algebra/etc",
       "concept": "specific concept like 'Basic Proportionality Theorem'",
       "position": { "x": 10, "y": 25 }
@@ -876,16 +914,47 @@ app.post('/api/voice/chat', async (req: Request, res: Response) => {
         if (useGemini) {
             const model = genAI!.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-            // Build context-aware prompt
-            const systemPrompt = `You are a helpful mathematics teacher. A student is asking about a specific question from their exam.
+            // Determine subject-specific tone
+            const subject = context.topic || 'Mathematics';
+            const subjectLower = subject.toLowerCase();
+            
+            let subjectTone = '';
+            if (subjectLower.includes('math') || subjectLower.includes('algebra') || 
+                subjectLower.includes('geometry') || subjectLower.includes('trigonometry')) {
+                subjectTone = 'Mathematics teacher who explains concepts step-by-step with clear logic';
+            } else if (subjectLower.includes('science') || subjectLower.includes('physics') || 
+                       subjectLower.includes('chemistry') || subjectLower.includes('biology')) {
+                subjectTone = 'Science teacher who connects concepts to real-world examples';
+            } else if (subjectLower.includes('english') || subjectLower.includes('language')) {
+                subjectTone = 'Language teacher who encourages expression and creativity';
+            } else {
+                subjectTone = 'teacher who makes learning engaging and relatable';
+            }
+
+            // Build context-aware prompt with Hinglish support
+            const systemPrompt = `You are a warm, friendly Indian ${subjectTone}. You speak naturally in Hinglish (mix of Hindi and English). A student is asking about a specific question from their exam.
 
 Question: ${context.question}
 Student's Answer: ${context.studentAnswer}
 Your Feedback: ${context.feedback}
-Topic: ${context.topic || 'Mathematics'}
+Topic: ${subject}
 ${context.concept ? `Concept: ${context.concept}` : ''}
 
-The student is asking for help understanding this specific problem. Provide clear, concise explanations. Reference the specific mistake they made. Be encouraging and supportive.
+IMPORTANT: Respond in natural Hinglish - mix Hindi and English the way Indian teachers actually speak. Be conversational, warm, and encouraging. Keep responses concise (2-3 sentences).
+
+Examples of natural Hinglish:
+- "Dekho, tumhara approach bilkul sahi hai!"
+- "Arre, yahan pe ek chhoti si mistake hai. Let me explain..."
+- "Bahut accha! You understood the concept perfectly!"
+- "Chalo, isko step by step samajhte hain"
+- "Perfect! Ab next step mein kya karna hai?"
+
+For math terms, use natural pronunciation:
+- "cos theta" not "cosθ"
+- "sine squared theta" not "sin²θ"
+- "square root" not "√"
+
+Provide clear, concise explanations in Hinglish. Reference the specific mistake they made. Be encouraging and supportive like a caring teacher.
 
 If they ask for practice, acknowledge that you can help generate similar problems.`;
 

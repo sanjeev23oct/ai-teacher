@@ -12,7 +12,8 @@ interface Annotation {
 }
 
 interface QuestionAnalysis {
-    id: string;
+    id?: string;
+    questionNumber?: string;
     question: string;
     studentAnswer: string;
     correct: boolean;
@@ -26,7 +27,7 @@ interface QuestionAnalysis {
 interface GradingResult {
     subject: string;
     language: string;
-    gradeLevel: string;
+    gradeLevel?: string;
     totalScore: string;
     feedback: string;
     imageDimensions?: { width: number; height: number };
@@ -46,6 +47,7 @@ const AnnotatedExamViewer: React.FC<AnnotatedExamViewerProps> = ({
     onAnnotationClick
 }) => {
     const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
+    const [selectedAnnotation, setSelectedAnnotation] = useState<Annotation | null>(null);
     const imageRef = useRef<HTMLImageElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -75,13 +77,27 @@ const AnnotatedExamViewer: React.FC<AnnotatedExamViewerProps> = ({
         }
     }, [imageUrl]);
 
-    const handleAnnotationClick = (annotation: Annotation) => {
-        const question = gradingResult.detailedAnalysis.find(
-            q => q.id === annotation.questionId
-        );
-        if (question) {
-            onAnnotationClick(annotation, question);
+    const handleAnnotationClick = (annotation: Annotation, e: React.MouseEvent) => {
+        e.stopPropagation();
+        
+        // For incorrect marks (cross, red score, red comment), show feedback tooltip
+        if (annotation.type === 'cross' || 
+            (annotation.type === 'score' && annotation.color === 'red') ||
+            (annotation.type === 'comment' && annotation.color === 'red')) {
+            setSelectedAnnotation(annotation);
+        } else {
+            // For correct marks, open voice chat
+            const question = gradingResult.detailedAnalysis.find(
+                q => q.id === annotation.questionId
+            );
+            if (question) {
+                onAnnotationClick(annotation, question);
+            }
         }
+    };
+
+    const closeFeedback = () => {
+        setSelectedAnnotation(null);
     };
 
     const renderAnnotation = (annotation: Annotation) => {
@@ -104,8 +120,9 @@ const AnnotatedExamViewer: React.FC<AnnotatedExamViewerProps> = ({
                     <div
                         key={annotation.id}
                         style={style}
-                        onClick={() => handleAnnotationClick(annotation)}
+                        onClick={(e) => handleAnnotationClick(annotation, e)}
                         className="hover:scale-110 transition-transform"
+                        title="Click to ask about this"
                     >
                         <CheckCircle className="w-8 h-8 text-green-500 drop-shadow-lg" strokeWidth={3} />
                     </div>
@@ -116,8 +133,9 @@ const AnnotatedExamViewer: React.FC<AnnotatedExamViewerProps> = ({
                     <div
                         key={annotation.id}
                         style={style}
-                        onClick={() => handleAnnotationClick(annotation)}
-                        className="hover:scale-110 transition-transform"
+                        onClick={(e) => handleAnnotationClick(annotation, e)}
+                        className="hover:scale-110 transition-transform animate-pulse"
+                        title="Click to see what went wrong"
                     >
                         <XCircle className="w-8 h-8 text-red-500 drop-shadow-lg" strokeWidth={3} />
                     </div>
@@ -128,8 +146,9 @@ const AnnotatedExamViewer: React.FC<AnnotatedExamViewerProps> = ({
                     <div
                         key={annotation.id}
                         style={style}
-                        onClick={() => handleAnnotationClick(annotation)}
+                        onClick={(e) => handleAnnotationClick(annotation, e)}
                         className="hover:scale-110 transition-transform"
+                        title={annotation.color === 'red' ? 'Click to see feedback' : 'Great job!'}
                     >
                         <div className={`
                             w-12 h-12 rounded-full flex items-center justify-center
@@ -149,7 +168,7 @@ const AnnotatedExamViewer: React.FC<AnnotatedExamViewerProps> = ({
                     <div
                         key={annotation.id}
                         style={style}
-                        onClick={() => handleAnnotationClick(annotation)}
+                        onClick={(e) => handleAnnotationClick(annotation, e)}
                         className="hover:scale-105 transition-transform"
                     >
                         <div className="relative">
@@ -229,13 +248,110 @@ const AnnotatedExamViewer: React.FC<AnnotatedExamViewerProps> = ({
 
             {/* Hint */}
             <div className="text-center text-gray-400 text-sm">
-                💡 Tap any mark to ask questions about that problem
+                💡 Tap ✓ to ask questions • Tap ✗ to see what went wrong
             </div>
 
+            {/* Compact Feedback Tooltip for Incorrect Annotations */}
+            {selectedAnnotation && (
+                <div 
+                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                    onClick={closeFeedback}
+                >
+                    <div 
+                        className="bg-surface border border-red-500/30 rounded-xl p-5 max-w-md w-full max-h-[80vh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {(() => {
+                            const question = gradingResult.detailedAnalysis.find(
+                                q => q.id === selectedAnnotation.questionId
+                            );
+                            
+                            return (
+                                <>
+                                    {/* Compact Header */}
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <XCircle className="w-8 h-8 text-red-500 flex-shrink-0" strokeWidth={2.5} />
+                                        <div className="flex-grow">
+                                            <h3 className="text-lg font-bold text-white">
+                                                {selectedAnnotation.text || 'What Went Wrong'}
+                                            </h3>
+                                            {question && (
+                                                <span className="text-xs text-gray-400">
+                                                    Question {question.questionNumber || ''} • {question.score}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Compact Feedback */}
+                                    <div className="mb-4 p-3 bg-gradient-to-r from-red-900/20 to-orange-900/10 rounded-lg border-l-4 border-red-500">
+                                        <div className="text-gray-200 text-sm leading-relaxed">
+                                            {question ? question.remarks : 'Review this part of your answer.'}
+                                        </div>
+                                    </div>
+                                </>
+                            );
+                        })()}
+                        
+                        {/* Compact Buttons */}
+                        <div className="flex gap-2">
+                            <button
+                                onClick={closeFeedback}
+                                className="flex-1 px-3 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-white text-sm font-medium transition-colors"
+                            >
+                                Got it!
+                            </button>
+                            <button
+                                onClick={() => {
+                                    const question = gradingResult.detailedAnalysis.find(
+                                        q => q.id === selectedAnnotation.questionId
+                                    );
+                                    if (question) {
+                                        closeFeedback();
+                                        onAnnotationClick(selectedAnnotation, question);
+                                    }
+                                }}
+                                className="flex-1 px-3 py-2 bg-primary hover:bg-blue-600 rounded-lg text-white text-sm font-medium transition-colors"
+                            >
+                                Ask AI Tutor
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Overall Feedback */}
-            <div className="bg-surface p-4 rounded-lg border border-gray-800">
-                <h3 className="text-lg font-semibold text-white mb-2">Overall Feedback</h3>
-                <p className="text-gray-300">{gradingResult.feedback}</p>
+            <div className="bg-gradient-to-br from-primary/10 via-purple-600/10 to-pink-600/10 rounded-xl p-6 border border-primary/30 shadow-lg">
+                <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                    <span className="text-2xl">💬</span>
+                    <span>Your Teacher's Feedback</span>
+                </h3>
+                <div className="text-gray-100 leading-relaxed space-y-3">
+                    {gradingResult.feedback.split('\n').map((line, i) => {
+                        if (!line.trim()) return null;
+                        
+                        const isHeader = /^[🎯✨💪🚀💡🌟👏🔥💯]/.test(line);
+                        const isBullet = line.trim().startsWith('•') || line.trim().startsWith('-');
+                        const isSubHeader = line.includes(':') && (isHeader || /^[A-Z]/.test(line));
+                        
+                        if (isHeader || isSubHeader) {
+                            return (
+                                <div key={i} className="font-bold text-white text-lg mt-5 first:mt-0 flex items-start gap-2">
+                                    <span>{line}</span>
+                                </div>
+                            );
+                        } else if (isBullet) {
+                            return (
+                                <div key={i} className="ml-6 text-gray-100 flex items-start gap-2">
+                                    <span className="text-primary mt-1">•</span>
+                                    <span>{line.replace(/^[•\-]\s*/, '')}</span>
+                                </div>
+                            );
+                        } else {
+                            return <div key={i} className="text-gray-100 text-base">{line}</div>;
+                        }
+                    })}
+                </div>
             </div>
         </div>
     );

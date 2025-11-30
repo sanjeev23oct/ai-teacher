@@ -30,6 +30,31 @@ export default function HistoryPage() {
   const { token } = useAuth();
   const navigate = useNavigate();
 
+  const handleDelete = async (examId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!window.confirm('Delete this exam? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:3001/api/exams/${examId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete exam');
+      }
+
+      // Refresh the list
+      fetchData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete exam');
+    }
+  };
+
   useEffect(() => {
     if (!token) {
       navigate('/login');
@@ -155,7 +180,7 @@ export default function HistoryPage() {
                 <div
                   key={exam.id}
                   onClick={() => navigate(`/exams/${exam.id}`)}
-                  className="p-6 hover:bg-background/50 cursor-pointer transition-colors"
+                  className="p-6 hover:bg-background/50 cursor-pointer transition-colors group"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -181,10 +206,21 @@ export default function HistoryPage() {
                         </p>
                       )}
                     </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-white">
-                        {exam.totalScore}
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-white">
+                          {exam.totalScore}
+                        </div>
                       </div>
+                      <button
+                        onClick={(e) => handleDelete(exam.id, e)}
+                        className="opacity-0 group-hover:opacity-100 p-2 hover:bg-red-500/20 text-red-500 rounded-lg transition-all"
+                        title="Delete exam"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
                     </div>
                   </div>
                 </div>

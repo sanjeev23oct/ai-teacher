@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckCircle, XCircle, AlertCircle, BookOpen, Languages, UserPlus } from 'lucide-react';
+import { AlertCircle, BookOpen, Languages, UserPlus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import AnnotatedExamViewer from './AnnotatedExamViewer';
@@ -31,6 +31,7 @@ interface GradingResultProps {
     result: {
         subject: string;
         language: string;
+        gradeLevel?: string;
         totalScore: string;
         feedback: string;
         detailedAnalysis: DetailedAnalysis[];
@@ -47,7 +48,7 @@ const GradingResult: React.FC<GradingResultProps> = ({ result, imageUrl, onReset
     const [selectedQuestion, setSelectedQuestion] = useState<DetailedAnalysis | null>(null);
     const { user } = useAuth();
 
-    const handleAnnotationClick = (annotation: Annotation, question: DetailedAnalysis) => {
+    const handleAnnotationClick = (_annotation: Annotation, question: DetailedAnalysis) => {
         // Ensure question has an ID
         const questionWithId = {
             ...question,
@@ -109,8 +110,39 @@ const GradingResult: React.FC<GradingResultProps> = ({ result, imageUrl, onReset
                     </div>
                 </div>
                 <div className="mt-6 pt-6 border-t border-gray-800">
-                    <h3 className="text-lg font-semibold text-white mb-2">Teacher's Feedback</h3>
-                    <p className="text-gray-300 leading-relaxed">{result.feedback}</p>
+                    <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                        <span className="text-2xl">💬</span>
+                        <span>Your Teacher's Feedback</span>
+                    </h3>
+                    <div className="bg-gradient-to-br from-primary/10 via-purple-600/10 to-pink-600/10 rounded-xl p-6 border border-primary/30 shadow-lg">
+                        <div className="text-gray-100 leading-relaxed space-y-3 feedback-content">
+                            {result.feedback.split('\n').map((line, i) => {
+                                if (!line.trim()) return null;
+                                
+                                // Check if line starts with emoji or bullet
+                                const isHeader = /^[🎯✨💪🚀💡🌟👏🔥💯]/.test(line);
+                                const isBullet = line.trim().startsWith('•') || line.trim().startsWith('-');
+                                const isSubHeader = line.includes(':') && (isHeader || /^[A-Z]/.test(line));
+                                
+                                if (isHeader || isSubHeader) {
+                                    return (
+                                        <div key={i} className="font-bold text-white text-lg mt-5 first:mt-0 flex items-start gap-2">
+                                            <span>{line}</span>
+                                        </div>
+                                    );
+                                } else if (isBullet) {
+                                    return (
+                                        <div key={i} className="ml-6 text-gray-100 flex items-start gap-2">
+                                            <span className="text-primary mt-1">•</span>
+                                            <span>{line.replace(/^[•\-]\s*/, '')}</span>
+                                        </div>
+                                    );
+                                } else {
+                                    return <div key={i} className="text-gray-100 text-base">{line}</div>;
+                                }
+                            })}
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -136,42 +168,6 @@ const GradingResult: React.FC<GradingResultProps> = ({ result, imageUrl, onReset
                     </div>
                 </div>
             )}
-
-            {/* Detailed Analysis */}
-            <div className="space-y-4">
-                <h3 className="text-xl font-bold text-white px-2">Detailed Analysis</h3>
-                {result.detailedAnalysis.map((item, index) => (
-                    <div key={index} className="card hover:border-gray-600 transition-colors">
-                        <div className="flex items-start gap-4">
-                            <div className="mt-1">
-                                {item.correct ? (
-                                    <CheckCircle className="h-6 w-6 text-green-500" />
-                                ) : (
-                                    <XCircle className="h-6 w-6 text-red-500" />
-                                )}
-                            </div>
-                            <div className="flex-grow space-y-2">
-                                <div className="flex justify-between items-start">
-                                    <h4 className="font-medium text-white text-lg">{item.question}</h4>
-                                    <span className={`px-2 py-1 rounded text-xs font-bold ${item.correct ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
-                                        {item.score}
-                                    </span>
-                                </div>
-
-                                <div className="bg-black/30 p-3 rounded-md border border-gray-800">
-                                    <span className="text-xs text-gray-500 uppercase block mb-1">Student Answer</span>
-                                    <p className="text-gray-300 font-mono text-sm">{item.studentAnswer}</p>
-                                </div>
-
-                                <div className="text-sm text-gray-400">
-                                    <span className="text-primary font-medium">Remarks: </span>
-                                    {item.remarks}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
 
             <div className="flex justify-center pt-8">
                 <button onClick={onReset} className="btn-primary px-8">Grade Another Exam</button>

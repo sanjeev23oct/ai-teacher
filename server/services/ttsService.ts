@@ -11,13 +11,16 @@ export async function textToSpeech(text: string): Promise<Buffer | null> {
   }
 
   try {
+    // Use multilingual turbo model for Hinglish support
     const audio = await elevenlabs.generate({
-      voice: "1qEiC6qsybMkmnNdVMbK", // Natural, warm Indian-accented female voice
+      voice: "pNInz6obpgDQGcFmaJgB", // Adam - works well with multilingual
       text: text,
-      model_id: "eleven_multilingual_v2",
+      model_id: "eleven_turbo_v2_5", // Turbo model supports multilingual
       voice_settings: {
-        stability: 0.5,
-        similarity_boost: 0.75
+        stability: 0.5, // Slightly lower for natural code-switching
+        similarity_boost: 0.75, // Good balance for mixed languages
+        style: 0.4, // More expressive for teacher-like warmth
+        use_speaker_boost: true // Better clarity for mixed languages
       }
     });
 
@@ -30,6 +33,39 @@ export async function textToSpeech(text: string): Promise<Buffer | null> {
     return Buffer.concat(chunks);
   } catch (error) {
     console.error('ElevenLabs TTS error:', error);
+    return null;
+  }
+}
+
+// Alternative: Use a specific Indian English voice if available
+export async function textToSpeechHinglish(text: string): Promise<Buffer | null> {
+  if (!elevenlabs) {
+    console.log('ElevenLabs not configured, skipping TTS');
+    return null;
+  }
+
+  try {
+    // Try using a voice that handles Indian accent and Hinglish better
+    const audio = await elevenlabs.generate({
+      voice: "pNInz6obpgDQGcFmaJgB", // Can be replaced with Indian voice ID if available
+      text: text,
+      model_id: "eleven_multilingual_v2", // Better for Hinglish code-switching
+      voice_settings: {
+        stability: 0.5,
+        similarity_boost: 0.75,
+        style: 0.4,
+        use_speaker_boost: true
+      }
+    });
+
+    const chunks: Buffer[] = [];
+    for await (const chunk of audio) {
+      chunks.push(chunk);
+    }
+    
+    return Buffer.concat(chunks);
+  } catch (error) {
+    console.error('ElevenLabs Hinglish TTS error:', error);
     return null;
   }
 }
