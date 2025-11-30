@@ -56,6 +56,9 @@ const port = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
+// Serve uploaded files
+app.use('/uploads', express.static('uploads'));
+
 // Multer setup for file uploads
 const upload = multer({ dest: 'uploads/' });
 const uploadMultiple = multer({ dest: 'uploads/' }).fields([
@@ -936,6 +939,33 @@ If they ask for practice, acknowledge that you can help generate similar problem
     } catch (error) {
         console.error('Error in voice chat:', error);
         res.status(500).json({ error: 'Failed to process chat request.' });
+    }
+});
+
+// Text-to-Speech Endpoint (ElevenLabs)
+app.post('/api/tts', async (req: Request, res: Response) => {
+    try {
+        const { text } = req.body;
+
+        if (!text) {
+            return res.status(400).json({ error: 'Text is required' });
+        }
+
+        const { textToSpeech } = await import('./services/ttsService');
+        const audioBuffer = await textToSpeech(text);
+
+        if (!audioBuffer) {
+            return res.status(503).json({ error: 'TTS service not available' });
+        }
+
+        res.set({
+            'Content-Type': 'audio/mpeg',
+            'Content-Length': audioBuffer.length
+        });
+        res.send(audioBuffer);
+    } catch (error) {
+        console.error('Error in TTS:', error);
+        res.status(500).json({ error: 'Failed to generate speech' });
     }
 });
 

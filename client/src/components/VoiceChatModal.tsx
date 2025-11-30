@@ -193,7 +193,47 @@ const VoiceChatModal: React.FC<VoiceChatModalProps> = ({ questionContext, onClos
             .trim();
     };
 
-    const speakText = (text: string) => {
+    const speakText = async (text: string) => {
+        const cleanText = cleanTextForSpeech(text);
+
+        try {
+            setIsSpeaking(true);
+            
+            console.log('🎤 Attempting ElevenLabs TTS...');
+            // Try ElevenLabs first
+            const response = await fetch('http://localhost:3001/api/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: cleanText })
+            });
+
+            console.log('TTS Response status:', response.status);
+            
+            if (response.ok) {
+                console.log('✅ ElevenLabs TTS success! Playing audio...');
+                const audioBlob = await response.blob();
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const audio = new Audio(audioUrl);
+                
+                audio.onended = () => {
+                    setIsSpeaking(false);
+                    URL.revokeObjectURL(audioUrl);
+                };
+                audio.onerror = () => {
+                    setIsSpeaking(false);
+                    URL.revokeObjectURL(audioUrl);
+                };
+                
+                await audio.play();
+                return;
+            } else {
+                console.log('❌ ElevenLabs TTS failed with status:', response.status);
+            }
+        } catch (error) {
+            console.log('❌ ElevenLabs TTS error:', error);
+        }
+
+        // Fallback to browser TTS
         if ('speechSynthesis' in window) {
             // Cancel any ongoing speech
             window.speechSynthesis.cancel();

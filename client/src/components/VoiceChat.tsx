@@ -85,7 +85,9 @@ const VoiceChat: React.FC = () => {
             const aiResponse = data.text;
 
             setMessages(prev => [...prev, { role: 'model' as const, text: aiResponse }]);
-            speak(aiResponse);
+            
+            // Start speaking immediately without waiting
+            speak(aiResponse).catch(err => console.error('Speech error:', err));
 
         } catch (error) {
             console.error("Chat failed", error);
@@ -94,7 +96,46 @@ const VoiceChat: React.FC = () => {
         }
     };
 
-    const speak = (text: string) => {
+    const speak = async (text: string) => {
+        try {
+            setIsSpeaking(true);
+            
+            console.log('🎤 Attempting ElevenLabs TTS...');
+            // Try ElevenLabs first
+            const response = await fetch('http://localhost:3001/api/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text })
+            });
+
+            console.log('TTS Response status:', response.status);
+            
+            if (response.ok) {
+                console.log('✅ ElevenLabs TTS success! Playing audio...');
+                const audioBlob = await response.blob();
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const audio = new Audio(audioUrl);
+                
+                audio.onended = () => {
+                    setIsSpeaking(false);
+                    URL.revokeObjectURL(audioUrl);
+                };
+                audio.onerror = () => {
+                    setIsSpeaking(false);
+                    URL.revokeObjectURL(audioUrl);
+                };
+                
+                await audio.play();
+                return;
+            } else {
+                console.log('❌ ElevenLabs TTS failed with status:', response.status);
+            }
+        } catch (error) {
+            console.log('❌ ElevenLabs TTS error:', error);
+        }
+
+        // Fallback to browser TTS
+        console.log('⚠️ Falling back to browser TTS');
         if (synthRef.current.speaking) {
             synthRef.current.cancel();
         }

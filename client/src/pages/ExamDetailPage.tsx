@@ -43,17 +43,26 @@ export default function ExamDetailPage() {
   const [exam, setExam] = useState<ExamDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const { token } = useAuth();
+  const { token, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Wait for auth to finish loading
+    if (authLoading) {
+      console.log('Waiting for auth to load...');
+      return;
+    }
+
+    console.log('ExamDetailPage - token:', token ? 'exists' : 'missing', 'id:', id);
     if (!token || !id) {
+      console.log('Redirecting to login - token:', !!token, 'id:', !!id);
       navigate('/login');
       return;
     }
 
     fetchExam();
-  }, [token, id, navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, id, authLoading]);
 
   const fetchExam = async () => {
     try {
