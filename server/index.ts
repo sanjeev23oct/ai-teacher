@@ -1201,6 +1201,194 @@ async function handleDualModeGrading(
     }
 }
 
+// ============================================
+// DOUBT SOLVER ENDPOINTS
+// ============================================
+
+// Explain Question Endpoint
+app.post('/api/doubts/explain', optionalAuthMiddleware, upload.single('questionImage'), async (req: Request, res: Response) => {
+    try {
+        const { questionText, subject, language } = req.body;
+        const userId = req.user?.id;
+
+        if (!req.file && !questionText) {
+            return res.status(400).json({ error: 'Either questionImage or questionText is required' });
+        }
+
+        if (!subject || !language) {
+            return res.status(400).json({ error: 'Subject and language are required' });
+        }
+
+        const { explainQuestion } = await import('./services/doubtExplanationService');
+
+        const questionImage = req.file ? fs.readFileSync(req.file.path) : undefined;
+
+        const explanation = await explainQuestion({
+            questionImage,
+            questionText,
+            subject,
+            language,
+            userId,
+        });
+
+        // Clean up uploaded file
+        if (req.file) {
+            fs.unlinkSync(req.file.path);
+        }
+
+        res.json(explanation);
+    } catch (error: any) {
+        console.error('Error explaining question:', error);
+        res.status(500).json({ 
+            error: 'Failed to explain question',
+            details: error.message
+        });
+    }
+});
+
+// Doubt Chat Endpoint
+app.post('/api/doubts/chat', async (req: Request, res: Response) => {
+    try {
+        const { conversationId, doubtId, message, conversationHistory } = req.body;
+
+        if (!conversationId || !doubtId || !message) {
+            return res.status(400).json({ error: 'conversationId, doubtId, and message are required' });
+        }
+
+        const { sendMessage } = await import('./services/doubtConversationService');
+
+        const result = await sendMessage({
+            conversationId,
+            doubtId,
+            message,
+            conversationHistory: conversationHistory || [],
+        });
+
+        res.json(result);
+    } catch (error: any) {
+        console.error('Error in doubt chat:', error);
+        res.status(500).json({ 
+            error: 'Failed to process chat',
+            details: error.message
+        });
+    }
+});
+
+// Doubt Chat Streaming Endpoint
+app.post('/api/doubts/chat/stream', async (req: Request, res: Response) => {
+    try {
+        const { conversationId, doubtId, message, conversationHistory } = req.body;
+
+        if (!conversationId || !doubtId || !message) {
+            return res.status(400).json({ error: 'conversationId, doubtId, and message are required' });
+        }
+
+        const { streamResponse } = await import('./services/doubtConversationService');
+
+        // Set headers for streaming
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+
+        const stream = streamResponse({
+            conversationId,
+            doubtId,
+            message,
+            conversationHistory: conversationHistory || [],
+        });
+
+        for await (const chunk of stream) {
+            res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
+        }
+
+        res.write('data: [DONE]\n\n');
+        res.end();
+    } catch (error: any) {
+        console.error('Error in doubt chat stream:', error);
+        res.status(500).json({ 
+            error: 'Failed to process chat stream',
+            details: error.message
+        });
+    }
+});
+
+// Get Doubt History Endpoint
+app.get('/api/doubts/history', authMiddleware, async (req: Request, res: Response) => {
+    try {
+        const userId = req.user!.id;
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 20;
+        const subject = req.query.subject as string;
+        const searchQuery = req.query.search as string;
+
+        const { getHistory } = await import('./services/doubtHistoryService');
+
+        const result = await getHistory({
+            userId,
+            page,
+            limit,
+            subject: subject as any,
+            searchQuery,
+        });
+
+        res.json(result);
+    } catch (error: any) {
+        console.error('Error getting doubt history:', error);
+        res.status(500).json({ 
+            error: 'Failed to get history',
+            details: error.message
+        });
+    }
+});
+
+// Get Single Doubt Endpoint
+app.get('/api/doubts/:doubtId', authMiddleware, async (req: Request, res: Response) => {
+    try {
+        const { doubtId } = req.params;
+
+        const { getDoubt } = await import('./services/doubtHistoryService');
+
+        const result = await getDoubt(doubtId);
+
+        res.json(result);
+    } catch (error: any) {
+        console.error('Error getting doubt:', error);
+        if (error.message === 'Doubt not found') {
+            return res.status(404).json({ error: 'Doubt not found' });
+        }
+        res.status(500).json({ 
+            error: 'Failed to get doubt',
+            details: error.message
+        });
+    }
+});
+
+// Toggle Favorite Endpoint
+app.post('/api/doubts/:doubtId/favorite', authMiddleware, async (req: Request, res: Response) => {
+    try {
+        const { doubtId } = req.params;
+        const userId = req.user!.id;
+
+        const { toggleFavorite } = await import('./services/doubtHistoryService');
+
+        const result = await toggleFavorite(doubtId, userId);
+
+        res.json(result);
+    } catch (error: any) {
+        console.error('Error toggling favorite:', error);
+        if (error.message === 'Doubt not found') {
+            return res.status(404).json({ error: 'Doubt not found' });
+        }
+        if (error.message === 'Unauthorized') {
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+        res.status(500).json({ 
+            error: 'Failed to toggle favorite',
+            details: error.message
+        });
+    }
+});
+
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
     if (genAI) {

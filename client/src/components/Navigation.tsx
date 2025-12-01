@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { GraduationCap, Mic, Upload, History, User, LogOut } from 'lucide-react';
+import { GraduationCap, Mic, Upload, History, User, LogOut, HelpCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const Navigation: React.FC = () => {
@@ -37,6 +37,10 @@ const Navigation: React.FC = () => {
                                 <Mic className="h-4 w-4" />
                                 <span>Voice Tutor</span>
                             </Link>
+                            <Link to="/doubts" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1">
+                                <HelpCircle className="h-4 w-4" />
+                                <span>Ask Doubt</span>
+                            </Link>
                             {user && (
                                 <Link to="/history" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1">
                                     <History className="h-4 w-4" />
@@ -64,6 +68,14 @@ const Navigation: React.FC = () => {
                                         >
                                             <History className="h-4 w-4" />
                                             <span>Exam History</span>
+                                        </Link>
+                                        <Link
+                                            to="/doubts/history"
+                                            onClick={() => setShowDropdown(false)}
+                                            className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-300 hover:bg-background"
+                                        >
+                                            <HelpCircle className="h-4 w-4" />
+                                            <span>Doubt History</span>
                                         </Link>
                                         <button
                                             onClick={handleLogout}

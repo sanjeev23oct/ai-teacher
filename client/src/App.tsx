@@ -9,6 +9,9 @@ import SignupPage from './pages/SignupPage';
 import LoginPage from './pages/LoginPage';
 import HistoryPage from './pages/HistoryPage';
 import ExamDetailPage from './pages/ExamDetailPage';
+import DoubtsPage from './pages/DoubtsPage';
+import DoubtExplanationPage from './pages/DoubtExplanationPage';
+import DoubtsHistoryPage from './pages/DoubtsHistoryPage';
 
 // Home page component
 const Home = () => {
@@ -49,16 +52,22 @@ const Home = () => {
         {user ? (
           <div className="flex justify-center space-x-4">
             <a href="/grade" className="btn-primary text-lg px-8 py-3">Grade New Exam</a>
+            <a href="/doubts" className="px-8 py-3 bg-purple-600 hover:bg-purple-700 rounded-md text-white transition-colors font-medium">
+              Ask a Doubt
+            </a>
             <a href="/history" className="px-8 py-3 bg-gray-800 hover:bg-gray-700 rounded-md text-white transition-colors font-medium border border-gray-700">
-              View All History
+              View History
             </a>
           </div>
         ) : (
           <div>
             <div className="flex justify-center space-x-4 mb-6">
-              <a href="/grade" className="btn-primary text-lg px-8 py-3">Try It Now</a>
+              <a href="/grade" className="btn-primary text-lg px-8 py-3">Grade Exam</a>
+              <a href="/doubts" className="px-8 py-3 bg-purple-600 hover:bg-purple-700 rounded-md text-white transition-colors font-medium">
+                Ask a Doubt
+              </a>
               <a href="/voice" className="px-8 py-3 bg-gray-800 hover:bg-gray-700 rounded-md text-white transition-colors font-medium border border-gray-700">
-                Talk to Tutor
+                Voice Tutor
               </a>
             </div>
             <p className="text-gray-500 text-sm">
@@ -66,6 +75,28 @@ const Home = () => {
             </p>
           </div>
         )}
+      </div>
+
+      {/* Features Showcase */}
+      <div className="max-w-6xl mx-auto mt-16 mb-12">
+        <h2 className="text-3xl font-bold text-center text-white mb-8">Everything You Need to Excel</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-surface rounded-lg p-6 text-center hover:border-2 hover:border-primary transition-all">
+            <div className="text-5xl mb-4">📝</div>
+            <h3 className="text-xl font-semibold text-white mb-2">Instant Grading</h3>
+            <p className="text-gray-400 text-sm">Upload handwritten exams and get detailed feedback with visual annotations in seconds</p>
+          </div>
+          <div className="bg-surface rounded-lg p-6 text-center hover:border-2 hover:border-purple-600 transition-all">
+            <div className="text-5xl mb-4">💡</div>
+            <h3 className="text-xl font-semibold text-white mb-2">Doubt Solver</h3>
+            <p className="text-gray-400 text-sm">Ask any question and get step-by-step explanations in your language with clickable annotations</p>
+          </div>
+          <div className="bg-surface rounded-lg p-6 text-center hover:border-2 hover:border-primary transition-all">
+            <div className="text-5xl mb-4">🎤</div>
+            <h3 className="text-xl font-semibold text-white mb-2">Voice Tutor</h3>
+            <p className="text-gray-400 text-sm">Have natural conversations with AI in Hinglish for personalized learning</p>
+          </div>
+        </div>
       </div>
 
       {/* Stats and Recent Exams for logged-in users */}
@@ -140,6 +171,9 @@ function App() {
           <Route path="/voice" element={<Layout><VoiceTutorPage /></Layout>} />
           <Route path="/history" element={<Layout><HistoryPage /></Layout>} />
           <Route path="/exams/:id" element={<Layout><ExamDetailPage /></Layout>} />
+          <Route path="/doubts" element={<Layout><DoubtsPage /></Layout>} />
+          <Route path="/doubts/:doubtId" element={<Layout><DoubtExplanationPage /></Layout>} />
+          <Route path="/doubts/history" element={<Layout><DoubtsHistoryPage /></Layout>} />
         </Routes>
       </AuthProvider>
     </Router>
