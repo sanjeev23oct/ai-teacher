@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { Upload, FileText, X, Loader2, CheckCircle } from 'lucide-react';
+import { Upload, FileText, X, Loader2, CheckCircle, Camera } from 'lucide-react';
+import CameraCapture from './CameraCapture';
 
 interface DualUploadProps {
     onUpload: (questionPaper: File, answerSheet: File) => void;
@@ -10,6 +11,7 @@ interface DualUploadProps {
 const DualUpload: React.FC<DualUploadProps> = ({ onUpload, isUploading, showAnswerSheet = true }) => {
     const [questionPaper, setQuestionPaper] = useState<File | null>(null);
     const [answerSheet, setAnswerSheet] = useState<File | null>(null);
+    const [showCamera, setShowCamera] = useState<'question' | 'answer' | null>(null);
     const [dragActiveQP, setDragActiveQP] = useState(false);
     const [dragActiveAS, setDragActiveAS] = useState(false);
 
@@ -56,9 +58,32 @@ const DualUpload: React.FC<DualUploadProps> = ({ onUpload, isUploading, showAnsw
     }, []);
 
     const handleSubmit = () => {
-        if (questionPaper && answerSheet) {
-            onUpload(questionPaper, answerSheet);
+        if (questionPaper && (answerSheet || !showAnswerSheet)) {
+            onUpload(questionPaper, answerSheet || questionPaper);
         }
+    };
+
+    const handleCameraCapture = (imageBlob: Blob) => {
+        const file = new File([imageBlob], `camera-capture-${Date.now()}.jpg`, {
+            type: 'image/jpeg'
+        });
+
+        if (showCamera === 'question') {
+            setQuestionPaper(file);
+        } else if (showCamera === 'answer') {
+            setAnswerSheet(file);
+        }
+
+        setShowCamera(null);
+    };
+
+    if (showCamera) {
+        return (
+            <CameraCapture
+                onCapture={handleCameraCapture}
+                onCancel={() => setShowCamera(null)}
+            />
+        );
     };
 
     const canSubmit = questionPaper && answerSheet && !isUploading;

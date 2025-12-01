@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { Upload, FileText, X, Loader2 } from 'lucide-react';
+import { Upload, FileText, X, Loader2, Camera } from 'lucide-react';
+import CameraCapture from './CameraCapture';
 
 interface ExamUploadProps {
     onUpload: (file: File) => void;
@@ -9,6 +10,7 @@ interface ExamUploadProps {
 const ExamUpload: React.FC<ExamUploadProps> = ({ onUpload, isUploading }) => {
     const [dragActive, setDragActive] = useState(false);
     const [file, setFile] = useState<File | null>(null);
+    const [showCamera, setShowCamera] = useState(false);
 
     const handleDrag = useCallback((e: React.DragEvent) => {
         e.preventDefault();
@@ -50,6 +52,24 @@ const ExamUpload: React.FC<ExamUploadProps> = ({ onUpload, isUploading }) => {
         setFile(null);
     };
 
+    const handleCameraCapture = (imageBlob: Blob) => {
+        // Convert blob to File
+        const file = new File([imageBlob], `camera-capture-${Date.now()}.jpg`, {
+            type: 'image/jpeg'
+        });
+        setFile(file);
+        setShowCamera(false);
+    };
+
+    if (showCamera) {
+        return (
+            <CameraCapture
+                onCapture={handleCameraCapture}
+                onCancel={() => setShowCamera(false)}
+            />
+        );
+    }
+
     return (
         <div className="w-full max-w-2xl mx-auto">
             <div
@@ -72,7 +92,7 @@ const ExamUpload: React.FC<ExamUploadProps> = ({ onUpload, isUploading }) => {
                 />
 
                 {!file ? (
-                    <div className="flex flex-col items-center justify-center space-y-4">
+                    <div className="flex flex-col items-center justify-center space-y-6">
                         <div className="p-4 bg-gray-800 rounded-full">
                             <Upload className="h-8 w-8 text-primary" />
                         </div>
@@ -84,6 +104,28 @@ const ExamUpload: React.FC<ExamUploadProps> = ({ onUpload, isUploading }) => {
                                 or click to browse (Images or PDF)
                             </p>
                         </div>
+
+                        {/* Camera Button */}
+                        <div className="flex items-center gap-4 w-full max-w-xs">
+                            <div className="flex-1 h-px bg-gray-700" />
+                            <span className="text-gray-500 text-sm">or</span>
+                            <div className="flex-1 h-px bg-gray-700" />
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                console.log('Camera button clicked!');
+                                setShowCamera(true);
+                            }}
+                            className="flex items-center gap-2 px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg text-white font-medium transition-colors z-10 relative"
+                            style={{ pointerEvents: 'auto' }}
+                        >
+                            <Camera className="w-5 h-5" />
+                            Use Camera
+                        </button>
                     </div>
                 ) : (
                     <div className="flex flex-col items-center justify-center space-y-4">
