@@ -116,15 +116,7 @@ const GradeExamPage: React.FC = () => {
                 <>
                     {!uploadMode ? (
                         // Step 1: Select upload mode
-                        <>
-                            <div className="text-center space-y-4 mb-8">
-                                <h1 className="text-4xl font-bold text-white">AI Exam Grader</h1>
-                                <p className="text-gray-400 max-w-2xl mx-auto">
-                                    Upload your exam and get instant AI-powered grading with detailed feedback
-                                </p>
-                            </div>
-                            <UploadModeSelector onModeSelect={setUploadMode} />
-                        </>
+                        <UploadModeSelector onModeSelect={setUploadMode} />
                     ) : (
                         // Step 2: Upload files based on mode
                         <>
