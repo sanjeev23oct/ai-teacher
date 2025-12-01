@@ -142,7 +142,7 @@ const GradingResult: React.FC<GradingResultProps> = ({ result, imageUrl, onReset
                     </h3>
                     <div className="bg-gradient-to-br from-primary/10 via-purple-600/10 to-pink-600/10 rounded-xl p-6 border border-primary/30 shadow-lg">
                         <div className="text-gray-100 leading-relaxed space-y-3 feedback-content">
-                            {result.feedback.split('\n').map((line, i) => {
+                            {(typeof result.feedback === 'string' ? result.feedback : JSON.stringify(result.feedback)).split('\n').map((line, i) => {
                                 if (!line.trim()) return null;
                                 
                                 // Check if line starts with emoji or bullet

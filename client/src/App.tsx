@@ -12,12 +12,16 @@ import ExamDetailPage from './pages/ExamDetailPage';
 import DoubtsPage from './pages/DoubtsPage';
 import DoubtExplanationPage from './pages/DoubtExplanationPage';
 import DoubtsHistoryPage from './pages/DoubtsHistoryPage';
+import RevisionAreaPage from './pages/RevisionAreaPage';
+import DashboardDoubtCard from './components/DashboardDoubtCard';
 
 // Home page component
 const Home = () => {
   const { user, token } = useAuth();
   const [recentExams, setRecentExams] = React.useState<any[]>([]);
   const [stats, setStats] = React.useState<any>(null);
+  const [recentDoubts, setRecentDoubts] = React.useState<any[]>([]);
+  const [doubtStats, setDoubtStats] = React.useState<any>(null);
   
   React.useEffect(() => {
     if (user && token) {
@@ -36,6 +40,22 @@ const Home = () => {
         .then(res => res.json())
         .then(data => setStats(data))
         .catch(err => console.error('Failed to fetch stats:', err));
+
+      // Fetch recent doubts
+      fetch('http://localhost:3001/api/dashboard/recent-doubts?limit=5', {
+        credentials: 'include'
+      })
+        .then(res => res.json())
+        .then(data => setRecentDoubts(data.doubts || []))
+        .catch(err => console.error('Failed to fetch doubts:', err));
+
+      // Fetch doubt stats
+      fetch('http://localhost:3001/api/dashboard/stats', {
+        credentials: 'include'
+      })
+        .then(res => res.json())
+        .then(data => setDoubtStats(data))
+        .catch(err => console.error('Failed to fetch doubt stats:', err));
     }
   }, [user, token]);
   
@@ -124,7 +144,7 @@ const Home = () => {
 
           {/* Recent Exams */}
           {recentExams.length > 0 && (
-            <div className="bg-surface rounded-lg p-6">
+            <div className="bg-surface rounded-lg p-6 mb-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold text-white">Recent Exams</h2>
                 <a href="/history" className="text-primary hover:underline text-sm">View All →</a>
@@ -148,6 +168,46 @@ const Home = () => {
                   </a>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Recent Doubts */}
+          {recentDoubts.length > 0 && (
+            <div className="bg-surface rounded-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-white">Recent Doubts</h2>
+                <a href="/doubts/history" className="text-primary hover:underline text-sm">View All →</a>
+              </div>
+              <div className="space-y-3">
+                {recentDoubts.map((doubt: any) => (
+                  <DashboardDoubtCard key={doubt.id} doubt={doubt} />
+                ))}
+              </div>
+              {doubtStats && doubtStats.revisionCount > 0 && (
+                <div className="mt-4 pt-4 border-t border-gray-800">
+                  <a
+                    href="/revision"
+                    className="flex items-center justify-between p-3 bg-green-500/10 border border-green-500/30 rounded-lg hover:bg-green-500/20 transition-colors"
+                  >
+                    <span className="text-green-400 font-medium">
+                      📚 {doubtStats.revisionCount} doubts in revision
+                    </span>
+                    <span className="text-green-400 text-sm">Review →</span>
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Empty State for Doubts */}
+          {recentDoubts.length === 0 && (
+            <div className="bg-surface rounded-lg p-8 text-center">
+              <div className="text-5xl mb-4">💡</div>
+              <h3 className="text-xl font-semibold text-white mb-2">No doubts yet</h3>
+              <p className="text-gray-400 mb-4">Start asking questions to get personalized explanations</p>
+              <a href="/doubts" className="inline-block px-6 py-2 bg-primary rounded-lg text-white hover:bg-primary/90 transition-colors">
+                Ask Your First Doubt
+              </a>
             </div>
           )}
         </div>
@@ -174,6 +234,7 @@ function App() {
           <Route path="/doubts" element={<Layout><DoubtsPage /></Layout>} />
           <Route path="/doubts/:doubtId" element={<Layout><DoubtExplanationPage /></Layout>} />
           <Route path="/doubts/history" element={<Layout><DoubtsHistoryPage /></Layout>} />
+          <Route path="/revision" element={<Layout><RevisionAreaPage /></Layout>} />
         </Routes>
       </AuthProvider>
     </Router>

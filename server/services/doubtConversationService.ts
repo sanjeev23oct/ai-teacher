@@ -1,9 +1,8 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { PrismaClient } from '@prisma/client';
 import { buildConversationPrompt, Subject, Language } from '../prompts/subjectPrompts';
+import { aiService } from './aiService';
 
 const prisma = new PrismaClient();
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 interface Message {
   role: 'user' | 'assistant';
@@ -43,36 +42,12 @@ export async function sendMessage(params: {
     JSON.stringify(explanation)
   );
 
-  // Build conversation history for AI
-  const conversationParts = conversationHistory.map((msg) => ({
-    role: msg.role === 'user' ? 'user' : 'model',
-    parts: [{ text: msg.content }],
-  }));
+  // Build full prompt with context
+  const fullPrompt = `${systemPrompt}\n\nStudent: ${message}`;
 
-  // Add current message
-  conversationParts.push({
-    role: 'user',
-    parts: [{ text: message }],
-  });
-
-  // Call Gemini API
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
-  const chat = model.startChat({
-    history: [
-      {
-        role: 'user',
-        parts: [{ text: systemPrompt }],
-      },
-      {
-        role: 'model',
-        parts: [{ text: 'I understand. I will help the student with their follow-up questions in a warm and supportive way.' }],
-      },
-      ...conversationParts.slice(0, -1), // All except the current message
-    ],
-  });
-
-  const result = await chat.sendMessage(message);
-  const response = result.response.text();
+  // Call AI service (non-streaming)
+  const result = await aiService.generateContent({ prompt: fullPrompt });
+  const response = result.text;
 
   // Save messages to database
   await prisma.doubtMessage.create({
@@ -136,37 +111,20 @@ export async function* streamResponse(params: {
     JSON.stringify(explanation)
   );
 
-  // Build conversation history for AI
-  const conversationParts = conversationHistory.map((msg) => ({
-    role: msg.role === 'user' ? 'user' : 'model',
-    parts: [{ text: msg.content }],
-  }));
-
-  // Call Gemini API with streaming
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
-  const chat = model.startChat({
-    history: [
-      {
-        role: 'user',
-        parts: [{ text: systemPrompt }],
-      },
-      {
-        role: 'model',
-        parts: [{ text: 'I understand. I will help the student with their follow-up questions in a warm and supportive way.' }],
-      },
-      ...conversationParts,
-    ],
-  });
-
-  const result = await chat.sendMessageStream(message);
+  // Build conversation history
+  const history = [
+    { role: 'assistant' as const, content: systemPrompt },
+    ...conversationHistory,
+  ];
 
   let fullResponse = '';
 
-  // Stream tokens
-  for await (const chunk of result.stream) {
-    const chunkText = chunk.text();
-    fullResponse += chunkText;
-    yield chunkText;
+  // Stream from AI service
+  const stream = aiService.streamContent(message, history);
+  
+  for await (const chunk of stream) {
+    fullResponse += chunk;
+    yield chunk;
   }
 
   // Save messages to database after streaming completes

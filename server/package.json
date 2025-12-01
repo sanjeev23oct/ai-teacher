@@ -6,6 +6,7 @@
   "scripts": {
     "start": "npx ts-node --transpile-only index.ts",
     "dev": "npx nodemon --exec npx ts-node --transpile-only index.ts",
+    "build": "npx prisma generate && npx prisma migrate deploy",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

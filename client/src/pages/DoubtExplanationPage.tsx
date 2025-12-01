@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Star, MessageCircle } from 'lucide-react';
+import LatexRenderer from '../components/LatexRenderer';
+import RevisionButton from '../components/RevisionButton';
+import RatingWidget from '../components/RatingWidget';
 
 interface ExplanationStep {
   number: number;
@@ -52,6 +55,8 @@ export default function DoubtExplanationPage() {
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isInRevision, setIsInRevision] = useState(false);
+  const [currentRating, setCurrentRating] = useState<number | undefined>();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -62,6 +67,27 @@ export default function DoubtExplanationPage() {
     // If no explanation in state, fetch it
     if (!explanation && doubtId) {
       fetchDoubt();
+    }
+  }, [doubtId]);
+
+  useEffect(() => {
+    // Fetch revision status and rating
+    if (doubtId) {
+      // Fetch revision status
+      fetch(`http://localhost:3001/api/revision/check/${doubtId}`, {
+        credentials: 'include',
+      })
+        .then((res) => res.json())
+        .then((data) => setIsInRevision(data.isInRevision))
+        .catch((err) => console.error('Error fetching revision status:', err));
+
+      // Fetch rating
+      fetch(`http://localhost:3001/api/ratings/${doubtId}`, {
+        credentials: 'include',
+      })
+        .then((res) => res.json())
+        .then((data) => setCurrentRating(data.rating))
+        .catch((err) => console.error('Error fetching rating:', err));
     }
   }, [doubtId]);
 
@@ -176,6 +202,54 @@ export default function DoubtExplanationPage() {
     });
   };
 
+  const handleToggleRevision = async (doubtId: string) => {
+    try {
+      const endpoint = isInRevision
+        ? `http://localhost:3001/api/revision/remove/${doubtId}`
+        : 'http://localhost:3001/api/revision/add';
+
+      const response = await fetch(endpoint, {
+        method: isInRevision ? 'DELETE' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: isInRevision ? undefined : JSON.stringify({ doubtId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle revision');
+      }
+
+      // Update local state
+      setIsInRevision(!isInRevision);
+    } catch (error) {
+      console.error('Error toggling revision:', error);
+      throw error;
+    }
+  };
+
+  const handleRate = async (rating: number) => {
+    if (!doubtId) return;
+
+    try {
+      const response = await fetch('http://localhost:3001/api/ratings/rate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ doubtId, rating }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to rate doubt');
+      }
+
+      // Update local state
+      setCurrentRating(rating);
+    } catch (error) {
+      console.error('Error rating doubt:', error);
+      throw error;
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -271,7 +345,7 @@ export default function DoubtExplanationPage() {
               <h2 className="text-xl font-semibold text-white mb-3 flex items-center gap-2">
                 <span>🎯</span> What the question is asking
               </h2>
-              <p className="text-gray-300">{explanation.whatQuestionAsks}</p>
+              <LatexRenderer content={explanation.whatQuestionAsks} className="text-gray-300" />
             </div>
 
             {/* Steps */}
@@ -292,7 +366,7 @@ export default function DoubtExplanationPage() {
                       </div>
                       <div className="flex-1">
                         <h3 className="font-semibold text-white mb-2">{step.title}</h3>
-                        <p className="text-gray-300 whitespace-pre-wrap">{step.explanation}</p>
+                        <LatexRenderer content={step.explanation} className="text-gray-300 whitespace-pre-wrap" />
                         {expandedSteps.has(step.number) && (
                           <div className="mt-3 pt-3 border-t border-gray-700">
                             <p className="text-sm text-primary">💡 Click to learn more</p>
@@ -310,7 +384,7 @@ export default function DoubtExplanationPage() {
               <h2 className="text-xl font-semibold text-white mb-3 flex items-center gap-2">
                 <span>🎉</span> Final Answer
               </h2>
-              <p className="text-lg text-green-400 font-semibold">{explanation.finalAnswer}</p>
+              <LatexRenderer content={explanation.finalAnswer} className="text-lg text-green-400 font-semibold" />
             </div>
 
             {/* Key Concepts */}
@@ -334,6 +408,20 @@ export default function DoubtExplanationPage() {
                 <span>🚀</span> Practice Tip
               </h2>
               <p className="text-gray-300">{explanation.practiceTip}</p>
+            </div>
+
+            {/* Revision and Rating */}
+            <div className="space-y-4">
+              <RevisionButton
+                doubtId={explanation.doubtId}
+                isInRevision={isInRevision}
+                onToggle={handleToggleRevision}
+              />
+              <RatingWidget
+                doubtId={explanation.doubtId}
+                currentRating={currentRating}
+                onRate={handleRate}
+              />
             </div>
           </div>
 

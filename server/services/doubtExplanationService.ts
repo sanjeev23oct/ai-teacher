@@ -1,12 +1,11 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { PrismaClient } from '@prisma/client';
 import fs from 'fs/promises';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { buildPrompt, Subject, Language } from '../prompts/subjectPrompts';
+import { aiService } from './aiService';
 
 const prisma = new PrismaClient();
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 interface ExplanationStep {
   number: number;
@@ -95,34 +94,80 @@ export async function explainQuestion(params: {
 
     userPrompt = questionText
       ? `Question text: ${questionText}\n\nPlease analyze the image and provide a detailed explanation.`
-      : 'Please analyze this question image and provide a detailed explanation.';
+      : `Please analyze this image and identify the FIRST question you see. Provide a detailed step-by-step explanation for that question only.
+
+IMPORTANT: 
+- Focus on solving ONE question at a time
+- Use proper LaTeX notation for mathematical symbols (e.g., $\\sin \\theta$, $\\cos^2 x$, $\\frac{a}{b}$)
+- Ensure all mathematical expressions are properly formatted with LaTeX
+
+Please provide your response in the required JSON format.`;
   } else {
     userPrompt = `Question: ${questionText}\n\nPlease provide a detailed explanation.`;
   }
 
-  // Call Gemini API
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+  // Call AI service
+  const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
+  
+  const result = await aiService.generateContent({
+    prompt: fullPrompt,
+    imageBase64: questionImage ? questionImage.toString('base64') : undefined,
+    imageMimeType: questionImage ? 'image/jpeg' : undefined,
+  });
 
-  const parts = imageParts.length > 0 ? [...imageParts, { text: userPrompt }] : [{ text: userPrompt }];
-
-  const result = await model.generateContent([
-    { text: systemPrompt },
-    ...parts,
-  ]);
-
-  const response = result.response;
-  const text = response.text();
+  const text = result.text;
 
   // Parse AI response
   let aiResponse: AIResponse;
+  let parseError = false;
+  
   try {
-    // Extract JSON from response (handle markdown code blocks)
-    const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/);
-    const jsonText = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : text;
-    aiResponse = JSON.parse(jsonText);
+    // Extract JSON from response (handle markdown code blocks and extra text)
+    let jsonText = text;
+    
+    // Try to extract from markdown code block first
+    const codeBlockMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
+    if (codeBlockMatch) {
+      jsonText = codeBlockMatch[1];
+    } else if (text.includes('```json')) {
+      // Handle incomplete code block (response was truncated)
+      const startIndex = text.indexOf('```json') + 7;
+      jsonText = text.substring(startIndex);
+      // Try to find where JSON ends (look for closing brace)
+      const lastBrace = jsonText.lastIndexOf('}');
+      if (lastBrace !== -1) {
+        jsonText = jsonText.substring(0, lastBrace + 1);
+      }
+    } else {
+      // Try to find the LAST JSON object in the text (in case there's explanation before it)
+      const jsonMatches = text.match(/\{[\s\S]*?\}/g);
+      if (jsonMatches && jsonMatches.length > 0) {
+        // Take the last (and usually largest) JSON object
+        jsonText = jsonMatches[jsonMatches.length - 1];
+      }
+    }
+    
+    aiResponse = JSON.parse(jsonText.trim());
   } catch (error) {
-    console.error('Failed to parse AI response:', text);
-    throw new Error('Failed to parse AI response as JSON');
+    console.error('Failed to parse AI response:', text.substring(0, 500));
+    console.error('Full response length:', text.length);
+    parseError = true;
+    
+    // Create fallback response so we can still save the doubt
+    aiResponse = {
+      whatQuestionAsks: questionText || 'Question from image',
+      steps: [
+        {
+          number: 1,
+          title: 'AI Response',
+          explanation: text.substring(0, 1000) + (text.length > 1000 ? '...' : '')
+        }
+      ],
+      finalAnswer: 'Please try asking this question again for a complete explanation.',
+      keyConcepts: ['The AI response was incomplete'],
+      practiceTip: 'Try uploading a clearer image or asking the question again.',
+      annotations: []
+    };
   }
 
   // Save to database
@@ -190,15 +235,10 @@ ${step.explanation}
 
 Please provide a more detailed explanation of this step. Break it down further, explain the reasoning, and give examples if helpful.`;
 
-  // Call Gemini API
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
-  const result = await model.generateContent([
-    { text: systemPrompt },
-    { text: userPrompt },
-  ]);
-
-  const response = result.response;
-  const detailedExplanation = response.text();
+  // Call AI service
+  const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
+  const result = await aiService.generateContent({ prompt: fullPrompt });
+  const detailedExplanation = result.text;
 
   return { detailedExplanation };
 }

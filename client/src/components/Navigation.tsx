@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { GraduationCap, Mic, Upload, History, User, LogOut, HelpCircle } from 'lucide-react';
+import { GraduationCap, Mic, Upload, History, User, LogOut, HelpCircle, BookmarkCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const Navigation: React.FC = () => {
@@ -42,10 +42,16 @@ const Navigation: React.FC = () => {
                                 <span>Ask Doubt</span>
                             </Link>
                             {user && (
-                                <Link to="/history" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1">
-                                    <History className="h-4 w-4" />
-                                    <span>History</span>
-                                </Link>
+                                <>
+                                    <Link to="/revision" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1">
+                                        <BookmarkCheck className="h-4 w-4" />
+                                        <span>Revision</span>
+                                    </Link>
+                                    <Link to="/history" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1">
+                                        <History className="h-4 w-4" />
+                                        <span>History</span>
+                                    </Link>
+                                </>
                             )}
                         </div>
                     </div>
@@ -76,6 +82,14 @@ const Navigation: React.FC = () => {
                                         >
                                             <HelpCircle className="h-4 w-4" />
                                             <span>Doubt History</span>
+                                        </Link>
+                                        <Link
+                                            to="/revision"
+                                            onClick={() => setShowDropdown(false)}
+                                            className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-300 hover:bg-background"
+                                        >
+                                            <BookmarkCheck className="h-4 w-4" />
+                                            <span>Revision Area</span>
                                         </Link>
                                         <button
                                             onClick={handleLogout}

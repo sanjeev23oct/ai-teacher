@@ -53,7 +53,10 @@ const app = express();
 const port = process.env.PORT || 3001;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'],
+  credentials: true
+}));
 app.use(express.json());
 
 // Serve uploaded files
@@ -1239,10 +1242,19 @@ app.post('/api/doubts/explain', optionalAuthMiddleware, upload.single('questionI
         res.json(explanation);
     } catch (error: any) {
         console.error('Error explaining question:', error);
-        res.status(500).json({ 
-            error: 'Failed to explain question',
-            details: error.message
-        });
+        
+        // Handle rate limit errors with 429 status
+        if (error.message && error.message.includes('Rate limit exceeded')) {
+            res.status(429).json({ 
+                error: 'Rate limit exceeded',
+                details: error.message
+            });
+        } else {
+            res.status(500).json({ 
+                error: 'Failed to explain question',
+                details: error.message
+            });
+        }
     }
 });
 
@@ -1384,6 +1396,315 @@ app.post('/api/doubts/:doubtId/favorite', authMiddleware, async (req: Request, r
         }
         res.status(500).json({ 
             error: 'Failed to toggle favorite',
+            details: error.message
+        });
+    }
+});
+
+// ============================================
+// WORKSHEET ENDPOINTS
+// ============================================
+
+// Create worksheet
+app.post('/api/worksheets/create', authMiddleware, upload.single('image'), async (req: Request, res: Response) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No image uploaded' });
+        }
+
+        const { worksheetService } = await import('./services/worksheetService');
+        const userId = req.user!.id;
+
+        const imageBuffer = fs.readFileSync(req.file.path);
+        const imageMimeType = req.file.mimetype;
+        const imageUrl = `/uploads/${req.file.filename}`;
+
+        const worksheet = await worksheetService.createWorksheet({
+            imageBuffer,
+            imageMimeType,
+            imageUrl,
+            userId,
+            title: req.body.title,
+            subject: req.body.subject,
+        });
+
+        res.json(worksheet);
+    } catch (error: any) {
+        console.error('Error creating worksheet:', error);
+        res.status(500).json({ 
+            error: 'Failed to create worksheet',
+            details: error.message
+        });
+    }
+});
+
+// Get worksheet question
+app.get('/api/worksheets/:worksheetId/question/:number', authMiddleware, async (req: Request, res: Response) => {
+    try {
+        const { worksheetId, number } = req.params;
+        const { worksheetService } = await import('./services/worksheetService');
+
+        const result = await worksheetService.getQuestion(worksheetId, parseInt(number));
+
+        res.json(result);
+    } catch (error: any) {
+        console.error('Error getting question:', error);
+        if (error.message === 'Worksheet not found' || error.message === 'Question not found') {
+            return res.status(404).json({ error: error.message });
+        }
+        if (error.message === 'Worksheet session expired') {
+            return res.status(410).json({ error: error.message });
+        }
+        res.status(500).json({ 
+            error: 'Failed to get question',
+            details: error.message
+        });
+    }
+});
+
+// Skip question
+app.post('/api/worksheets/:worksheetId/skip/:number', authMiddleware, async (req: Request, res: Response) => {
+    try {
+        const { worksheetId, number } = req.params;
+        const { worksheetService } = await import('./services/worksheetService');
+
+        await worksheetService.skipQuestion(worksheetId, parseInt(number));
+        const nextNumber = await worksheetService.getNextQuestionNumber(worksheetId, parseInt(number));
+
+        res.json({ 
+            success: true,
+            nextQuestion: nextNumber
+        });
+    } catch (error: any) {
+        console.error('Error skipping question:', error);
+        res.status(500).json({ 
+            error: 'Failed to skip question',
+            details: error.message
+        });
+    }
+});
+
+// Get worksheet progress
+app.get('/api/worksheets/:worksheetId/progress', authMiddleware, async (req: Request, res: Response) => {
+    try {
+        const { worksheetId } = req.params;
+        const { worksheetService } = await import('./services/worksheetService');
+
+        const progress = await worksheetService.getWorksheetProgress(worksheetId);
+
+        res.json(progress);
+    } catch (error: any) {
+        console.error('Error getting progress:', error);
+        res.status(500).json({ 
+            error: 'Failed to get progress',
+            details: error.message
+        });
+    }
+});
+
+// ============================================
+// REVISION ENDPOINTS
+// ============================================
+
+// Add to revision
+app.post('/api/revision/add', authMiddleware, async (req: Request, res: Response) => {
+    try {
+        const { doubtId } = req.body;
+        const userId = req.user!.id;
+        const { revisionService } = await import('./services/revisionService');
+
+        await revisionService.addToRevision(userId, doubtId);
+
+        res.json({ success: true });
+    } catch (error: any) {
+        console.error('Error adding to revision:', error);
+        if (error.message === 'Doubt not found') {
+            return res.status(404).json({ error: 'Doubt not found' });
+        }
+        res.status(500).json({ 
+            error: 'Failed to add to revision',
+            details: error.message
+        });
+    }
+});
+
+// Remove from revision
+app.delete('/api/revision/remove/:doubtId', authMiddleware, async (req: Request, res: Response) => {
+    try {
+        const { doubtId } = req.params;
+        const userId = req.user!.id;
+        const { revisionService } = await import('./services/revisionService');
+
+        await revisionService.removeFromRevision(userId, doubtId);
+
+        res.json({ success: true });
+    } catch (error: any) {
+        console.error('Error removing from revision:', error);
+        if (error.message === 'Doubt not found') {
+            return res.status(404).json({ error: 'Doubt not found' });
+        }
+        res.status(500).json({ 
+            error: 'Failed to remove from revision',
+            details: error.message
+        });
+    }
+});
+
+// Get revision list
+app.get('/api/revision/list', optionalAuthMiddleware, async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        
+        if (!userId) {
+            return res.json({ doubts: [] });
+        }
+        const { subject, search } = req.query;
+        const { revisionService } = await import('./services/revisionService');
+
+        const doubts = await revisionService.getRevisionDoubts(userId, {
+            subject: subject as string,
+            search: search as string,
+        });
+
+        res.json({ doubts });
+    } catch (error: any) {
+        console.error('Error getting revision list:', error);
+        res.status(500).json({ 
+            error: 'Failed to get revision list',
+            details: error.message
+        });
+    }
+});
+
+// Check revision status
+app.get('/api/revision/check/:doubtId', optionalAuthMiddleware, async (req: Request, res: Response) => {
+    try {
+        const { doubtId } = req.params;
+        const userId = req.user?.id;
+        
+        if (!userId) {
+            return res.json({ isInRevision: false });
+        }
+        const { revisionService } = await import('./services/revisionService');
+
+        const isInRevision = await revisionService.isInRevision(userId, doubtId);
+
+        res.json({ isInRevision });
+    } catch (error: any) {
+        console.error('Error checking revision status:', error);
+        res.status(500).json({ 
+            error: 'Failed to check revision status',
+            details: error.message
+        });
+    }
+});
+
+// ============================================
+// RATING ENDPOINTS
+// ============================================
+
+// Rate doubt
+app.post('/api/ratings/rate', authMiddleware, async (req: Request, res: Response) => {
+    try {
+        const { doubtId, rating, feedback } = req.body;
+        const userId = req.user!.id;
+        const { ratingService } = await import('./services/ratingService');
+
+        await ratingService.rateDoubt(userId, doubtId, rating, feedback);
+
+        res.json({ success: true });
+    } catch (error: any) {
+        console.error('Error rating doubt:', error);
+        if (error.message === 'Rating must be between 1 and 5') {
+            return res.status(400).json({ error: error.message });
+        }
+        if (error.message === 'Doubt not found') {
+            return res.status(404).json({ error: 'Doubt not found' });
+        }
+        res.status(500).json({ 
+            error: 'Failed to rate doubt',
+            details: error.message
+        });
+    }
+});
+
+// Get rating
+app.get('/api/ratings/:doubtId', optionalAuthMiddleware, async (req: Request, res: Response) => {
+    try {
+        const { doubtId } = req.params;
+        const userId = req.user?.id;
+        
+        if (!userId) {
+            return res.json({ rating: null });
+        }
+        const { ratingService } = await import('./services/ratingService');
+
+        const rating = await ratingService.getRating(userId, doubtId);
+
+        res.json({ rating });
+    } catch (error: any) {
+        console.error('Error getting rating:', error);
+        res.status(500).json({ 
+            error: 'Failed to get rating',
+            details: error.message
+        });
+    }
+});
+
+// Get rating analytics
+app.get('/api/ratings/analytics', authMiddleware, async (req: Request, res: Response) => {
+    try {
+        const userId = req.user!.id;
+        const { ratingService } = await import('./services/ratingService');
+
+        const analytics = await ratingService.getRatingAnalytics(userId);
+
+        res.json(analytics);
+    } catch (error: any) {
+        console.error('Error getting rating analytics:', error);
+        res.status(500).json({ 
+            error: 'Failed to get rating analytics',
+            details: error.message
+        });
+    }
+});
+
+// ============================================
+// DASHBOARD ENDPOINTS
+// ============================================
+
+// Get recent doubts
+app.get('/api/dashboard/recent-doubts', authMiddleware, async (req: Request, res: Response) => {
+    try {
+        const userId = req.user!.id;
+        const limit = parseInt(req.query.limit as string) || 5;
+        const { dashboardService } = await import('./services/dashboardService');
+
+        const doubts = await dashboardService.getRecentDoubts(userId, limit);
+
+        res.json({ doubts });
+    } catch (error: any) {
+        console.error('Error getting recent doubts:', error);
+        res.status(500).json({ 
+            error: 'Failed to get recent doubts',
+            details: error.message
+        });
+    }
+});
+
+// Get dashboard stats
+app.get('/api/dashboard/stats', authMiddleware, async (req: Request, res: Response) => {
+    try {
+        const userId = req.user!.id;
+        const { dashboardService } = await import('./services/dashboardService');
+
+        const stats = await dashboardService.getDoubtStats(userId);
+
+        res.json(stats);
+    } catch (error: any) {
+        console.error('Error getting dashboard stats:', error);
+        res.status(500).json({ 
+            error: 'Failed to get dashboard stats',
             details: error.message
         });
     }
