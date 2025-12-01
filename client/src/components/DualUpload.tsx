@@ -4,9 +4,10 @@ import { Upload, FileText, X, Loader2, CheckCircle } from 'lucide-react';
 interface DualUploadProps {
     onUpload: (questionPaper: File, answerSheet: File) => void;
     isUploading: boolean;
+    showAnswerSheet?: boolean; // Optional: hide answer sheet for question paper only mode
 }
 
-const DualUpload: React.FC<DualUploadProps> = ({ onUpload, isUploading }) => {
+const DualUpload: React.FC<DualUploadProps> = ({ onUpload, isUploading, showAnswerSheet = true }) => {
     const [questionPaper, setQuestionPaper] = useState<File | null>(null);
     const [answerSheet, setAnswerSheet] = useState<File | null>(null);
     const [dragActiveQP, setDragActiveQP] = useState(false);

@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import AnnotatedExamViewer from './AnnotatedExamViewer';
 import VoiceChatModal from './VoiceChatModal';
+import PageNavigator from './PageNavigator';
 
 interface DetailedAnalysis {
     id?: string;
@@ -39,6 +40,15 @@ interface GradingResultProps {
         annotations?: Annotation[];
         rawResponse?: string;
         error?: string;
+        // Multi-page support
+        pages?: Array<{
+            pageNumber: number;
+            imageUrl: string;
+            annotations: any[];
+            imageDimensions?: { width: number; height: number };
+            detailedAnalysis: any[];
+        }>;
+        overallFeedback?: string;
     };
     imageUrl?: string;
     onReset: () => void;
@@ -61,6 +71,9 @@ const GradingResult: React.FC<GradingResultProps> = ({ result, imageUrl, onReset
         setSelectedQuestion(null);
     };
 
+    // Check if this is a multi-page result
+    const isMultiPage = result.pages && result.pages.length > 0;
+
     if (result.error) {
         return (
             <div className="max-w-4xl mx-auto p-6 bg-red-900/20 border border-red-700 rounded-xl text-center">
@@ -78,18 +91,31 @@ const GradingResult: React.FC<GradingResultProps> = ({ result, imageUrl, onReset
     }
 
     return (
-        <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* Annotated Exam Viewer (if image available) */}
-            {imageUrl && result.annotations && (
-                <AnnotatedExamViewer
-                    imageUrl={imageUrl}
-                    gradingResult={result}
+        <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* Multi-Page Navigator */}
+            {isMultiPage ? (
+                <PageNavigator
+                    pages={result.pages!}
+                    subject={result.subject}
+                    language={result.language}
+                    gradeLevel={result.gradeLevel || ''}
+                    totalScore={result.totalScore}
+                    overallFeedback={result.overallFeedback || result.feedback}
                     onAnnotationClick={handleAnnotationClick}
                 />
-            )}
+            ) : (
+                <>
+                    {/* Single Page: Annotated Exam Viewer (if image available) */}
+                    {imageUrl && result.annotations && (
+                        <AnnotatedExamViewer
+                            imageUrl={imageUrl}
+                            gradingResult={result}
+                            onAnnotationClick={handleAnnotationClick}
+                        />
+                    )}
 
-            {/* Header Card */}
-            <div className="card bg-surface border-l-4 border-l-primary">
+                    {/* Header Card (Single Page Only) */}
+                    <div className="card bg-surface border-l-4 border-l-primary">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
                         <h2 className="text-3xl font-bold text-white mb-2">Exam Results</h2>
@@ -169,6 +195,10 @@ const GradingResult: React.FC<GradingResultProps> = ({ result, imageUrl, onReset
                 </div>
             )}
 
+                </>
+            )}
+
+            {/* Grade Another Exam Button */}
             <div className="flex justify-center pt-8">
                 <button onClick={onReset} className="btn-primary px-8">Grade Another Exam</button>
             </div>

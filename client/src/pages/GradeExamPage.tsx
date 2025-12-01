@@ -3,15 +3,17 @@ import ExamUpload from '../components/ExamUpload';
 import GradingResult from '../components/GradingResult';
 import UploadModeSelector from '../components/UploadModeSelector';
 import DualUpload from '../components/DualUpload';
+import MultiPageUpload from '../components/MultiPageUpload';
 import { useAuth } from '../contexts/AuthContext';
 
-type UploadMode = 'single' | 'dual';
+type UploadMode = 'single' | 'dual' | 'multi-page';
 
 const GradeExamPage: React.FC = () => {
     const [uploadMode, setUploadMode] = useState<UploadMode | null>(null);
     const [isUploading, setIsUploading] = useState(false);
     const [result, setResult] = useState<any>(null);
     const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+    const [questionPaperId, setQuestionPaperId] = useState<string | null>(null);
     const { token } = useAuth();
 
     const handleUpload = async (file: File) => {
@@ -79,6 +81,12 @@ const GradeExamPage: React.FC = () => {
             console.log('Response received:', response.status);
             const data = await response.json();
             console.log('Data:', data);
+            
+            // Store question paper ID for multi-page mode
+            if (data.questionPaperId) {
+                setQuestionPaperId(data.questionPaperId);
+            }
+            
             setResult(data);
         } catch (error) {
             console.error("Upload failed", error);
@@ -86,6 +94,11 @@ const GradeExamPage: React.FC = () => {
         } finally {
             setIsUploading(false);
         }
+    };
+
+    const handleMultiPageComplete = (multiPageResult: any) => {
+        console.log('Multi-page grading complete:', multiPageResult);
+        setResult(multiPageResult);
     };
 
     const handleReset = () => {
@@ -118,27 +131,60 @@ const GradeExamPage: React.FC = () => {
                             <div className="flex items-center justify-between mb-6">
                                 <div>
                                     <h1 className="text-3xl font-bold text-white">
-                                        {uploadMode === 'single' ? 'Upload Exam' : 'Upload Question Paper & Answer Sheet'}
+                                        {uploadMode === 'single' && 'Upload Exam'}
+                                        {uploadMode === 'dual' && 'Upload Question Paper & Answer Sheet'}
+                                        {uploadMode === 'multi-page' && 'Upload Multi-Page Answer Sheet'}
                                     </h1>
                                     <p className="text-gray-400 mt-2">
-                                        {uploadMode === 'single' 
-                                            ? 'Upload a single image with questions and answers'
-                                            : 'Upload the question paper and answer sheet separately'
-                                        }
+                                        {uploadMode === 'single' && 'Upload a single image with questions and answers'}
+                                        {uploadMode === 'dual' && 'Upload the question paper and answer sheet separately'}
+                                        {uploadMode === 'multi-page' && 'Upload multiple pages of your answer sheet'}
                                     </p>
                                 </div>
                                 <button
-                                    onClick={() => setUploadMode(null)}
+                                    onClick={() => {
+                                        setUploadMode(null);
+                                        setQuestionPaperId(null);
+                                    }}
                                     className="text-gray-400 hover:text-white transition-colors"
                                 >
                                     ← Change Mode
                                 </button>
                             </div>
 
-                            {uploadMode === 'single' ? (
+                            {uploadMode === 'single' && (
                                 <ExamUpload onUpload={handleUpload} isUploading={isUploading} />
-                            ) : (
+                            )}
+                            
+                            {uploadMode === 'dual' && (
                                 <DualUpload onUpload={handleDualUpload} isUploading={isUploading} />
+                            )}
+                            
+                            {uploadMode === 'multi-page' && questionPaperId && (
+                                <MultiPageUpload
+                                    questionPaperId={questionPaperId}
+                                    onGradingComplete={handleMultiPageComplete}
+                                    onCancel={() => {
+                                        setUploadMode(null);
+                                        setQuestionPaperId(null);
+                                    }}
+                                />
+                            )}
+                            
+                            {uploadMode === 'multi-page' && !questionPaperId && (
+                                <div className="card">
+                                    <p className="text-white mb-4">
+                                        To use multi-page mode, first upload the question paper:
+                                    </p>
+                                    <DualUpload 
+                                        onUpload={handleDualUpload} 
+                                        isUploading={isUploading}
+                                        showAnswerSheet={false}
+                                    />
+                                    <p className="text-gray-400 text-sm mt-4">
+                                        💡 After uploading the question paper, you'll be able to upload multiple answer sheet pages
+                                    </p>
+                                </div>
                             )}
                         </>
                     )}

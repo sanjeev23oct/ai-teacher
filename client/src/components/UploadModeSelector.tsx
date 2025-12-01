@@ -1,7 +1,7 @@
 import React from 'react';
-import { FileText, Files } from 'lucide-react';
+import { FileText, Files, Layers } from 'lucide-react';
 
-export type UploadMode = 'single' | 'dual';
+export type UploadMode = 'single' | 'dual' | 'multi-page';
 
 interface UploadModeSelectorProps {
     onModeSelect: (mode: UploadMode) => void;
@@ -15,7 +15,7 @@ const UploadModeSelector: React.FC<UploadModeSelectorProps> = ({ onModeSelect })
                 <p className="text-gray-400">Choose the option that matches your exam format</p>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid md:grid-cols-3 gap-6">
                 {/* Single Image Mode */}
                 <button
                     onClick={() => onModeSelect('single')}
@@ -91,11 +91,52 @@ const UploadModeSelector: React.FC<UploadModeSelectorProps> = ({ onModeSelect })
                         </div>
                     </div>
                 </button>
+
+                {/* Multi-Page Mode */}
+                <button
+                    onClick={() => onModeSelect('multi-page')}
+                    className="group relative bg-surface border-2 border-gray-700 hover:border-primary rounded-xl p-8 transition-all hover:scale-105 text-left"
+                >
+                    <div className="absolute top-4 right-4">
+                        <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs font-bold rounded">
+                            NEW
+                        </span>
+                    </div>
+
+                    <div className="flex flex-col items-center text-center space-y-4">
+                        <div className="p-4 bg-gray-800 rounded-full group-hover:bg-primary/20 transition-colors">
+                            <Layers className="w-12 h-12 text-primary" />
+                        </div>
+                        
+                        <div>
+                            <h3 className="text-xl font-bold text-white mb-2">Multi-Page</h3>
+                            <p className="text-gray-400 text-sm mb-4">
+                                Multiple answer sheet pages
+                            </p>
+                        </div>
+
+                        <div className="text-left w-full space-y-2">
+                            <p className="text-sm font-semibold text-gray-300">Best for:</p>
+                            <ul className="text-sm text-gray-400 space-y-1">
+                                <li>• Long exams (2-10 pages)</li>
+                                <li>• Board exams</li>
+                                <li>• Detailed answers</li>
+                                <li>• Multiple answer sheets</li>
+                            </ul>
+                        </div>
+
+                        <div className="w-full pt-4">
+                            <div className="btn-primary w-full text-center">
+                                Select
+                            </div>
+                        </div>
+                    </div>
+                </button>
             </div>
 
             <div className="text-center">
                 <p className="text-sm text-gray-500">
-                    💡 Tip: Dual mode is faster if you're grading multiple students with the same question paper
+                    💡 Tip: Multi-page mode lets you upload all pages at once for comprehensive grading
                 </p>
             </div>
         </div>

@@ -900,6 +900,50 @@ Analyze the image now and output ONLY the JSON.`;
     }
 }
 
+// Multi-Page Grading Endpoint
+app.post('/api/grade/multi-page', optionalAuthMiddleware, upload.array('answerSheetPages', 10), async (req: Request, res: Response) => {
+    try {
+        const files = req.files as Express.Multer.File[];
+        const { questionPaperId, mode } = req.body;
+        const userId = req.user?.id;
+
+        console.log('=== MULTI-PAGE GRADING REQUEST ===');
+        console.log('User:', req.user?.email || 'Guest');
+        console.log('Pages:', files?.length || 0);
+        console.log('Question Paper ID:', questionPaperId);
+        console.log('Mode:', mode);
+
+        if (!files || files.length === 0) {
+            return res.status(400).json({ error: 'No files uploaded' });
+        }
+
+        if (files.length > 10) {
+            return res.status(400).json({ error: 'Maximum 10 pages allowed' });
+        }
+
+        if (!questionPaperId) {
+            return res.status(400).json({ error: 'Question paper ID is required for multi-page grading' });
+        }
+
+        const { gradeMultiplePages } = await import('./services/multiPageGradingService');
+
+        const filePaths = files.map(f => f.path);
+
+        // Grade all pages
+        const result = await gradeMultiplePages(questionPaperId, filePaths, userId);
+
+        console.log('✅ Multi-page grading complete:', result.totalScore);
+
+        res.json(result);
+    } catch (error: any) {
+        console.error('❌ Multi-page grading error:', error);
+        res.status(500).json({ 
+            error: 'Failed to grade multi-page exam',
+            details: error.message
+        });
+    }
+});
+
 // Voice Chat Endpoint (context-aware)
 app.post('/api/voice/chat', async (req: Request, res: Response) => {
     try {
