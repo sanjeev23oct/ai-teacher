@@ -1211,8 +1211,13 @@ async function handleDualModeGrading(
 // Explain Question Endpoint
 app.post('/api/doubts/explain', optionalAuthMiddleware, upload.single('questionImage'), async (req: Request, res: Response) => {
     try {
-        const { questionText, subject, language } = req.body;
+        const { questionText, subject, language, questionNumber, worksheetId } = req.body;
         const userId = req.user?.id;
+
+        // Log worksheet question requests for debugging
+        if (questionNumber && worksheetId) {
+            console.log(`[Worksheet] Analyzing question ${questionNumber} for worksheet ${worksheetId}`);
+        }
 
         if (!req.file && !questionText) {
             return res.status(400).json({ error: 'Either questionImage or questionText is required' });
@@ -1232,6 +1237,8 @@ app.post('/api/doubts/explain', optionalAuthMiddleware, upload.single('questionI
             subject,
             language,
             userId,
+            questionNumber: questionNumber ? parseInt(questionNumber) : undefined,
+            worksheetId,
         });
 
         // Clean up uploaded file
@@ -1406,14 +1413,14 @@ app.post('/api/doubts/:doubtId/favorite', authMiddleware, async (req: Request, r
 // ============================================
 
 // Create worksheet
-app.post('/api/worksheets/create', authMiddleware, upload.single('image'), async (req: Request, res: Response) => {
+app.post('/api/worksheets/create', optionalAuthMiddleware, upload.single('image'), async (req: Request, res: Response) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'No image uploaded' });
         }
 
         const { worksheetService } = await import('./services/worksheetService');
-        const userId = req.user!.id;
+        const userId = req.user?.id;
 
         const imageBuffer = fs.readFileSync(req.file.path);
         const imageMimeType = req.file.mimetype;
@@ -1439,13 +1446,18 @@ app.post('/api/worksheets/create', authMiddleware, upload.single('image'), async
 });
 
 // Get worksheet question
-app.get('/api/worksheets/:worksheetId/question/:number', authMiddleware, async (req: Request, res: Response) => {
+app.get('/api/worksheets/:worksheetId/question/:number', optionalAuthMiddleware, async (req: Request, res: Response) => {
     try {
         const { worksheetId, number } = req.params;
         const { worksheetService } = await import('./services/worksheetService');
 
         const result = await worksheetService.getQuestion(worksheetId, parseInt(number));
 
+        // Disable caching to ensure fresh data for each question
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        
         res.json(result);
     } catch (error: any) {
         console.error('Error getting question:', error);
@@ -1463,7 +1475,7 @@ app.get('/api/worksheets/:worksheetId/question/:number', authMiddleware, async (
 });
 
 // Skip question
-app.post('/api/worksheets/:worksheetId/skip/:number', authMiddleware, async (req: Request, res: Response) => {
+app.post('/api/worksheets/:worksheetId/skip/:number', optionalAuthMiddleware, async (req: Request, res: Response) => {
     try {
         const { worksheetId, number } = req.params;
         const { worksheetService } = await import('./services/worksheetService');
@@ -1485,7 +1497,7 @@ app.post('/api/worksheets/:worksheetId/skip/:number', authMiddleware, async (req
 });
 
 // Get worksheet progress
-app.get('/api/worksheets/:worksheetId/progress', authMiddleware, async (req: Request, res: Response) => {
+app.get('/api/worksheets/:worksheetId/progress', optionalAuthMiddleware, async (req: Request, res: Response) => {
     try {
         const { worksheetId } = req.params;
         const { worksheetService } = await import('./services/worksheetService');
@@ -1497,6 +1509,30 @@ app.get('/api/worksheets/:worksheetId/progress', authMiddleware, async (req: Req
         console.error('Error getting progress:', error);
         res.status(500).json({ 
             error: 'Failed to get progress',
+            details: error.message
+        });
+    }
+});
+
+// Cache question explanation
+app.post('/api/worksheets/:worksheetId/question/:number/cache', optionalAuthMiddleware, async (req: Request, res: Response) => {
+    try {
+        const { worksheetId, number } = req.params;
+        const { explanation, doubtId } = req.body;
+        const { worksheetService } = await import('./services/worksheetService');
+
+        await worksheetService.cacheExplanation(
+            worksheetId,
+            parseInt(number),
+            explanation,
+            doubtId
+        );
+
+        res.json({ success: true });
+    } catch (error: any) {
+        console.error('Error caching explanation:', error);
+        res.status(500).json({ 
+            error: 'Failed to cache explanation',
             details: error.message
         });
     }

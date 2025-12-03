@@ -50,8 +50,10 @@ export async function explainQuestion(params: {
   subject: Subject;
   language: Language;
   userId?: string;
+  questionNumber?: number;
+  worksheetId?: string;
 }): Promise<ExplanationResponse> {
-  const { questionImage, questionText, subject, language, userId } = params;
+  const { questionImage, questionText, subject, language, userId, questionNumber, worksheetId } = params;
 
   if (!questionImage && !questionText) {
     throw new Error('Either questionImage or questionText must be provided');
@@ -92,9 +94,24 @@ export async function explainQuestion(params: {
       },
     ];
 
-    userPrompt = questionText
-      ? `Question text: ${questionText}\n\nPlease analyze the image and provide a detailed explanation.`
-      : `Please analyze this image and identify the FIRST question you see. Provide a detailed step-by-step explanation for that question only.
+    // Build prompt based on whether this is a worksheet question or standalone
+    if (questionNumber && worksheetId) {
+      // This is a worksheet with multiple questions
+      console.log(`[Prompt] Building prompt for worksheet ${worksheetId}, question ${questionNumber}`);
+      userPrompt = `This image contains multiple questions. Please analyze ONLY question number ${questionNumber}.
+
+IMPORTANT INSTRUCTIONS:
+- Focus EXCLUSIVELY on question ${questionNumber} - ignore all other questions in the image
+- Look for question markers like "${questionNumber}.", "Q${questionNumber}", "${questionNumber})", or similar
+- Provide a detailed step-by-step explanation for question ${questionNumber} ONLY
+- Use proper LaTeX notation for mathematical symbols (e.g., $\\sin \\theta$, $\\cos^2 x$, $\\frac{a}{b}$)
+- Ensure all mathematical expressions are properly formatted with LaTeX
+
+Please provide your response in the required JSON format.`;
+    } else if (questionText) {
+      userPrompt = `Question text: ${questionText}\n\nPlease analyze the image and provide a detailed explanation.`;
+    } else {
+      userPrompt = `Please analyze this image and identify the FIRST question you see. Provide a detailed step-by-step explanation for that question only.
 
 IMPORTANT: 
 - Focus on solving ONE question at a time
@@ -102,6 +119,7 @@ IMPORTANT:
 - Ensure all mathematical expressions are properly formatted with LaTeX
 
 Please provide your response in the required JSON format.`;
+    }
   } else {
     userPrompt = `Question: ${questionText}\n\nPlease provide a detailed explanation.`;
   }
@@ -133,17 +151,44 @@ Please provide your response in the required JSON format.`;
       // Handle incomplete code block (response was truncated)
       const startIndex = text.indexOf('```json') + 7;
       jsonText = text.substring(startIndex);
-      // Try to find where JSON ends (look for closing brace)
-      const lastBrace = jsonText.lastIndexOf('}');
-      if (lastBrace !== -1) {
-        jsonText = jsonText.substring(0, lastBrace + 1);
+      
+      // Remove trailing ``` if present
+      if (jsonText.includes('```')) {
+        jsonText = jsonText.substring(0, jsonText.indexOf('```'));
+      }
+      
+      // Try to fix truncated JSON by adding missing closing brackets
+      const openBraces = (jsonText.match(/\{/g) || []).length;
+      const closeBraces = (jsonText.match(/\}/g) || []).length;
+      const openBrackets = (jsonText.match(/\[/g) || []).length;
+      const closeBrackets = (jsonText.match(/\]/g) || []).length;
+      
+      // Add missing closing brackets/braces
+      for (let i = 0; i < (openBrackets - closeBrackets); i++) {
+        jsonText += '\n]';
+      }
+      for (let i = 0; i < (openBraces - closeBraces); i++) {
+        jsonText += '\n}';
       }
     } else {
-      // Try to find the LAST JSON object in the text (in case there's explanation before it)
-      const jsonMatches = text.match(/\{[\s\S]*?\}/g);
-      if (jsonMatches && jsonMatches.length > 0) {
-        // Take the last (and usually largest) JSON object
-        jsonText = jsonMatches[jsonMatches.length - 1];
+      // Try to find JSON object in the text
+      const jsonStart = text.indexOf('{');
+      if (jsonStart !== -1) {
+        jsonText = text.substring(jsonStart);
+        
+        // Try to fix truncated JSON
+        const openBraces = (jsonText.match(/\{/g) || []).length;
+        const closeBraces = (jsonText.match(/\}/g) || []).length;
+        const openBrackets = (jsonText.match(/\[/g) || []).length;
+        const closeBrackets = (jsonText.match(/\]/g) || []).length;
+        
+        // Add missing closing brackets/braces
+        for (let i = 0; i < (openBrackets - closeBrackets); i++) {
+          jsonText += '\n]';
+        }
+        for (let i = 0; i < (openBraces - closeBraces); i++) {
+          jsonText += '\n}';
+        }
       }
     }
     

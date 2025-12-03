@@ -90,7 +90,13 @@ class AIService {
       throw new Error('Gemini client not initialized');
     }
 
-    const model = this.geminiClient.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+    const model = this.geminiClient.getGenerativeModel({ 
+      model: 'gemini-2.0-flash-exp',
+      generationConfig: {
+        maxOutputTokens: 8000, // Increase token limit to prevent truncation
+        temperature: 0.7,
+      }
+    });
 
     const parts: any[] = [];
 
@@ -167,10 +173,13 @@ class AIService {
       });
     }
 
+    // Groq has different token limits - try 8000 for better responses
+    const maxTokens = this.config.provider === 'groq' ? 8000 : 4000;
+    
     const response = await this.openaiClient.chat.completions.create({
       model,
       messages,
-      max_tokens: 4000,
+      max_tokens: maxTokens,
       temperature: 0.7,
     });
 
@@ -199,7 +208,13 @@ class AIService {
       throw new Error('Gemini client not initialized');
     }
 
-    const model = this.geminiClient.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+    const model = this.geminiClient.getGenerativeModel({ 
+      model: 'gemini-2.0-flash-exp',
+      generationConfig: {
+        maxOutputTokens: 8000,
+        temperature: 0.7,
+      }
+    });
 
     const history = conversationHistory.map((msg) => ({
       role: msg.role === 'user' ? 'user' : 'model',

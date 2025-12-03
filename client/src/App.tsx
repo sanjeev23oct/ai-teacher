@@ -13,6 +13,7 @@ import DoubtsPage from './pages/DoubtsPage';
 import DoubtExplanationPage from './pages/DoubtExplanationPage';
 import DoubtsHistoryPage from './pages/DoubtsHistoryPage';
 import RevisionAreaPage from './pages/RevisionAreaPage';
+import WorksheetViewPage from './pages/WorksheetViewPage';
 import DashboardDoubtCard from './components/DashboardDoubtCard';
 
 // Home page component
@@ -232,6 +233,7 @@ function App() {
           <Route path="/history" element={<Layout><HistoryPage /></Layout>} />
           <Route path="/exams/:id" element={<Layout><ExamDetailPage /></Layout>} />
           <Route path="/doubts" element={<Layout><DoubtsPage /></Layout>} />
+          <Route path="/doubts/worksheet/:worksheetId" element={<Layout><WorksheetViewPage /></Layout>} />
           <Route path="/doubts/:doubtId" element={<Layout><DoubtExplanationPage /></Layout>} />
           <Route path="/doubts/history" element={<Layout><DoubtsHistoryPage /></Layout>} />
           <Route path="/revision" element={<Layout><RevisionAreaPage /></Layout>} />

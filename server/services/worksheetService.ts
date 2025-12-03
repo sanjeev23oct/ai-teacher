@@ -67,6 +67,27 @@ Response format: Just the number, nothing else.`;
     // Generate image hash for deduplication
     const imageHash = crypto.createHash('sha256').update(imageBuffer).digest('hex');
 
+    // Check if worksheet already exists for this image
+    const existingWorksheet = await prisma.worksheet.findUnique({
+      where: { imageHash },
+      include: {
+        questions: {
+          orderBy: { questionNumber: 'asc' },
+        },
+      },
+    });
+
+    if (existingWorksheet) {
+      // Return existing worksheet
+      return {
+        id: existingWorksheet.id,
+        sessionId: existingWorksheet.sessionId,
+        totalQuestions: existingWorksheet.totalQuestions,
+        currentQuestion: existingWorksheet.currentQuestion,
+        imageUrl: existingWorksheet.imageUrl,
+      };
+    }
+
     // Detect questions
     const totalQuestions = await this.detectQuestions(imageBuffer, imageMimeType);
 

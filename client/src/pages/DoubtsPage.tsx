@@ -44,6 +44,34 @@ export default function DoubtsPage() {
 
     setIsLoading(true);
     try {
+      // First, try to create a worksheet to detect multiple questions
+      const worksheetFormData = new FormData();
+      worksheetFormData.append('image', image);
+      worksheetFormData.append('subject', subject);
+      
+      const worksheetResponse = await fetch('http://localhost:3001/api/worksheets/create', {
+        method: 'POST',
+        body: worksheetFormData,
+        credentials: 'include',
+      });
+
+      if (worksheetResponse.ok) {
+        const worksheetData = await worksheetResponse.json();
+        
+        // If multiple questions detected, navigate to worksheet view
+        if (worksheetData.totalQuestions > 1) {
+          navigate(`/doubts/worksheet/${worksheetData.id}`, { 
+            state: { 
+              worksheet: worksheetData,
+              subject,
+              language
+            } 
+          });
+          return;
+        }
+      }
+
+      // Single question or worksheet detection failed - use regular flow
       const formData = new FormData();
       formData.append('questionImage', image);
       formData.append('subject', subject);
