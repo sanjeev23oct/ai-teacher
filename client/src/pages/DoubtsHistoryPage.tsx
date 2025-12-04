@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Star, MessageCircle, ArrowLeft } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import LoginPromptModal from '../components/LoginPromptModal';
+import { authenticatedFetch } from '../utils/api';
 
 import type { Subject } from '../components/SubjectSelector';
 
@@ -17,18 +20,27 @@ interface DoubtHistoryItem {
 
 export default function DoubtsHistoryPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [doubts, setDoubts] = useState<DoubtHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubject, setSelectedSubject] = useState<Subject | 'all'>('all');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
   useEffect(() => {
+    // Check if user is logged in
+    if (!user) {
+      setShowLoginPrompt(true);
+      setIsLoading(false);
+      return;
+    }
     fetchHistory();
-  }, [page, selectedSubject, searchQuery]);
+  }, [page, selectedSubject, searchQuery, user]);
 
   const fetchHistory = async () => {
+    if (!user) return;
     setIsLoading(true);
     try {
       const params = new URLSearchParams({
@@ -44,9 +56,7 @@ export default function DoubtsHistoryPage() {
         params.append('search', searchQuery);
       }
 
-      const response = await fetch(`http://localhost:3001/api/doubts/history?${params}`, {
-        credentials: 'include',
-      });
+      const response = await authenticatedFetch(`http://localhost:3001/api/doubts/history?${params}`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch history');
@@ -86,6 +96,13 @@ export default function DoubtsHistoryPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Login Prompt Modal */}
+      <LoginPromptModal
+        isOpen={showLoginPrompt}
+        onClose={() => navigate('/')}
+        message="Please login to view your doubt history and save your progress."
+      />
+
       {/* Header */}
       <div className="bg-surface border-b border-gray-800 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-4">

@@ -96,7 +96,9 @@ AI-powered educational platform with exam grading and doubt-solving capabilities
 
 ## Deployment to Railway
 
-### Quick Start
+This project is configured for **single-service deployment** where both React frontend and Express backend run as one unified application on a single URL.
+
+### Quick Deploy
 
 1. **Push to GitHub**
    ```bash
@@ -105,17 +107,49 @@ AI-powered educational platform with exam grading and doubt-solving capabilities
    git push origin main
    ```
 
-2. **Deploy to Railway**
-   - Follow the detailed guide in [RAILWAY_DEPLOYMENT.md](./RAILWAY_DEPLOYMENT.md)
-   - Use the [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md) to track progress
+2. **Create Railway Project**
+   - Go to [railway.app](https://railway.app)
+   - Click "New Project" → "Deploy from GitHub repo"
+   - Select your repository
+   - Add PostgreSQL database (+ New → Database → PostgreSQL)
+
+3. **Set Environment Variables**
+   ```
+   NODE_ENV=production
+   JWT_SECRET=<generate with: openssl rand -base64 32>
+   AI_PROVIDER=gemini
+   GEMINI_API_KEY=<your-gemini-api-key>
+   ```
+
+4. **Deploy!**
+   - Railway auto-deploys on push
+   - Access your app at the provided URL (e.g., `https://your-app.railway.app`)
+
+### Detailed Guides
+
+- 📖 [Complete Deployment Guide](./RAILWAY_DEPLOYMENT.md)
+- ✅ [Step-by-Step Checklist](./DEPLOYMENT_CHECKLIST.md)
+- 📋 [Configuration Summary](./DEPLOYMENT_SUMMARY.md)
+
+### Test Production Build Locally
+
+```bash
+# Build and test before deploying
+./test-production-build.sh
+
+# Start in production mode
+cd server
+NODE_ENV=production npm start
+
+# Visit http://localhost:3001
+```
 
 ### Key Files for Deployment
 
-- `railway.json` - Railway project configuration
-- `server/railway.toml` - Backend service configuration
-- `client/railway.toml` - Frontend service configuration
-- `server/nixpacks.toml` - Build configuration
-- `server/.env.example` - Environment variables template
+- `package.json` - Root build scripts
+- `nixpacks.toml` - Railway build configuration
+- `railway.json` - Railway deployment settings
+- `.env.example` - Environment variables template
 
 ## Project Structure
 

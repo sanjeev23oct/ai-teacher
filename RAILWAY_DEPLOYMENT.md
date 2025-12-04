@@ -1,217 +1,159 @@
 # Railway Deployment Guide
 
-This guide will help you deploy your AI Teacher application to Railway.
+This project is configured to deploy as a **single unified application** on Railway, where the Express server serves both the API and the built React frontend.
 
-## Prerequisites
+## Architecture
 
-1. GitHub account
-2. Railway account (sign up at https://railway.app)
-3. Your code pushed to a GitHub repository
+- **Single Service**: One Railway service runs the Express server
+- **Static Files**: React app is built and served by Express
+- **Single URL**: Everything runs on one domain (e.g., `your-app.railway.app`)
+- **API Routes**: All `/api/*` requests go to Express
+- **Frontend**: All other routes serve the React SPA
 
 ## Deployment Steps
 
-### 1. Prepare Your Repository
-
-Make sure all changes are committed and pushed to GitHub:
+### 1. Push to GitHub
 
 ```bash
 git add .
-git commit -m "Prepare for Railway deployment"
+git commit -m "Configure for Railway deployment"
 git push origin main
 ```
 
 ### 2. Create Railway Project
 
-1. Go to https://railway.app
+1. Go to [railway.app](https://railway.app)
 2. Click "New Project"
 3. Select "Deploy from GitHub repo"
 4. Choose your repository
-5. Railway will detect your monorepo structure
+5. Railway will auto-detect the configuration from `nixpacks.toml`
 
-### 3. Set Up Services
+### 3. Configure Environment Variables
 
-You'll need to create 3 services:
+In Railway dashboard, add these environment variables:
 
-#### A. PostgreSQL Database
+**Required:**
+- `DATABASE_URL` - PostgreSQL connection string (add PostgreSQL service in Railway)
+- `JWT_SECRET` - Random secret for JWT tokens (e.g., `openssl rand -base64 32`)
+- `NODE_ENV` - Set to `production`
 
-1. Click "New" → "Database" → "Add PostgreSQL"
-2. Railway will automatically create a database
-3. Note: The `DATABASE_URL` will be automatically available to your services
+**Optional (for AI features):**
+- `GEMINI_API_KEY` - Google Gemini API key for better OCR
+- `GOOGLE_API_KEY` - Alternative to GEMINI_API_KEY
+- `OLLAMA_URL` - If using external Ollama instance
+- `ELEVENLABS_API_KEY` - For text-to-speech features
 
-#### B. Backend Service (Server)
-
-1. Click "New" → "GitHub Repo" → Select your repo
-2. Configure the service:
-   - **Root Directory**: `server`
-   - **Build Command**: `npm install && npm run build`
-   - **Start Command**: `npm start`
-3. Add environment variables (see section below)
-
-#### C. Frontend Service (Client)
-
-1. Click "New" → "GitHub Repo" → Select your repo (again)
-2. Configure the service:
-   - **Root Directory**: `client`
-   - **Build Command**: `npm install && npm run build`
-   - **Start Command**: `npm run preview`
-3. Add environment variables (see section below)
-
-### 4. Environment Variables
-
-#### Backend Service Variables:
-
-```env
-# AI Configuration
-AI_PROVIDER=gemini
-GEMINI_API_KEY=your-gemini-api-key-here
-
-# LM Studio (optional fallback)
-LM_STUDIO_URL=http://localhost:1234/v1
-LM_STUDIO_MODEL=llama-3.2-3b-instruct
-
-# Ollama (optional)
-OLLAMA_URL=http://localhost:11434/v1
-OLLAMA_MODEL=llava:13b
-
-# Database (automatically provided by Railway)
-DATABASE_URL=${{Postgres.DATABASE_URL}}
-
-# JWT Secret
-JWT_SECRET=your-super-secret-jwt-key-change-in-production
-
-# ElevenLabs (optional)
-ELEVENLABS_API_KEY=your-elevenlabs-key-if-you-have-one
-
-# Port (Railway provides this automatically)
-PORT=${{PORT}}
+**Example:**
+```
+DATABASE_URL=postgresql://user:pass@host:5432/dbname
+JWT_SECRET=your-super-secret-jwt-key-here
+NODE_ENV=production
+GEMINI_API_KEY=your-gemini-api-key
 ```
 
-#### Frontend Service Variables:
+### 4. Add PostgreSQL Database
 
-```env
-# Backend API URL (use your Railway backend URL)
-VITE_API_URL=https://your-backend-service.railway.app
+1. In Railway project, click "New"
+2. Select "Database" → "PostgreSQL"
+3. Railway will automatically set `DATABASE_URL` environment variable
+4. The build process will run Prisma migrations automatically
+
+### 5. Deploy
+
+Railway will automatically:
+1. Install dependencies for root, client, and server
+2. Build the React frontend (`npm run build`)
+3. Generate Prisma client
+4. Start the Express server
+5. Server serves both API and static React files
+
+### 6. Access Your App
+
+Once deployed, Railway provides a URL like:
+- `https://your-app.railway.app` - Your full application
+
+All routes work:
+- `/` - React frontend (home page)
+- `/grade` - Grade exam page
+- `/history` - History page
+- `/api/grade` - API endpoint
+- `/api/auth/login` - Auth endpoint
+- etc.
+
+## Build Process
+
+The deployment follows this sequence (defined in `nixpacks.toml`):
+
+```
+1. Install root dependencies
+2. Install client dependencies (cd client && npm install)
+3. Install server dependencies (cd server && npm install)
+4. Build React app (cd client && npm run build) → creates client/dist/
+5. Generate Prisma client (cd server && npx prisma generate)
+6. Start server (cd server && npm start)
 ```
 
-### 5. Update Frontend API Configuration
+The Express server (in production mode):
+- Serves static files from `client/dist/`
+- Handles all `/api/*` routes
+- Returns `index.html` for all other routes (React Router)
 
-After deploying the backend, you'll get a Railway URL like:
-`https://your-backend-service.railway.app`
+## Local Development
 
-Update your frontend to use this URL. You may need to update the API base URL in your frontend code.
+For local development, run client and server separately:
 
-### 6. Database Migration
+```bash
+# Terminal 1 - Client (with Vite dev server)
+cd client
+npm run dev
 
-After the backend service is deployed:
-
-1. Go to your backend service in Railway
-2. Click on "Settings" → "Deploy"
-3. The build command will automatically run Prisma migrations
-4. Check logs to ensure migrations completed successfully
-
-### 7. CORS Configuration
-
-Make sure your backend CORS is configured to allow your frontend domain:
-
-```typescript
-// In server/index.ts
-const corsOptions = {
-  origin: [
-    'http://localhost:5173',
-    'https://your-frontend-service.railway.app'
-  ],
-  credentials: true
-};
+# Terminal 2 - Server
+cd server
+npm run dev
 ```
 
-## Post-Deployment
-
-### Verify Deployment
-
-1. **Backend Health Check**: Visit `https://your-backend-service.railway.app/health`
-2. **Frontend**: Visit `https://your-frontend-service.railway.app`
-3. **Database**: Check Railway dashboard for connection status
-
-### Monitor Logs
-
-- Click on each service to view real-time logs
-- Check for any errors or warnings
-
-### Custom Domain (Optional)
-
-1. Go to service settings
-2. Click "Settings" → "Domains"
-3. Add your custom domain
-4. Update DNS records as instructed
+The Vite dev server proxies API calls to `localhost:3001`.
 
 ## Troubleshooting
 
-### Build Failures
-
-- Check build logs in Railway dashboard
-- Ensure all dependencies are in package.json
-- Verify Node.js version compatibility
+### Build Fails
+- Check Railway build logs
+- Ensure all dependencies are in `package.json` files
+- Verify Node.js version compatibility (using Node 20)
 
 ### Database Connection Issues
+- Verify `DATABASE_URL` is set correctly
+- Check PostgreSQL service is running
+- Ensure Prisma migrations ran successfully
 
-- Ensure `DATABASE_URL` is properly set
-- Check if Prisma migrations ran successfully
-- Verify database service is running
+### 404 on Routes
+- Verify catch-all route is last in `server/index.ts`
+- Check `NODE_ENV=production` is set
+- Ensure React build completed successfully
 
-### CORS Errors
+### API Calls Fail
+- Check CORS settings in `server/index.ts`
+- Verify API routes are prefixed with `/api`
+- Check browser console for errors
 
-- Add your Railway frontend URL to CORS whitelist
-- Ensure credentials are enabled if using authentication
+## Files Modified for Deployment
 
-### File Upload Issues
-
-- Railway has ephemeral storage
-- Consider using cloud storage (AWS S3, Cloudinary) for production
-- Current setup stores files temporarily (will be lost on restart)
+- `package.json` - Root build scripts
+- `nixpacks.toml` - Railway build configuration
+- `railway.json` - Railway deployment settings
+- `server/index.ts` - Added static file serving and catch-all route
+- `client/vite.config.ts` - Added proxy for development
+- `client/src/config.ts` - Dynamic API URL based on environment
+- `client/.env.production` - Production environment variables
 
 ## Cost Optimization
 
-Railway free tier includes:
-- $5 credit per month
-- 500MB PostgreSQL storage
-- 512MB RAM per service
+Railway offers:
+- $5/month hobby plan with usage-based pricing
+- Free trial credits for testing
+- Sleep mode for inactive services (can be disabled)
 
-To stay within free tier:
+To minimize costs:
+- Use single service (already configured)
+- Set appropriate resource limits
 - Monitor usage in Railway dashboard
-- Optimize database queries
-- Consider implementing caching
-
-## Updating Your App
-
-To deploy updates:
-
-```bash
-git add .
-git commit -m "Your update message"
-git push origin main
-```
-
-Railway will automatically detect changes and redeploy.
-
-## Support
-
-- Railway Docs: https://docs.railway.app
-- Railway Discord: https://discord.gg/railway
-- GitHub Issues: Create issues in your repository
-
-## Security Checklist
-
-- [ ] All API keys are in environment variables (not in code)
-- [ ] JWT_SECRET is a strong random string
-- [ ] Database credentials are secure
-- [ ] CORS is properly configured
-- [ ] Rate limiting is implemented (consider adding)
-- [ ] Input validation is in place
-
-## Next Steps
-
-1. Set up monitoring and alerts
-2. Implement proper error tracking (Sentry, LogRocket)
-3. Add analytics (Google Analytics, Plausible)
-4. Set up automated backups for database
-5. Consider CDN for static assets

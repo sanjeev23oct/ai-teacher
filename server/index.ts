@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import multer from 'multer';
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
@@ -55,12 +56,20 @@ const port = process.env.PORT || 3001;
 // Middleware
 app.use(cors({
   origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'],
-  credentials: true
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Authorization']
 }));
+app.use(cookieParser());
 app.use(express.json());
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));
+
+// Serve static files from React build (in production)
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../client/dist')));
+}
 
 // Multer setup for file uploads
 const upload = multer({ dest: 'uploads/' });
@@ -153,6 +162,15 @@ app.post('/api/auth/signup', async (req: Request, res: Response) => {
             school
         });
 
+        // Set cookie with token (standard pattern for browser auth)
+        res.cookie('auth_token', result.token, {
+            httpOnly: false, // Allow JavaScript access
+            secure: false, // Allow over HTTP for localhost
+            sameSite: 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            path: '/'
+        });
+
         res.json(result);
     } catch (error: any) {
         console.error('Signup error:', error);
@@ -173,6 +191,16 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
         }
 
         const result = await authService.login({ email, password });
+        
+        // Set cookie with token (standard pattern for browser auth)
+        res.cookie('auth_token', result.token, {
+            httpOnly: false, // Allow JavaScript access
+            secure: false, // Allow over HTTP for localhost
+            sameSite: 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            path: '/'
+        });
+        
         res.json(result);
     } catch (error: any) {
         console.error('Login error:', error);
@@ -1214,6 +1242,10 @@ app.post('/api/doubts/explain', optionalAuthMiddleware, upload.single('questionI
         const { questionText, subject, language, questionNumber, worksheetId } = req.body;
         const userId = req.user?.id;
 
+        // Debug logging
+        console.log('[Doubt] Auth header:', req.headers.authorization ? 'Present' : 'Missing');
+        console.log('[Doubt] User ID:', userId || 'NULL (Guest)');
+
         // Log worksheet question requests for debugging
         if (questionNumber && worksheetId) {
             console.log(`[Worksheet] Analyzing question ${questionNumber} for worksheet ${worksheetId}`);
@@ -1332,9 +1364,10 @@ app.post('/api/doubts/chat/stream', async (req: Request, res: Response) => {
 });
 
 // Get Doubt History Endpoint
-app.get('/api/doubts/history', authMiddleware, async (req: Request, res: Response) => {
+app.get('/api/doubts/history', optionalAuthMiddleware, async (req: Request, res: Response) => {
     try {
-        const userId = req.user!.id;
+        // Show all records regardless of auth status (for development)
+        const userId = req.user?.id || null;
         const page = parseInt(req.query.page as string) || 1;
         const limit = parseInt(req.query.limit as string) || 20;
         const subject = req.query.subject as string;
@@ -1361,7 +1394,7 @@ app.get('/api/doubts/history', authMiddleware, async (req: Request, res: Respons
 });
 
 // Get Single Doubt Endpoint
-app.get('/api/doubts/:doubtId', authMiddleware, async (req: Request, res: Response) => {
+app.get('/api/doubts/:doubtId', optionalAuthMiddleware, async (req: Request, res: Response) => {
     try {
         const { doubtId } = req.params;
 
@@ -1403,6 +1436,41 @@ app.post('/api/doubts/:doubtId/favorite', authMiddleware, async (req: Request, r
         }
         res.status(500).json({ 
             error: 'Failed to toggle favorite',
+            details: error.message
+        });
+    }
+});
+
+// Migrate Guest Doubts Endpoint
+app.post('/api/doubts/migrate', authMiddleware, async (req: Request, res: Response) => {
+    try {
+        const userId = req.user!.id;
+        const { doubtIds } = req.body;
+
+        if (!Array.isArray(doubtIds) || doubtIds.length === 0) {
+            return res.status(400).json({ error: 'doubtIds array is required' });
+        }
+
+        // Update all guest doubts to belong to this user
+        const result = await prisma.doubt.updateMany({
+            where: {
+                id: { in: doubtIds },
+                userId: null // Only migrate guest doubts
+            },
+            data: {
+                userId: userId
+            }
+        });
+
+        res.json({ 
+            success: true, 
+            migratedCount: result.count,
+            message: `Successfully migrated ${result.count} doubts to your account`
+        });
+    } catch (error: any) {
+        console.error('Error migrating doubts:', error);
+        res.status(500).json({ 
+            error: 'Failed to migrate doubts',
             details: error.message
         });
     }
@@ -1745,6 +1813,13 @@ app.get('/api/dashboard/stats', authMiddleware, async (req: Request, res: Respon
         });
     }
 });
+
+// Catch-all route for React Router (must be last)
+if (process.env.NODE_ENV === 'production') {
+  app.get('*', (req: Request, res: Response) => {
+    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+  });
+}
 
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);

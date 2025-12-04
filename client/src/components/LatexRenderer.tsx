@@ -1,5 +1,7 @@
+// @ts-ignore
 import { InlineMath, BlockMath } from 'react-katex';
 import 'katex/dist/katex.min.css';
+import React from 'react';
 
 interface LatexRendererProps {
   content: string;
@@ -9,7 +11,7 @@ interface LatexRendererProps {
 export default function LatexRenderer({ content, className = '' }: LatexRendererProps) {
   // Split content by LaTeX delimiters and render accordingly
   const renderContent = (text: string) => {
-    const parts: JSX.Element[] = [];
+    const parts: React.ReactElement[] = [];
     let lastIndex = 0;
     
     // Match both inline ($...$) and block ($$...$$) LaTeX

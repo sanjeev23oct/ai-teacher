@@ -4,6 +4,9 @@ import { ArrowLeft } from 'lucide-react';
 import SubjectSelector from '../components/SubjectSelector';
 import LanguageSelector from '../components/LanguageSelector';
 import QuestionUpload from '../components/QuestionUpload';
+import { addGuestDoubt } from '../utils/guestDoubtStorage';
+import { useAuth } from '../contexts/AuthContext';
+import { authenticatedFetch } from '../utils/api';
 
 import type { Subject } from '../components/SubjectSelector';
 import type { Language } from '../components/LanguageSelector';
@@ -12,6 +15,7 @@ type Step = 'subject' | 'language' | 'upload';
 
 export default function DoubtsPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [step, setStep] = useState<Step>('subject');
   const [subject, setSubject] = useState<Subject | null>(null);
   const [language, setLanguage] = useState<Language | null>(null);
@@ -49,10 +53,9 @@ export default function DoubtsPage() {
       worksheetFormData.append('image', image);
       worksheetFormData.append('subject', subject);
       
-      const worksheetResponse = await fetch('http://localhost:3001/api/worksheets/create', {
+      const worksheetResponse = await authenticatedFetch('http://localhost:3001/api/worksheets/create', {
         method: 'POST',
         body: worksheetFormData,
-        credentials: 'include',
       });
 
       if (worksheetResponse.ok) {
@@ -77,10 +80,9 @@ export default function DoubtsPage() {
       formData.append('subject', subject);
       formData.append('language', language);
 
-      const response = await fetch('http://localhost:3001/api/doubts/explain', {
+      const response = await authenticatedFetch('http://localhost:3001/api/doubts/explain', {
         method: 'POST',
         body: formData,
-        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -89,6 +91,11 @@ export default function DoubtsPage() {
       }
 
       const data = await response.json();
+      
+      // Store guest doubt ID if not logged in
+      if (!user && data.doubtId) {
+        addGuestDoubt(data.doubtId);
+      }
       
       // Navigate to explanation view with the data
       navigate(`/doubts/${data.doubtId}`, { state: { explanation: data } });
@@ -122,10 +129,9 @@ export default function DoubtsPage() {
       formData.append('subject', subject);
       formData.append('language', language);
 
-      const response = await fetch('http://localhost:3001/api/doubts/explain', {
+      const response = await authenticatedFetch('http://localhost:3001/api/doubts/explain', {
         method: 'POST',
         body: formData,
-        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -134,6 +140,11 @@ export default function DoubtsPage() {
       }
 
       const data = await response.json();
+      
+      // Store guest doubt ID if not logged in
+      if (!user && data.doubtId) {
+        addGuestDoubt(data.doubtId);
+      }
       
       // Navigate to explanation view with the data
       navigate(`/doubts/${data.doubtId}`, { state: { explanation: data } });

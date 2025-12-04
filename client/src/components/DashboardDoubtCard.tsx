@@ -52,7 +52,9 @@ export default function DashboardDoubtCard({ doubt }: DashboardDoubtCardProps) {
               {doubt.subject}
             </span>
             {doubt.isInRevision && (
-              <BookmarkCheck className="w-4 h-4 text-green-400" title="In Revision" />
+              <span title="In Revision">
+                <BookmarkCheck className="w-4 h-4 text-green-400" />
+              </span>
             )}
           </div>
 

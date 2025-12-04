@@ -15,7 +15,7 @@ interface DoubtHistoryItem {
 }
 
 export async function getHistory(params: {
-  userId: string;
+  userId: string | null;
   page?: number;
   limit?: number;
   subject?: Subject;
@@ -28,8 +28,12 @@ export async function getHistory(params: {
 }> {
   const { userId, page = 1, limit = 20, subject, searchQuery } = params;
 
-  // Build where clause
-  const where: any = { userId };
+  // Build where clause - if no userId, show all records
+  const where: any = {};
+  
+  if (userId) {
+    where.userId = userId;
+  }
 
   if (subject) {
     where.subject = subject;

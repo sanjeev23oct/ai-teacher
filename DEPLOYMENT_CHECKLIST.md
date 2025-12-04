@@ -1,122 +1,138 @@
 # Railway Deployment Checklist
 
-Use this checklist to ensure a smooth deployment to Railway.
-
 ## Pre-Deployment
 
-- [ ] All code is committed to Git
-- [ ] `.env` file is NOT committed (check .gitignore)
-- [ ] Database schema is finalized
+- [ ] Code is committed to GitHub
 - [ ] All dependencies are in package.json files
-- [ ] API endpoints are tested locally
-- [ ] Frontend connects to backend successfully locally
+- [ ] Database schema is finalized in `server/prisma/schema.prisma`
 
 ## Railway Setup
 
-- [ ] Created Railway account at https://railway.app
-- [ ] Connected GitHub account to Railway
-- [ ] Repository is pushed to GitHub
+### 1. Create New Project
+- [ ] Go to [railway.app](https://railway.app) and sign in
+- [ ] Click "New Project"
+- [ ] Select "Deploy from GitHub repo"
+- [ ] Choose your repository
+- [ ] Railway will detect `nixpacks.toml` automatically
 
-## Database Setup
+### 2. Add PostgreSQL Database
+- [ ] In your Railway project, click "+ New"
+- [ ] Select "Database" → "PostgreSQL"
+- [ ] Railway automatically sets `DATABASE_URL` variable
+- [ ] Wait for database to provision
 
-- [ ] Added PostgreSQL database in Railway
-- [ ] Database is running (check Railway dashboard)
-- [ ] Note the database connection string
+### 3. Configure Environment Variables
 
-## Backend Deployment
+Click on your service → "Variables" tab and add:
 
-- [ ] Created new service from GitHub repo
-- [ ] Set root directory to `server`
-- [ ] Added all environment variables:
-  - [ ] `AI_PROVIDER=gemini`
-  - [ ] `GEMINI_API_KEY=your-actual-key`
-  - [ ] `DATABASE_URL=${{Postgres.DATABASE_URL}}`
-  - [ ] `JWT_SECRET=strong-random-string`
-  - [ ] `PORT=${{PORT}}`
-  - [ ] `ELEVENLABS_API_KEY=your-key` (optional)
-- [ ] Build completed successfully
-- [ ] Service is running (green status)
-- [ ] Copied backend URL (e.g., `https://xxx.railway.app`)
+**Required Variables:**
+```
+NODE_ENV=production
+JWT_SECRET=<generate with: openssl rand -base64 32>
+AI_PROVIDER=gemini
+GEMINI_API_KEY=<your-gemini-api-key>
+```
 
-## Frontend Deployment
+**Optional Variables:**
+```
+ELEVENLABS_API_KEY=<for text-to-speech>
+GROQ_API_KEY=<if using Groq instead>
+```
 
-- [ ] Created new service from GitHub repo (same repo, different service)
-- [ ] Set root directory to `client`
-- [ ] Added environment variable:
-  - [ ] `VITE_API_URL=https://your-backend-url.railway.app`
-- [ ] Build completed successfully
-- [ ] Service is running (green status)
-- [ ] Copied frontend URL
+**Auto-Provided by Railway:**
+- `DATABASE_URL` - Set automatically when you add PostgreSQL
+- `PORT` - Set automatically by Railway
 
-## CORS Configuration
+### 4. Deploy
+- [ ] Click "Deploy" or push to GitHub (auto-deploys)
+- [ ] Monitor build logs for errors
+- [ ] Wait for deployment to complete (~3-5 minutes)
 
-- [ ] Updated backend CORS to include frontend Railway URL
-- [ ] Redeployed backend after CORS update
-- [ ] Tested cross-origin requests
+### 5. Verify Deployment
 
-## Database Migration
-
-- [ ] Prisma migrations ran successfully during build
-- [ ] Check backend logs for migration success
-- [ ] Database tables are created
-
-## Testing
-
-- [ ] Frontend loads successfully
-- [ ] Can sign up / log in
-- [ ] Can upload exam images
-- [ ] Can ask doubts
-- [ ] Can view history
-- [ ] All API calls work
-- [ ] No CORS errors in browser console
+- [ ] Open the Railway-provided URL (e.g., `https://your-app.railway.app`)
+- [ ] Check homepage loads
+- [ ] Test signup/login
+- [ ] Upload a test exam
+- [ ] Check database has data
 
 ## Post-Deployment
 
-- [ ] Monitored logs for errors
-- [ ] Tested all major features
-- [ ] Checked Railway usage dashboard
-- [ ] Documented deployment URLs
-- [ ] Updated README with live URLs
+### Test All Features
+- [ ] User authentication (signup/login)
+- [ ] Exam grading (single mode)
+- [ ] Exam grading (dual mode with question paper)
+- [ ] Exam history
+- [ ] Doubt solver
+- [ ] Revision system
+- [ ] Voice chat (if configured)
 
-## Optional Enhancements
+### Monitor
+- [ ] Check Railway logs for errors
+- [ ] Monitor database usage
+- [ ] Check API response times
+- [ ] Verify file uploads work
 
-- [ ] Set up custom domain
-- [ ] Configure monitoring/alerts
-- [ ] Set up error tracking (Sentry)
-- [ ] Implement rate limiting
-- [ ] Add database backups
-- [ ] Set up CI/CD pipeline
+### Optional: Custom Domain
+- [ ] Go to service settings → "Domains"
+- [ ] Click "Custom Domain"
+- [ ] Add your domain and configure DNS
 
 ## Troubleshooting
 
-If something goes wrong:
+### Build Fails
+1. Check Railway build logs
+2. Verify all package.json files are correct
+3. Ensure Prisma schema is valid
+4. Check Node.js version (should be 20)
 
-1. **Check Logs**: Railway dashboard → Service → Logs
-2. **Verify Environment Variables**: Settings → Variables
-3. **Check Build Logs**: Deployments → Click on deployment → Build logs
-4. **Database Connection**: Ensure DATABASE_URL is correct
-5. **CORS Issues**: Add frontend URL to backend CORS whitelist
+### Database Connection Errors
+1. Verify PostgreSQL service is running
+2. Check `DATABASE_URL` is set correctly
+3. Ensure migrations ran successfully
+4. Check Railway logs for Prisma errors
 
-## Support Resources
+### App Loads but API Fails
+1. Check environment variables are set
+2. Verify `NODE_ENV=production`
+3. Check CORS settings in server code
+4. Look for errors in Railway logs
+
+### 404 on Routes
+1. Verify catch-all route is in `server/index.ts`
+2. Check React build completed successfully
+3. Ensure static files are being served
+
+## Cost Estimate
+
+Railway Pricing:
+- **Hobby Plan**: $5/month + usage
+- **Database**: ~$5-10/month for PostgreSQL
+- **Compute**: Based on usage (sleep after inactivity)
+
+**Total**: ~$10-15/month for low-medium traffic
+
+## Useful Commands
+
+Generate JWT secret:
+```bash
+openssl rand -base64 32
+```
+
+Test locally with production build:
+```bash
+npm run build
+cd server
+NODE_ENV=production npm start
+```
+
+Check Railway logs:
+```bash
+railway logs
+```
+
+## Support
 
 - Railway Docs: https://docs.railway.app
 - Railway Discord: https://discord.gg/railway
 - Prisma Docs: https://www.prisma.io/docs
-- Your GitHub Issues: Create issues for bugs
-
-## Deployment URLs
-
-After deployment, record your URLs here:
-
-- **Frontend**: https://_____.railway.app
-- **Backend**: https://_____.railway.app
-- **Database**: (internal Railway URL)
-
-## Cost Monitoring
-
-Railway Free Tier:
-- $5 credit per month
-- 500MB PostgreSQL storage
-- Monitor usage at: https://railway.app/account/usage
-
-Current monthly usage: $_____ / $5.00

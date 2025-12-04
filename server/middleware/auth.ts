@@ -18,13 +18,36 @@ declare global {
 
 export async function authMiddleware(req: Request, res: Response, next: NextFunction) {
   try {
-    const authHeader = req.headers.authorization;
+    // Try to get token from multiple sources (standard pattern)
+    let token: string | undefined;
+    
+    // 1. Check cookies (most reliable for browsers)
+    if (req.cookies && req.cookies.auth_token) {
+      token = req.cookies.auth_token;
+    }
+    
+    // 2. Check Authorization header (for API clients)
+    if (!token) {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7);
+      }
+    }
+    
+    // 3. Check request body (for FormData requests)
+    if (!token && req.body && req.body.token) {
+      token = req.body.token;
+    }
+    
+    // 4. Check query params (for GET requests)
+    if (!token && req.query && req.query.token) {
+      token = req.query.token as string;
+    }
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!token) {
       return res.status(401).json({ error: 'No token provided' });
     }
 
-    const token = authHeader.substring(7);
     const user = await authService.verifyToken(token);
 
     req.user = user;
@@ -37,10 +60,33 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
 // Optional auth - doesn't fail if no token, just sets user if available
 export async function optionalAuthMiddleware(req: Request, res: Response, next: NextFunction) {
   try {
-    const authHeader = req.headers.authorization;
+    // Try to get token from multiple sources (standard pattern)
+    let token: string | undefined;
+    
+    // 1. Check cookies (most reliable for browsers)
+    if (req.cookies && req.cookies.auth_token) {
+      token = req.cookies.auth_token;
+    }
+    
+    // 2. Check Authorization header (for API clients)
+    if (!token) {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7);
+      }
+    }
+    
+    // 3. Check request body (for FormData requests)
+    if (!token && req.body && req.body.token) {
+      token = req.body.token;
+    }
+    
+    // 4. Check query params (for GET requests)
+    if (!token && req.query && req.query.token) {
+      token = req.query.token as string;
+    }
 
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.substring(7);
+    if (token) {
       const user = await authService.verifyToken(token);
       req.user = user;
     }

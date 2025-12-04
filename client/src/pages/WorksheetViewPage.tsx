@@ -5,6 +5,7 @@ import WorksheetNavigator from '../components/WorksheetNavigator';
 import RevisionButton from '../components/RevisionButton';
 import RatingWidget from '../components/RatingWidget';
 import LatexRenderer from '../components/LatexRenderer';
+import { authenticatedFetch } from '../utils/api';
 
 interface WorksheetData {
   id: string;
@@ -44,9 +45,8 @@ export default function WorksheetViewPage() {
 
   const fetchWorksheet = async () => {
     try {
-      const response = await fetch(
-        `http://localhost:3001/api/worksheets/${worksheetId}/progress`,
-        { credentials: 'include' }
+      const response = await authenticatedFetch(
+        `http://localhost:3001/api/worksheets/${worksheetId}/progress`
       );
 
       if (!response.ok) {
@@ -74,9 +74,8 @@ export default function WorksheetViewPage() {
       const skipCache = true; // TODO: Remove this once AI properly targets questions
       
       if (!skipCache) {
-        const questionResponse = await fetch(
-          `http://localhost:3001/api/worksheets/${worksheet.id}/question/${questionNumber}`,
-          { credentials: 'include' }
+        const questionResponse = await authenticatedFetch(
+          `http://localhost:3001/api/worksheets/${worksheet.id}/question/${questionNumber}`
         );
 
         if (questionResponse.ok) {
@@ -103,10 +102,9 @@ export default function WorksheetViewPage() {
       formData.append('questionNumber', questionNumber.toString());
       formData.append('worksheetId', worksheet.id);
 
-      const response = await fetch('http://localhost:3001/api/doubts/explain', {
+      const response = await authenticatedFetch('http://localhost:3001/api/doubts/explain', {
         method: 'POST',
         body: formData,
-        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -117,12 +115,11 @@ export default function WorksheetViewPage() {
       setExplanation(data);
 
       // Cache the explanation
-      await fetch(
+      await authenticatedFetch(
         `http://localhost:3001/api/worksheets/${worksheet.id}/question/${questionNumber}/cache`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
           body: JSON.stringify({ explanation: data, doubtId: data.doubtId }),
         }
       ).catch(err => console.error('Failed to cache:', err));
@@ -148,11 +145,10 @@ export default function WorksheetViewPage() {
     if (!worksheet) return;
 
     try {
-      await fetch(
+      await authenticatedFetch(
         `http://localhost:3001/api/worksheets/${worksheet.id}/skip/${currentQuestion}`,
         {
           method: 'POST',
-          credentials: 'include',
         }
       );
 
@@ -172,10 +168,9 @@ export default function WorksheetViewPage() {
   const handleToggleRevision = async (doubtId: string) => {
     // Implementation similar to DoubtExplanationPage
     try {
-      const response = await fetch('http://localhost:3001/api/revision/add', {
+      const response = await authenticatedFetch('http://localhost:3001/api/revision/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ doubtId }),
       });
 
@@ -192,10 +187,9 @@ export default function WorksheetViewPage() {
     if (!explanation?.doubtId) return;
 
     try {
-      const response = await fetch('http://localhost:3001/api/ratings/rate', {
+      const response = await authenticatedFetch('http://localhost:3001/api/ratings/rate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ doubtId: explanation.doubtId, rating }),
       });
 

@@ -4,6 +4,7 @@ import { ArrowLeft, Star, MessageCircle } from 'lucide-react';
 import LatexRenderer from '../components/LatexRenderer';
 import RevisionButton from '../components/RevisionButton';
 import RatingWidget from '../components/RatingWidget';
+import { authenticatedFetch, addTokenToUrl } from '../utils/api';
 
 interface ExplanationStep {
   number: number;
@@ -74,17 +75,13 @@ export default function DoubtExplanationPage() {
     // Fetch revision status and rating
     if (doubtId) {
       // Fetch revision status
-      fetch(`http://localhost:3001/api/revision/check/${doubtId}`, {
-        credentials: 'include',
-      })
+      authenticatedFetch(`http://localhost:3001/api/revision/check/${doubtId}`)
         .then((res) => res.json())
         .then((data) => setIsInRevision(data.isInRevision))
         .catch((err) => console.error('Error fetching revision status:', err));
 
       // Fetch rating
-      fetch(`http://localhost:3001/api/ratings/${doubtId}`, {
-        credentials: 'include',
-      })
+      authenticatedFetch(`http://localhost:3001/api/ratings/${doubtId}`)
         .then((res) => res.json())
         .then((data) => setCurrentRating(data.rating))
         .catch((err) => console.error('Error fetching rating:', err));
@@ -100,9 +97,7 @@ export default function DoubtExplanationPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(`http://localhost:3001/api/doubts/${doubtId}`, {
-        credentials: 'include',
-      });
+      const response = await authenticatedFetch(`http://localhost:3001/api/doubts/${doubtId}`);
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -127,9 +122,8 @@ export default function DoubtExplanationPage() {
     if (!doubtId) return;
 
     try {
-      const response = await fetch(`http://localhost:3001/api/doubts/${doubtId}/favorite`, {
+      const response = await authenticatedFetch(`http://localhost:3001/api/doubts/${doubtId}/favorite`, {
         method: 'POST',
-        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -157,7 +151,7 @@ export default function DoubtExplanationPage() {
     setIsSending(true);
 
     try {
-      const response = await fetch('http://localhost:3001/api/doubts/chat', {
+      const response = await authenticatedFetch('http://localhost:3001/api/doubts/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -166,7 +160,6 @@ export default function DoubtExplanationPage() {
           message: newMessage,
           conversationHistory: messages,
         }),
-        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -208,10 +201,9 @@ export default function DoubtExplanationPage() {
         ? `http://localhost:3001/api/revision/remove/${doubtId}`
         : 'http://localhost:3001/api/revision/add';
 
-      const response = await fetch(endpoint, {
+      const response = await authenticatedFetch(endpoint, {
         method: isInRevision ? 'DELETE' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: isInRevision ? undefined : JSON.stringify({ doubtId }),
       });
 
@@ -231,10 +223,9 @@ export default function DoubtExplanationPage() {
     if (!doubtId) return;
 
     try {
-      const response = await fetch('http://localhost:3001/api/ratings/rate', {
+      const response = await authenticatedFetch('http://localhost:3001/api/ratings/rate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ doubtId, rating }),
       });
 

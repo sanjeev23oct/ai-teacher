@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, BookmarkX, Filter } from 'lucide-react';
 import DashboardDoubtCard from '../components/DashboardDoubtCard';
+import { authenticatedFetch } from '../utils/api';
 
 export default function RevisionAreaPage() {
   const navigate = useNavigate();
@@ -25,9 +26,7 @@ export default function RevisionAreaPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('http://localhost:3001/api/revision/list', {
-        credentials: 'include',
-      });
+      const response = await authenticatedFetch('http://localhost:3001/api/revision/list');
 
       if (!response.ok) {
         throw new Error('Failed to fetch revision doubts');
@@ -231,11 +230,11 @@ export default function RevisionAreaPage() {
                   <span className="w-2 h-2 bg-primary rounded-full"></span>
                   {subject}
                   <span className="text-sm text-gray-500 font-normal">
-                    ({subjectDoubts.length})
+                    ({(subjectDoubts as any[]).length})
                   </span>
                 </h2>
                 <div className="space-y-3">
-                  {subjectDoubts.map((doubt) => (
+                  {(subjectDoubts as any[]).map((doubt: any) => (
                     <div key={doubt.id} className="relative group">
                       <DashboardDoubtCard doubt={doubt} />
                       <button

@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { getGuestDoubtIds, clearGuestDoubts } from '../utils/guestDoubtStorage';
 
 interface User {
   id: string;
@@ -54,6 +55,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const migrateGuestDoubts = async (authToken: string) => {
+    const guestDoubtIds = getGuestDoubtIds();
+    if (guestDoubtIds.length === 0) return;
+
+    try {
+      const response = await fetch('http://localhost:3001/api/doubts/migrate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({ doubtIds: guestDoubtIds })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`Migrated ${data.migratedCount} guest doubts to user account`);
+        clearGuestDoubts();
+      }
+    } catch (error) {
+      console.error('Failed to migrate guest doubts:', error);
+      // Don't throw - migration failure shouldn't block login
+    }
+  };
+
   const login = async (email: string, password: string) => {
     const response = await fetch('http://localhost:3001/api/auth/login', {
       method: 'POST',
@@ -72,6 +98,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user);
     setToken(data.token);
     localStorage.setItem('auth_token', data.token);
+
+    // Migrate any guest doubts to this user
+    await migrateGuestDoubts(data.token);
   };
 
   const signup = async (name: string, email: string, password: string, grade?: string, school?: string) => {
@@ -92,6 +121,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user);
     setToken(data.token);
     localStorage.setItem('auth_token', data.token);
+
+    // Migrate any guest doubts to this user
+    await migrateGuestDoubts(data.token);
   };
 
   const logout = () => {

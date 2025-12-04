@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Upload, FileText, X, Loader2, CheckCircle, Camera } from 'lucide-react';
+import { Upload, FileText, X, Loader2, CheckCircle } from 'lucide-react';
 import CameraCapture from './CameraCapture';
 
 interface DualUploadProps {

@@ -1,0 +1,21 @@
+{
+  "name": "ai-teacher",
+  "version": "1.0.0",
+  "description": "AI-powered educational platform",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "scripts": {
+    "install:all": "npm install --prefix client && npm install --prefix server",
+    "build:client": "npm run build --prefix client",
+    "build:server": "npx prisma generate --schema=server/prisma/schema.prisma",
+    "build": "npm run build:client && npm run build:server",
+    "start": "npm start --prefix server",
+    "dev:client": "npm run dev --prefix client",
+    "dev:server": "npm run dev --prefix server"
+  },
+  "keywords": ["ai", "education", "grading"],
+  "author": "",
+  "license": "ISC"
+}

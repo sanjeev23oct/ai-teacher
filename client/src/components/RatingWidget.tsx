@@ -8,7 +8,7 @@ interface RatingWidgetProps {
 }
 
 export default function RatingWidget({
-  doubtId,
+  doubtId: _doubtId,
   currentRating: initialRating,
   onRate,
 }: RatingWidgetProps) {
