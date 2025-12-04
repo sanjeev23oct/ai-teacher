@@ -1816,8 +1816,13 @@ app.get('/api/dashboard/stats', authMiddleware, async (req: Request, res: Respon
 
 // Catch-all route for React Router (must be last)
 if (process.env.NODE_ENV === 'production') {
-  app.get('*', (req: Request, res: Response) => {
-    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+  app.use((req: Request, res: Response) => {
+    // Only serve index.html for non-API routes
+    if (!req.path.startsWith('/api') && !req.path.startsWith('/uploads')) {
+      res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+    } else {
+      res.status(404).json({ error: 'Not found' });
+    }
   });
 }
 
