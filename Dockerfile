@@ -24,7 +24,8 @@ RUN npm run build --prefix client
 # Build server
 FROM dependencies AS build-server
 COPY server ./server
-RUN npx prisma generate --schema=server/prisma/schema.prisma
+WORKDIR /app/server
+RUN npm exec prisma generate
 
 # Production stage
 FROM node:20-alpine AS production
