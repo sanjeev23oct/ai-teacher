@@ -4,7 +4,7 @@ import { ArrowLeft, Star, MessageCircle } from 'lucide-react';
 import LatexRenderer from '../components/LatexRenderer';
 import RevisionButton from '../components/RevisionButton';
 import RatingWidget from '../components/RatingWidget';
-import { authenticatedFetch, addTokenToUrl } from '../utils/api';
+import { authenticatedFetch } from '../utils/api';
 
 interface ExplanationStep {
   number: number;
