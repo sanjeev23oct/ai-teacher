@@ -116,7 +116,7 @@ const MultiPageUpload: React.FC<MultiPageUploadProps> = ({ questionPaperId, onGr
                 formData.append('answerSheetPages', page.file);
             });
 
-            const response = await fetch('http://localhost:3001/api/grade/multi-page', {
+            const response = await fetch('/api/grade/multi-page', {
                 method: 'POST',
                 body: formData,
                 credentials: 'include'

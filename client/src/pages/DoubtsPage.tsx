@@ -7,6 +7,7 @@ import QuestionUpload from '../components/QuestionUpload';
 import { addGuestDoubt } from '../utils/guestDoubtStorage';
 import { useAuth } from '../contexts/AuthContext';
 import { authenticatedFetch } from '../utils/api';
+import { getApiUrl } from '../config';
 
 import type { Subject } from '../components/SubjectSelector';
 import type { Language } from '../components/LanguageSelector';
@@ -53,7 +54,7 @@ export default function DoubtsPage() {
       worksheetFormData.append('image', image);
       worksheetFormData.append('subject', subject);
       
-      const worksheetResponse = await authenticatedFetch('http://localhost:3001/api/worksheets/create', {
+      const worksheetResponse = await authenticatedFetch(getApiUrl('/api/worksheets/create'), {
         method: 'POST',
         body: worksheetFormData,
       });
@@ -80,7 +81,7 @@ export default function DoubtsPage() {
       formData.append('subject', subject);
       formData.append('language', language);
 
-      const response = await authenticatedFetch('http://localhost:3001/api/doubts/explain', {
+      const response = await authenticatedFetch(getApiUrl('/api/doubts/explain'), {
         method: 'POST',
         body: formData,
       });
@@ -129,7 +130,7 @@ export default function DoubtsPage() {
       formData.append('subject', subject);
       formData.append('language', language);
 
-      const response = await authenticatedFetch('http://localhost:3001/api/doubts/explain', {
+      const response = await authenticatedFetch(getApiUrl('/api/doubts/explain'), {
         method: 'POST',
         body: formData,
       });

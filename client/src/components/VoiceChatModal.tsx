@@ -124,7 +124,7 @@ const VoiceChatModal: React.FC<VoiceChatModalProps> = ({ questionContext, onClos
         setIsProcessing(true);
 
         try {
-            const response = await fetch('http://localhost:3001/api/voice/chat', {
+            const response = await fetch('/api/voice/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -232,7 +232,7 @@ const VoiceChatModal: React.FC<VoiceChatModalProps> = ({ questionContext, onClos
             
             console.log('🎤 Attempting ElevenLabs TTS...');
             // Try ElevenLabs first
-            const response = await fetch('http://localhost:3001/api/tts', {
+            const response = await fetch('/api/tts', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text: cleanText })

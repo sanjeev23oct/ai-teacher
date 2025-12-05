@@ -30,7 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const storedToken = localStorage.getItem('auth_token');
     if (storedToken) {
       // Verify token and get user info
-      fetch('http://localhost:3001/api/auth/me', {
+      fetch('/api/auth/me', {
         headers: {
           'Authorization': `Bearer ${storedToken}`
         }
@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (guestDoubtIds.length === 0) return;
 
     try {
-      const response = await fetch('http://localhost:3001/api/doubts/migrate', {
+      const response = await fetch('/api/doubts/migrate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -81,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const login = async (email: string, password: string) => {
-    const response = await fetch('http://localhost:3001/api/auth/login', {
+    const response = await fetch('/api/auth/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -104,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signup = async (name: string, email: string, password: string, grade?: string, school?: string) => {
-    const response = await fetch('http://localhost:3001/api/auth/signup', {
+    const response = await fetch('/api/auth/signup', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

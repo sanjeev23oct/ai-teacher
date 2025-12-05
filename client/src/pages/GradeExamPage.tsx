@@ -34,7 +34,7 @@ const GradeExamPage: React.FC = () => {
                 headers['Authorization'] = `Bearer ${token}`;
             }
             
-            const response = await fetch('http://localhost:3001/api/grade', {
+            const response = await fetch('/api/grade', {
                 method: 'POST',
                 headers,
                 body: formData,
@@ -72,7 +72,7 @@ const GradeExamPage: React.FC = () => {
                 headers['Authorization'] = `Bearer ${token}`;
             }
             
-            const response = await fetch('http://localhost:3001/api/grade', {
+            const response = await fetch('/api/grade', {
                 method: 'POST',
                 headers,
                 body: formData,

@@ -39,7 +39,7 @@ export default function HistoryPage() {
     }
 
     try {
-      const response = await fetch(`http://localhost:3001/api/exams/${examId}`, {
+      const response = await fetch(`/api/exams/${examId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -67,10 +67,10 @@ export default function HistoryPage() {
   const fetchData = async () => {
     try {
       const [historyRes, statsRes] = await Promise.all([
-        fetch('http://localhost:3001/api/exams/history', {
+        fetch('/api/exams/history', {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
-        fetch('http://localhost:3001/api/exams/stats', {
+        fetch('/api/exams/stats', {
           headers: { 'Authorization': `Bearer ${token}` }
         })
       ]);

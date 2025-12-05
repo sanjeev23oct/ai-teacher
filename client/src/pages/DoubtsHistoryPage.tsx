@@ -56,7 +56,7 @@ export default function DoubtsHistoryPage() {
         params.append('search', searchQuery);
       }
 
-      const response = await authenticatedFetch(`http://localhost:3001/api/doubts/history?${params}`);
+      const response = await authenticatedFetch(`/api/doubts/history?${params}`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch history');
@@ -185,7 +185,7 @@ export default function DoubtsHistoryPage() {
                   <div className="flex gap-4">
                     {doubt.questionThumbnail && (
                       <img
-                        src={`http://localhost:3001${doubt.questionThumbnail}`}
+                        src={`${doubt.questionThumbnail}`}
                         alt="Question"
                         className="w-20 h-20 object-cover rounded-lg flex-shrink-0"
                       />

@@ -67,7 +67,7 @@ const VoiceChat: React.FC = () => {
         setIsLoading(true);
 
         try {
-            const response = await fetch('http://localhost:3001/api/chat', {
+            const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -102,7 +102,7 @@ const VoiceChat: React.FC = () => {
             
             console.log('🎤 Attempting ElevenLabs TTS...');
             // Try ElevenLabs first
-            const response = await fetch('http://localhost:3001/api/tts', {
+            const response = await fetch('/api/tts', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text })

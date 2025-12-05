@@ -1,15 +1,13 @@
 // API Configuration
 // In production, API calls go to the same origin (server serves the client)
-// In development, proxy through Vite to localhost:3001
-export const API_BASE_URL = import.meta.env.VITE_API_URL || (
-  import.meta.env.PROD ? '' : 'http://localhost:3001'
-);
+// In development, proxy through Vite (or use relative URLs)
+export const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 // Helper function to build API URLs
 export const getApiUrl = (path: string) => {
   // Remove leading slash if present to avoid double slashes
-  const cleanPath = path.startsWith('/') ? path.slice(1) : path;
-  return `${API_BASE_URL}/${cleanPath}`;
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${API_BASE_URL}${cleanPath}`;
 };
 
 // Helper function for image URLs

@@ -55,7 +55,7 @@ export default function ExamDetailPage() {
     }
 
     try {
-      const response = await fetch(`http://localhost:3001/api/exams/${id}`, {
+      const response = await fetch(`/api/exams/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -90,7 +90,7 @@ export default function ExamDetailPage() {
 
   const fetchExam = async () => {
     try {
-      const response = await fetch(`http://localhost:3001/api/exams/${id}`, {
+      const response = await fetch(`/api/exams/${id}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -167,7 +167,7 @@ export default function ExamDetailPage() {
         {annotations && exam.answerSheetUrl && (
           <div className="mb-6">
             <AnnotatedExamViewer
-              imageUrl={`http://localhost:3001/${exam.answerSheetUrl}`}
+              imageUrl={`/${exam.answerSheetUrl}`}
               gradingResult={{
                 subject: exam.subject,
                 language: exam.language,

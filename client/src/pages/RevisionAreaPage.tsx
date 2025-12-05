@@ -26,7 +26,7 @@ export default function RevisionAreaPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await authenticatedFetch('http://localhost:3001/api/revision/list');
+      const response = await authenticatedFetch('/api/revision/list');
 
       if (!response.ok) {
         throw new Error('Failed to fetch revision doubts');
@@ -72,7 +72,7 @@ export default function RevisionAreaPage() {
   const handleRemoveFromRevision = async (doubtId: string) => {
     try {
       const response = await fetch(
-        `http://localhost:3001/api/revision/remove/${doubtId}`,
+        `/api/revision/remove/${doubtId}`,
         {
           method: 'DELETE',
           credentials: 'include',

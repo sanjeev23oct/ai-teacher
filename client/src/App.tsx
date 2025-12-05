@@ -27,7 +27,7 @@ const Home = () => {
   React.useEffect(() => {
     if (user && token) {
       // Fetch recent exams
-      fetch('http://localhost:3001/api/exams/history?limit=3', {
+      fetch('/api/exams/history?limit=3', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
         .then(res => res.json())
@@ -35,7 +35,7 @@ const Home = () => {
         .catch(err => console.error('Failed to fetch exams:', err));
       
       // Fetch stats
-      fetch('http://localhost:3001/api/exams/stats', {
+      fetch('/api/exams/stats', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
         .then(res => res.json())
@@ -43,7 +43,7 @@ const Home = () => {
         .catch(err => console.error('Failed to fetch stats:', err));
 
       // Fetch recent doubts
-      fetch('http://localhost:3001/api/dashboard/recent-doubts?limit=5', {
+      fetch('/api/dashboard/recent-doubts?limit=5', {
         credentials: 'include'
       })
         .then(res => res.json())
@@ -51,7 +51,7 @@ const Home = () => {
         .catch(err => console.error('Failed to fetch doubts:', err));
 
       // Fetch doubt stats
-      fetch('http://localhost:3001/api/dashboard/stats', {
+      fetch('/api/dashboard/stats', {
         credentials: 'include'
       })
         .then(res => res.json())

@@ -46,7 +46,7 @@ export default function WorksheetViewPage() {
   const fetchWorksheet = async () => {
     try {
       const response = await authenticatedFetch(
-        `http://localhost:3001/api/worksheets/${worksheetId}/progress`
+        `/api/worksheets/${worksheetId}/progress`
       );
 
       if (!response.ok) {
@@ -75,7 +75,7 @@ export default function WorksheetViewPage() {
       
       if (!skipCache) {
         const questionResponse = await authenticatedFetch(
-          `http://localhost:3001/api/worksheets/${worksheet.id}/question/${questionNumber}`
+          `/api/worksheets/${worksheet.id}/question/${questionNumber}`
         );
 
         if (questionResponse.ok) {
@@ -93,7 +93,7 @@ export default function WorksheetViewPage() {
       const formData = new FormData();
       
       // Fetch the worksheet image
-      const imageResponse = await fetch(`http://localhost:3001${worksheet.imageUrl}`);
+      const imageResponse = await fetch(`${worksheet.imageUrl}`);
       const imageBlob = await imageResponse.blob();
       
       formData.append('questionImage', imageBlob);
@@ -102,7 +102,7 @@ export default function WorksheetViewPage() {
       formData.append('questionNumber', questionNumber.toString());
       formData.append('worksheetId', worksheet.id);
 
-      const response = await authenticatedFetch('http://localhost:3001/api/doubts/explain', {
+      const response = await authenticatedFetch('/api/doubts/explain', {
         method: 'POST',
         body: formData,
       });
@@ -116,7 +116,7 @@ export default function WorksheetViewPage() {
 
       // Cache the explanation
       await authenticatedFetch(
-        `http://localhost:3001/api/worksheets/${worksheet.id}/question/${questionNumber}/cache`,
+        `/api/worksheets/${worksheet.id}/question/${questionNumber}/cache`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -146,7 +146,7 @@ export default function WorksheetViewPage() {
 
     try {
       await authenticatedFetch(
-        `http://localhost:3001/api/worksheets/${worksheet.id}/skip/${currentQuestion}`,
+        `/api/worksheets/${worksheet.id}/skip/${currentQuestion}`,
         {
           method: 'POST',
         }
@@ -168,7 +168,7 @@ export default function WorksheetViewPage() {
   const handleToggleRevision = async (doubtId: string) => {
     // Implementation similar to DoubtExplanationPage
     try {
-      const response = await authenticatedFetch('http://localhost:3001/api/revision/add', {
+      const response = await authenticatedFetch('/api/revision/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ doubtId }),
@@ -187,7 +187,7 @@ export default function WorksheetViewPage() {
     if (!explanation?.doubtId) return;
 
     try {
-      const response = await authenticatedFetch('http://localhost:3001/api/ratings/rate', {
+      const response = await authenticatedFetch('/api/ratings/rate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ doubtId: explanation.doubtId, rating }),
@@ -240,7 +240,7 @@ export default function WorksheetViewPage() {
           <div className="bg-surface rounded-lg p-6">
             <h2 className="text-xl font-semibold text-white mb-4">Worksheet</h2>
             <img
-              src={`http://localhost:3001${worksheet.imageUrl}`}
+              src={`${worksheet.imageUrl}`}
               alt="Worksheet"
               className="w-full rounded-lg"
             />

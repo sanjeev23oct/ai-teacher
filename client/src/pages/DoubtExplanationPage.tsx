@@ -75,13 +75,13 @@ export default function DoubtExplanationPage() {
     // Fetch revision status and rating
     if (doubtId) {
       // Fetch revision status
-      authenticatedFetch(`http://localhost:3001/api/revision/check/${doubtId}`)
+      authenticatedFetch(`/api/revision/check/${doubtId}`)
         .then((res) => res.json())
         .then((data) => setIsInRevision(data.isInRevision))
         .catch((err) => console.error('Error fetching revision status:', err));
 
       // Fetch rating
-      authenticatedFetch(`http://localhost:3001/api/ratings/${doubtId}`)
+      authenticatedFetch(`/api/ratings/${doubtId}`)
         .then((res) => res.json())
         .then((data) => setCurrentRating(data.rating))
         .catch((err) => console.error('Error fetching rating:', err));
@@ -97,7 +97,7 @@ export default function DoubtExplanationPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await authenticatedFetch(`http://localhost:3001/api/doubts/${doubtId}`);
+      const response = await authenticatedFetch(`/api/doubts/${doubtId}`);
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -122,7 +122,7 @@ export default function DoubtExplanationPage() {
     if (!doubtId) return;
 
     try {
-      const response = await authenticatedFetch(`http://localhost:3001/api/doubts/${doubtId}/favorite`, {
+      const response = await authenticatedFetch(`/api/doubts/${doubtId}/favorite`, {
         method: 'POST',
       });
 
@@ -151,7 +151,7 @@ export default function DoubtExplanationPage() {
     setIsSending(true);
 
     try {
-      const response = await authenticatedFetch('http://localhost:3001/api/doubts/chat', {
+      const response = await authenticatedFetch('/api/doubts/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -198,8 +198,8 @@ export default function DoubtExplanationPage() {
   const handleToggleRevision = async (doubtId: string) => {
     try {
       const endpoint = isInRevision
-        ? `http://localhost:3001/api/revision/remove/${doubtId}`
-        : 'http://localhost:3001/api/revision/add';
+        ? `/api/revision/remove/${doubtId}`
+        : '/api/revision/add';
 
       const response = await authenticatedFetch(endpoint, {
         method: isInRevision ? 'DELETE' : 'POST',
@@ -223,7 +223,7 @@ export default function DoubtExplanationPage() {
     if (!doubtId) return;
 
     try {
-      const response = await authenticatedFetch('http://localhost:3001/api/ratings/rate', {
+      const response = await authenticatedFetch('/api/ratings/rate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ doubtId, rating }),
@@ -323,7 +323,7 @@ export default function DoubtExplanationPage() {
               <h2 className="text-xl font-semibold text-white mb-4">Question</h2>
               {explanation.questionImage && (
                 <img
-                  src={`http://localhost:3001${explanation.questionImage}`}
+                  src={`${explanation.questionImage}`}
                   alt="Question"
                   className="w-full rounded-lg mb-4"
                 />
