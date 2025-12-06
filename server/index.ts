@@ -1068,7 +1068,10 @@ app.post('/api/tts', async (req: Request, res: Response) => {
         const audioBuffer = await textToSpeech(text);
 
         if (!audioBuffer) {
-            return res.status(503).json({ error: 'TTS service not available' });
+            return res.status(503).json({ 
+                error: 'TTS service not available',
+                message: 'ElevenLabs API key not configured. Add ELEVENLABS_API_KEY to environment variables.'
+            });
         }
 
         res.set({

@@ -11,6 +11,8 @@ export async function textToSpeech(text: string): Promise<Buffer | null> {
   }
 
   try {
+    console.log('Attempting ElevenLabs TTS generation...');
+    
     // Use multilingual turbo model for Hinglish support
     const audio = await elevenlabs.generate({
       voice: "pNInz6obpgDQGcFmaJgB", // Adam - works well with multilingual
@@ -30,9 +32,12 @@ export async function textToSpeech(text: string): Promise<Buffer | null> {
       chunks.push(chunk);
     }
     
-    return Buffer.concat(chunks);
-  } catch (error) {
+    const buffer = Buffer.concat(chunks);
+    console.log(`ElevenLabs TTS success: ${buffer.length} bytes`);
+    return buffer;
+  } catch (error: any) {
     console.error('ElevenLabs TTS error:', error);
+    console.error('Error details:', error.message, error.statusCode);
     return null;
   }
 }
