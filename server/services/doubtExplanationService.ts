@@ -215,26 +215,34 @@ Please provide your response in the required JSON format.`;
     };
   }
 
-  // Save to database
-  const doubt = await prisma.doubt.create({
-    data: {
-      userId,
-      questionImage: imageUrl,
-      questionText: questionText || 'See image',
-      subject,
-      language,
-      explanation: JSON.stringify(aiResponse),
-      annotations: JSON.stringify(aiResponse.annotations || []),
-      imageDimensions: imageDimensions ? JSON.stringify(imageDimensions) : null,
-      conversationId,
-      messageCount: 0,
-    },
-  });
+  // Only save to database if there's an image (not for text-only questions)
+  let doubtId: string;
+  
+  if (questionImage && imageUrl) {
+    const doubt = await prisma.doubt.create({
+      data: {
+        userId,
+        questionImage: imageUrl,
+        questionText: questionText || 'See image',
+        subject,
+        language,
+        explanation: JSON.stringify(aiResponse),
+        annotations: JSON.stringify(aiResponse.annotations || []),
+        imageDimensions: imageDimensions ? JSON.stringify(imageDimensions) : null,
+        conversationId,
+        messageCount: 0,
+      },
+    });
+    doubtId = doubt.id;
+  } else {
+    // For text-only questions, generate a temporary ID (not saved to DB)
+    doubtId = `temp-${uuidv4()}`;
+  }
 
   // Return structured response
   return {
-    doubtId: doubt.id,
-    conversationId: doubt.conversationId,
+    doubtId,
+    conversationId,
     questionImage: imageUrl,
     questionText: questionText || 'See image',
     subject,

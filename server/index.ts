@@ -986,28 +986,28 @@ app.post('/api/voice/chat', async (req: Request, res: Response) => {
 
         const useGemini = genAI && process.env.USE_GEMINI !== 'false';
 
-        if (useGemini) {
-            const model = genAI!.getGenerativeModel({ model: "gemini-2.5-flash" });
+        // Import AI service
+        const { aiService } = await import('./services/aiService');
 
-            // Determine subject-specific tone
-            const subject = context.topic || 'Mathematics';
-            const subjectLower = subject.toLowerCase();
-            
-            let subjectTone = '';
-            if (subjectLower.includes('math') || subjectLower.includes('algebra') || 
-                subjectLower.includes('geometry') || subjectLower.includes('trigonometry')) {
-                subjectTone = 'Mathematics teacher who explains concepts step-by-step with clear logic';
-            } else if (subjectLower.includes('science') || subjectLower.includes('physics') || 
-                       subjectLower.includes('chemistry') || subjectLower.includes('biology')) {
-                subjectTone = 'Science teacher who connects concepts to real-world examples';
-            } else if (subjectLower.includes('english') || subjectLower.includes('language')) {
-                subjectTone = 'Language teacher who encourages expression and creativity';
-            } else {
-                subjectTone = 'teacher who makes learning engaging and relatable';
-            }
+        // Determine subject-specific tone
+        const subject = context.topic || 'Mathematics';
+        const subjectLower = subject.toLowerCase();
+        
+        let subjectTone = '';
+        if (subjectLower.includes('math') || subjectLower.includes('algebra') || 
+            subjectLower.includes('geometry') || subjectLower.includes('trigonometry')) {
+            subjectTone = 'Mathematics teacher who explains concepts step-by-step with clear logic';
+        } else if (subjectLower.includes('science') || subjectLower.includes('physics') || 
+                   subjectLower.includes('chemistry') || subjectLower.includes('biology')) {
+            subjectTone = 'Science teacher who connects concepts to real-world examples';
+        } else if (subjectLower.includes('english') || subjectLower.includes('language')) {
+            subjectTone = 'Language teacher who encourages expression and creativity';
+        } else {
+            subjectTone = 'teacher who makes learning engaging and relatable';
+        }
 
-            // Build context-aware prompt with Hinglish support
-            const systemPrompt = `You are a warm, friendly Indian ${subjectTone}. You speak naturally in Hinglish (mix of Hindi and English). A student is asking about a specific question from their exam.
+        // Build context-aware prompt with Hinglish support
+        const systemPrompt = `You are a warm, friendly Indian ${subjectTone}. You speak naturally in Hinglish (mix of Hindi and English). A student is asking about a specific question from their exam.
 
 Question: ${context.question}
 Student's Answer: ${context.studentAnswer}
@@ -1033,52 +1033,21 @@ Provide clear, concise explanations in Hinglish. Reference the specific mistake 
 
 If they ask for practice, acknowledge that you can help generate similar problems.`;
 
-            // Build conversation history
-            const conversationText = conversationHistory && conversationHistory.length > 0
-                ? '\n\nPrevious conversation:\n' + conversationHistory.map((msg: any) => 
-                    `${msg.role === 'user' ? 'Student' : 'Teacher'}: ${msg.content}`
-                  ).join('\n')
-                : '';
+        // Build conversation history
+        const conversationText = conversationHistory && conversationHistory.length > 0
+            ? '\n\nPrevious conversation:\n' + conversationHistory.map((msg: any) => 
+                `${msg.role === 'user' ? 'Student' : 'Teacher'}: ${msg.content}`
+              ).join('\n')
+            : '';
 
-            const fullPrompt = `${systemPrompt}${conversationText}\n\nStudent: ${message}\n\nTeacher:`;
+        const fullPrompt = `${systemPrompt}${conversationText}\n\nStudent: ${message}\n\nTeacher:`;
 
-            const result = await model.generateContent(fullPrompt);
-            const text = result.response.text();
+        // Use AI service (respects .env configuration)
+        const result = await aiService.generateContent({
+            prompt: fullPrompt,
+        });
 
-            res.json({ text });
-        } else {
-            // Fallback to Ollama
-            const messages: any[] = [
-                {
-                    role: "system",
-                    content: `You are a helpful mathematics teacher. A student is asking about: ${context.question}. Their answer was: ${context.studentAnswer}. Your feedback: ${context.feedback}. Help them understand their mistake.`
-                }
-            ];
-
-            if (conversationHistory && Array.isArray(conversationHistory)) {
-                conversationHistory.forEach((msg: any) => {
-                    messages.push({
-                        role: msg.role === 'user' ? 'user' : 'assistant',
-                        content: msg.content
-                    });
-                });
-            }
-
-            messages.push({
-                role: 'user',
-                content: message
-            });
-
-            const response = await ollama.chat.completions.create({
-                model: "llava:13b",
-                messages: messages,
-                max_tokens: 500,
-                temperature: 0.7
-            });
-
-            const text = response.choices[0].message.content || '';
-            res.json({ text });
-        }
+        res.json({ text: result.text });
 
     } catch (error) {
         console.error('Error in voice chat:', error);
@@ -1122,24 +1091,21 @@ app.post('/api/chat', async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Message is required' });
         }
 
-        // Convert history to OpenAI format
-        const messages: any[] = [
-            {
-                role: "system",
-                content: "You are a helpful and knowledgeable AI teacher. You help students with their doubts and explain concepts clearly. Keep your answers concise and conversational."
-            }
-        ];
+        // Import AI service
+        const { aiService } = await import('./services/aiService');
 
-        // Add history if provided
+        // Convert history to standard format
+        const conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+        
         if (history && Array.isArray(history)) {
             history.forEach((msg: any) => {
                 if (msg.role === 'user') {
-                    messages.push({
+                    conversationHistory.push({
                         role: 'user',
                         content: msg.parts[0].text
                     });
                 } else if (msg.role === 'model') {
-                    messages.push({
+                    conversationHistory.push({
                         role: 'assistant',
                         content: msg.parts[0].text
                     });
@@ -1147,25 +1113,22 @@ app.post('/api/chat', async (req: Request, res: Response) => {
             });
         }
 
-        // Add current message
-        messages.push({
-            role: 'user',
-            content: message
+        // Build prompt with system message
+        const systemPrompt = "You are a helpful and knowledgeable AI teacher. You help students with their doubts and explain concepts clearly. Keep your answers concise and conversational.";
+        const fullPrompt = conversationHistory.length > 0 
+            ? `${systemPrompt}\n\nUser: ${message}`
+            : `${systemPrompt}\n\nUser: ${message}`;
+
+        // Use AI service (respects .env configuration)
+        const result = await aiService.generateContent({
+            prompt: fullPrompt,
         });
 
-        const response = await ollama.chat.completions.create({
-            model: "llava:13b",
-            messages: messages,
-            max_tokens: 1000,
-            temperature: 0.7
-        });
-
-        const text = response.choices[0].message.content || '';
-        res.json({ text });
+        res.json({ text: result.text });
 
     } catch (error) {
         console.error('Error in chat:', error);
-        res.status(500).json({ error: 'Failed to process chat. Make sure Ollama is running and llava model is pulled.' });
+        res.status(500).json({ error: 'Failed to process chat request' });
     }
 });
 

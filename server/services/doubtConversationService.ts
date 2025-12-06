@@ -49,32 +49,36 @@ export async function sendMessage(params: {
   const result = await aiService.generateContent({ prompt: fullPrompt });
   const response = result.text;
 
-  // Save messages to database
-  await prisma.doubtMessage.create({
-    data: {
-      doubtId,
-      role: 'user',
-      content: message,
-    },
-  });
-
-  await prisma.doubtMessage.create({
-    data: {
-      doubtId,
-      role: 'assistant',
-      content: response,
-    },
-  });
-
-  // Update message count
-  await prisma.doubt.update({
-    where: { id: doubtId },
-    data: {
-      messageCount: {
-        increment: 2,
+  // Only save to database if this is a real doubt (not a temp ID)
+  if (!doubtId.startsWith('temp-')) {
+    // Save user message
+    await prisma.doubtMessage.create({
+      data: {
+        doubtId,
+        role: 'user',
+        content: message,
       },
-    },
-  });
+    });
+
+    // Save assistant response
+    await prisma.doubtMessage.create({
+      data: {
+        doubtId,
+        role: 'assistant',
+        content: response,
+      },
+    });
+
+    // Update message count
+    await prisma.doubt.update({
+      where: { id: doubtId },
+      data: {
+        messageCount: {
+          increment: 2,
+        },
+      },
+    });
+  }
 
   return { response };
 }
@@ -127,30 +131,34 @@ export async function* streamResponse(params: {
     yield chunk;
   }
 
-  // Save messages to database after streaming completes
-  await prisma.doubtMessage.create({
-    data: {
-      doubtId,
-      role: 'user',
-      content: message,
-    },
-  });
-
-  await prisma.doubtMessage.create({
-    data: {
-      doubtId,
-      role: 'assistant',
-      content: fullResponse,
-    },
-  });
-
-  // Update message count
-  await prisma.doubt.update({
-    where: { id: doubtId },
-    data: {
-      messageCount: {
-        increment: 2,
+  // Only save to database if this is a real doubt (not a temp ID)
+  if (!doubtId.startsWith('temp-')) {
+    // Save user message
+    await prisma.doubtMessage.create({
+      data: {
+        doubtId,
+        role: 'user',
+        content: message,
       },
-    },
-  });
+    });
+
+    // Save assistant response
+    await prisma.doubtMessage.create({
+      data: {
+        doubtId,
+        role: 'assistant',
+        content: fullResponse,
+      },
+    });
+
+    // Update message count
+    await prisma.doubt.update({
+      where: { id: doubtId },
+      data: {
+        messageCount: {
+          increment: 2,
+        },
+      },
+    });
+  }
 }
