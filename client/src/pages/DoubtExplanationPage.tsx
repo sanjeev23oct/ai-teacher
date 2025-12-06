@@ -4,6 +4,7 @@ import { ArrowLeft, Star, MessageCircle } from 'lucide-react';
 import LatexRenderer from '../components/LatexRenderer';
 import RevisionButton from '../components/RevisionButton';
 import RatingWidget from '../components/RatingWidget';
+import VoiceExplanationPlayer from '../components/VoiceExplanationPlayer';
 import { authenticatedFetch } from '../utils/api';
 
 interface ExplanationStep {
@@ -329,6 +330,15 @@ export default function DoubtExplanationPage() {
                 />
               )}
               <p className="text-gray-300">{explanation.questionText}</p>
+            </div>
+
+            {/* Voice Player */}
+            <div className="flex justify-center">
+              <VoiceExplanationPlayer
+                text={`${explanation.whatQuestionAsks}. ${explanation.steps.map(s => `${s.title}. ${s.explanation}`).join('. ')}. ${explanation.finalAnswer}`}
+                language={explanation.language}
+                autoPlay={true}
+              />
             </div>
 
             {/* What Question Asks */}
