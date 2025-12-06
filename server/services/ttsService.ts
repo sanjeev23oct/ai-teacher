@@ -4,6 +4,10 @@ const elevenlabs = process.env.ELEVENLABS_API_KEY
   ? new ElevenLabsClient({ apiKey: process.env.ELEVENLABS_API_KEY })
   : null;
 
+// Configuration from environment variables
+const VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'zT03pEAEi0VHKciJODfn';
+const MODEL_ID = process.env.ELEVENLABS_MODEL_ID || 'eleven_turbo_v2_5';
+
 export async function textToSpeech(text: string): Promise<Buffer | null> {
   if (!elevenlabs) {
     console.log('ElevenLabs not configured, skipping TTS');
@@ -11,13 +15,13 @@ export async function textToSpeech(text: string): Promise<Buffer | null> {
   }
 
   try {
-    console.log('Attempting ElevenLabs TTS generation...');
+    console.log(`Attempting ElevenLabs TTS with voice: ${VOICE_ID}, model: ${MODEL_ID}`);
     
     // Use multilingual turbo model for Hinglish support
     const audio = await elevenlabs.generate({
-      voice: "pNInz6obpgDQGcFmaJgB", // Adam - works well with multilingual
+      voice: VOICE_ID,
       text: text,
-      model_id: "eleven_turbo_v2_5", // Turbo model supports multilingual
+      model_id: MODEL_ID,
       voice_settings: {
         stability: 0.5, // Slightly lower for natural code-switching
         similarity_boost: 0.75, // Good balance for mixed languages
@@ -52,7 +56,7 @@ export async function textToSpeechHinglish(text: string): Promise<Buffer | null>
   try {
     // Try using a voice that handles Indian accent and Hinglish better
     const audio = await elevenlabs.generate({
-      voice: "pNInz6obpgDQGcFmaJgB", // Can be replaced with Indian voice ID if available
+      voice: "zT03pEAEi0VHKciJODfn", // Custom voice ID
       text: text,
       model_id: "eleven_multilingual_v2", // Better for Hinglish code-switching
       voice_settings: {
