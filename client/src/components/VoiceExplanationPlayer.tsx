@@ -3,13 +3,11 @@ import { Volume2, VolumeX, Loader2 } from 'lucide-react';
 
 interface VoiceExplanationPlayerProps {
   text: string;
-  language: string;
   autoPlay?: boolean;
 }
 
 export default function VoiceExplanationPlayer({ 
   text, 
-  language, 
   autoPlay = true 
 }: VoiceExplanationPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);

@@ -336,7 +336,6 @@ export default function DoubtExplanationPage() {
             <div className="flex justify-center">
               <VoiceExplanationPlayer
                 text={`${explanation.whatQuestionAsks}. ${explanation.steps.map(s => `${s.title}. ${s.explanation}`).join('. ')}. ${explanation.finalAnswer}`}
-                language={explanation.language}
                 autoPlay={true}
               />
             </div>
