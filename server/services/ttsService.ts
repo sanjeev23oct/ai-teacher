@@ -18,6 +18,12 @@ function humanizeMathText(text: string): string {
   // Remove code blocks (ASCII art) - don't read them aloud
   humanized = humanized.replace(/```[\s\S]*?```/g, ' [diagram shown] ');
   
+  // Remove markdown formatting
+  humanized = humanized.replace(/\*\*(.*?)\*\*/g, '$1'); // Bold
+  humanized = humanized.replace(/\*(.*?)\*/g, '$1'); // Italic
+  humanized = humanized.replace(/__(.*?)__/g, '$1'); // Bold
+  humanized = humanized.replace(/_(.*?)_/g, '$1'); // Italic
+  
   // Only handle symbols that might slip through from AI
   // The AI is now instructed to write speech-friendly text
   

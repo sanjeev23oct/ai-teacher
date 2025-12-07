@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Volume2, Loader2, Send, BookOpen, GraduationCap } from 'lucide-react';
+import { Mic, MicOff, Volume2, Loader2, Send, BookOpen, GraduationCap, Camera, Image as ImageIcon, X } from 'lucide-react';
 
 interface Message {
     role: 'user' | 'model';
     text: string;
+    image?: string;
 }
 
 const VoiceChat: React.FC = () => {
@@ -17,9 +18,23 @@ const VoiceChat: React.FC = () => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [lastResponseText, setLastResponseText] = useState<string>('');
+    const [uploadedImage, setUploadedImage] = useState<File | null>(null);
+    const [imagePreview, setImagePreview] = useState<string>('');
     const recognitionRef = useRef<any>(null);
     const synthRef = useRef<SpeechSynthesis>(window.speechSynthesis);
     const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Simple markdown renderer for bold text
+    const renderMarkdown = (text: string) => {
+        const parts = text.split(/(\*\*.*?\*\*)/g);
+        return parts.map((part, i) => {
+            if (part.startsWith('**') && part.endsWith('**')) {
+                return <strong key={i} className="font-bold text-white">{part.slice(2, -2)}</strong>;
+            }
+            return <span key={i}>{part}</span>;
+        });
+    };
 
     useEffect(() => {
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -70,36 +85,86 @@ const VoiceChat: React.FC = () => {
         }
     };
 
-    const handleSendMessage = async (text: string) => {
-        if (!text.trim()) return;
+    const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setUploadedImage(file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagePreview(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
 
-        const newMessages = [...messages, { role: 'user' as const, text }];
-        setMessages(newMessages);
+    const removeImage = () => {
+        setUploadedImage(null);
+        setImagePreview('');
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+
+    const handleSendMessage = async (text: string) => {
+        if (!text.trim() && !uploadedImage) return;
+
+        // Add user message with image if present
+        const userMessage: Message = {
+            role: 'user' as const,
+            text: text || 'Please explain this image',
+            image: imagePreview || undefined
+        };
+        
+        setMessages(prev => [...prev, userMessage]);
         setTranscript('');
         setIsLoading(true);
 
         try {
-            const response = await fetch('/api/voice-tutor/chat', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    message: text,
-                    class: selectedClass,
-                    subject: selectedSubject,
-                    history: messages.map(m => ({
-                        role: m.role,
-                        parts: [{ text: m.text }]
-                    }))
-                }),
-            });
+            let response;
+            
+            if (uploadedImage) {
+                // Send with image
+                const formData = new FormData();
+                formData.append('image', uploadedImage);
+                formData.append('message', text || 'Please explain this question');
+                formData.append('class', selectedClass);
+                formData.append('subject', selectedSubject);
+                formData.append('history', JSON.stringify(messages.map(m => ({
+                    role: m.role,
+                    parts: [{ text: m.text }]
+                }))));
+
+                response = await fetch('/api/voice-tutor/chat-with-image', {
+                    method: 'POST',
+                    body: formData,
+                });
+            } else {
+                // Text only
+                response = await fetch('/api/voice-tutor/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: text,
+                        class: selectedClass,
+                        subject: selectedSubject,
+                        history: messages.map(m => ({
+                            role: m.role,
+                            parts: [{ text: m.text }]
+                        }))
+                    }),
+                });
+            }
 
             const data = await response.json();
             const aiResponse = data.text;
 
             setMessages(prev => [...prev, { role: 'model' as const, text: aiResponse }]);
             setLastResponseText(aiResponse);
+            
+            // Clear image after sending
+            removeImage();
             
             // Start speaking immediately without waiting
             speak(aiResponse).catch(err => console.error('Speech error:', err));
@@ -318,6 +383,13 @@ const VoiceChat: React.FC = () => {
                                 ? 'bg-primary text-white rounded-br-none'
                                 : 'bg-gray-800 text-gray-200 rounded-bl-none'
                             }`}>
+                            {msg.image && (
+                                <img 
+                                    src={msg.image} 
+                                    alt="Question" 
+                                    className="max-w-full rounded mb-2 max-h-48 object-contain"
+                                />
+                            )}
                             {msg.role === 'model' ? (
                                 <div className="space-y-2">
                                     {msg.text.split('```').map((part, i) => {
@@ -331,10 +403,10 @@ const VoiceChat: React.FC = () => {
                                                 </pre>
                                             );
                                         } else {
-                                            // Regular text
+                                            // Regular text with markdown rendering
                                             return (
-                                                <div key={i} className="whitespace-pre-wrap">
-                                                    {part}
+                                                <div key={i} className="whitespace-pre-wrap prose prose-invert prose-sm max-w-none">
+                                                    {renderMarkdown(part)}
                                                 </div>
                                             );
                                         }
@@ -374,8 +446,45 @@ const VoiceChat: React.FC = () => {
                 </button>
             </div>
 
+            {/* Image Preview */}
+            {imagePreview && (
+                <div className="bg-surface border border-gray-800 border-t-0 px-4 py-3">
+                    <div className="relative inline-block">
+                        <img 
+                            src={imagePreview} 
+                            alt="Preview" 
+                            className="max-h-32 rounded border border-gray-700"
+                        />
+                        <button
+                            onClick={removeImage}
+                            className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 rounded-full p-1"
+                        >
+                            <X className="w-4 h-4 text-white" />
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Controls */}
-            <div className="flex items-center space-x-3 px-4 pb-4">
+            <div className="flex items-center space-x-2 px-4 pb-4">
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleImageSelect}
+                    className="hidden"
+                />
+                
+                <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isLoading}
+                    className="p-4 rounded-full bg-gray-700 hover:bg-gray-600 transition-all shadow-lg disabled:opacity-50"
+                    title="Upload image"
+                >
+                    <Camera className="h-6 w-6 text-white" />
+                </button>
+
                 <button
                     onClick={toggleListening}
                     disabled={isLoading}
@@ -393,13 +502,13 @@ const VoiceChat: React.FC = () => {
                         value={transcript}
                         onChange={(e) => setTranscript(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleSendMessage(transcript)}
-                        placeholder={isListening ? "Listening..." : "Type a message..."}
+                        placeholder={isListening ? "Listening..." : "Type or upload image..."}
                         className="input-field pr-10"
                         disabled={isListening}
                     />
                     <button
                         onClick={() => handleSendMessage(transcript)}
-                        disabled={!transcript.trim() || isLoading}
+                        disabled={(!transcript.trim() && !uploadedImage) || isLoading}
                         className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white disabled:opacity-50"
                     >
                         <Send className="h-5 w-5" />

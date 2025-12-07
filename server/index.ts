@@ -1135,7 +1135,91 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     }
 });
 
-// CBSE Class 10 Voice Tutor Endpoint
+// CBSE Class 10 Voice Tutor with Image Support
+app.post('/api/voice-tutor/chat-with-image', upload.single('image'), async (req: Request, res: Response) => {
+    try {
+        const { message, class: classNum, subject, history } = req.body;
+        const imageFile = req.file;
+
+        if (!classNum || !subject) {
+            return res.status(400).json({ error: 'Class and subject are required' });
+        }
+
+        if (!imageFile) {
+            return res.status(400).json({ error: 'Image is required' });
+        }
+
+        // Import CBSE prompts and AI service
+        const { getCBSEClass10Prompt, isSupportedClass, getUnsupportedClassMessage } = await import('./prompts/cbseClass10Prompts');
+        const { aiService } = await import('./services/aiService');
+
+        // Check if class is supported
+        if (!isSupportedClass(classNum)) {
+            const boundaryMessage = getUnsupportedClassMessage(classNum, subject);
+            return res.json({ text: boundaryMessage });
+        }
+
+        // Get subject-specific CBSE Class 10 prompt
+        const systemPrompt = getCBSEClass10Prompt(subject as any);
+
+        // Read image file
+        const imageBuffer = fs.readFileSync(imageFile.path);
+        const imageBase64 = imageBuffer.toString('base64');
+
+        // Convert history to standard format
+        const conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+        
+        if (history) {
+            const parsedHistory = typeof history === 'string' ? JSON.parse(history) : history;
+            if (Array.isArray(parsedHistory)) {
+                parsedHistory.forEach((msg: any) => {
+                    if (msg.role === 'user') {
+                        conversationHistory.push({
+                            role: 'user',
+                            content: msg.parts[0].text
+                        });
+                    } else if (msg.role === 'model') {
+                        conversationHistory.push({
+                            role: 'assistant',
+                            content: msg.parts[0].text
+                        });
+                    }
+                });
+            }
+        }
+
+        // Build full prompt with conversation history
+        let fullPrompt = systemPrompt + '\n\n';
+        
+        if (conversationHistory.length > 0) {
+            fullPrompt += 'Previous conversation:\n';
+            conversationHistory.forEach(msg => {
+                fullPrompt += `${msg.role === 'user' ? 'Student' : 'Teacher'}: ${msg.content}\n`;
+            });
+            fullPrompt += '\n';
+        }
+        
+        fullPrompt += `Student uploaded an image and asks: ${message || 'Please explain this question'}\n\nTeacher:`;
+
+        // Use AI service with image
+        const result = await aiService.generateContent({
+            prompt: fullPrompt,
+            imageBase64,
+            imageMimeType: 'image/jpeg'
+        });
+
+        // Clean up uploaded file
+        fs.unlinkSync(imageFile.path);
+
+        res.json({ text: result.text });
+
+    } catch (error) {
+        console.error('Error in voice tutor image chat:', error);
+        res.status(500).json({ error: 'Failed to process image request' });
+    }
+});
+
+// CBSE Class 10 Voice Tutor Endpoint (text only)
 app.post('/api/voice-tutor/chat', async (req: Request, res: Response) => {
     try {
         const { message, class: classNum, subject, history } = req.body;
