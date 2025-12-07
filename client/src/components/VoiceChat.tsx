@@ -236,9 +236,9 @@ const VoiceChat: React.FC = () => {
         try {
             setIsSpeaking(true);
             
-            console.log('🎤 Attempting ElevenLabs TTS...');
-            // Try ElevenLabs first
-            const response = await fetch('/api/tts', {
+            console.log('🎤 Attempting ElevenLabs streaming TTS...');
+            // Try ElevenLabs streaming first (faster response)
+            const response = await fetch('/api/tts/stream', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text })
@@ -246,12 +246,38 @@ const VoiceChat: React.FC = () => {
 
             console.log('TTS Response status:', response.status);
             
-            if (response.ok) {
-                console.log('✅ ElevenLabs TTS success! Playing audio...');
-                const audioBlob = await response.blob();
-                const audioUrl = URL.createObjectURL(audioBlob);
+            if (response.ok && response.body) {
+                console.log('✅ ElevenLabs streaming TTS success! Playing audio...');
+                
+                // Create MediaSource for streaming playback
+                const mediaSource = new MediaSource();
+                const audioUrl = URL.createObjectURL(mediaSource);
                 const audio = new Audio(audioUrl);
                 currentAudioRef.current = audio;
+                
+                mediaSource.addEventListener('sourceopen', async () => {
+                    const sourceBuffer = mediaSource.addSourceBuffer('audio/mpeg');
+                    const reader = response.body!.getReader();
+                    
+                    const pump = async () => {
+                        const { done, value } = await reader.read();
+                        if (done) {
+                            if (!sourceBuffer.updating) {
+                                mediaSource.endOfStream();
+                            } else {
+                                sourceBuffer.addEventListener('updateend', () => {
+                                    mediaSource.endOfStream();
+                                }, { once: true });
+                            }
+                            return;
+                        }
+                        
+                        sourceBuffer.appendBuffer(value);
+                        sourceBuffer.addEventListener('updateend', pump, { once: true });
+                    };
+                    
+                    pump();
+                });
                 
                 audio.onended = () => {
                     setIsSpeaking(false);
@@ -267,7 +293,35 @@ const VoiceChat: React.FC = () => {
                 await audio.play();
                 return;
             } else {
-                console.log('❌ ElevenLabs TTS failed with status:', response.status);
+                console.log('❌ ElevenLabs streaming TTS failed, trying regular TTS...');
+                
+                // Fallback to regular TTS
+                const regularResponse = await fetch('/api/tts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+                
+                if (regularResponse.ok) {
+                    const audioBlob = await regularResponse.blob();
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    const audio = new Audio(audioUrl);
+                    currentAudioRef.current = audio;
+                    
+                    audio.onended = () => {
+                        setIsSpeaking(false);
+                        URL.revokeObjectURL(audioUrl);
+                        currentAudioRef.current = null;
+                    };
+                    audio.onerror = () => {
+                        setIsSpeaking(false);
+                        URL.revokeObjectURL(audioUrl);
+                        currentAudioRef.current = null;
+                    };
+                    
+                    await audio.play();
+                    return;
+                }
             }
         } catch (error) {
             console.log('❌ ElevenLabs TTS error:', error);

@@ -75,10 +75,10 @@ export async function textToSpeech(text: string): Promise<Buffer | null> {
       text: humanizedText,
       model_id: MODEL_ID,
       voice_settings: {
-        stability: 0.5, // Slightly lower for natural code-switching
-        similarity_boost: 0.75, // Good balance for mixed languages
-        style: 0.4, // More expressive for teacher-like warmth
-        use_speaker_boost: true // Better clarity for mixed languages
+        stability: 0.5,
+        similarity_boost: 0.75,
+        style: 0.4,
+        use_speaker_boost: true
       }
     });
 
@@ -93,6 +93,41 @@ export async function textToSpeech(text: string): Promise<Buffer | null> {
     return buffer;
   } catch (error: any) {
     console.error('ElevenLabs TTS error:', error);
+    console.error('Error details:', error.message, error.statusCode);
+    return null;
+  }
+}
+
+// Streaming TTS - returns stream for immediate playback
+export async function textToSpeechStream(text: string): Promise<AsyncIterable<Buffer> | null> {
+  if (!elevenlabs) {
+    console.log('ElevenLabs not configured, skipping TTS');
+    return null;
+  }
+
+  try {
+    // Humanize mathematical notation for natural speech
+    const humanizedText = humanizeMathText(text);
+    console.log(`Attempting ElevenLabs streaming TTS with voice: ${VOICE_ID}, model: ${MODEL_ID}`);
+    
+    // Use streaming for faster response
+    const audioStream = await elevenlabs.generate({
+      voice: VOICE_ID,
+      text: humanizedText,
+      model_id: MODEL_ID,
+      voice_settings: {
+        stability: 0.5,
+        similarity_boost: 0.75,
+        style: 0.4,
+        use_speaker_boost: true
+      },
+      stream: true
+    });
+
+    console.log(`ElevenLabs streaming TTS started`);
+    return audioStream;
+  } catch (error: any) {
+    console.error('ElevenLabs streaming TTS error:', error);
     console.error('Error details:', error.message, error.statusCode);
     return null;
   }

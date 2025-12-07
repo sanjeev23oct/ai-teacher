@@ -1055,7 +1055,43 @@ If they ask for practice, acknowledge that you can help generate similar problem
     }
 });
 
-// Text-to-Speech Endpoint (ElevenLabs)
+// Text-to-Speech Streaming Endpoint (ElevenLabs) - Faster response
+app.post('/api/tts/stream', async (req: Request, res: Response) => {
+    try {
+        const { text } = req.body;
+
+        if (!text) {
+            return res.status(400).json({ error: 'Text is required' });
+        }
+
+        const { textToSpeechStream } = await import('./services/ttsService');
+        const audioStream = await textToSpeechStream(text);
+
+        if (!audioStream) {
+            return res.status(503).json({ 
+                error: 'TTS service not available',
+                message: 'ElevenLabs API key not configured.'
+            });
+        }
+
+        res.set({
+            'Content-Type': 'audio/mpeg',
+            'Transfer-Encoding': 'chunked'
+        });
+
+        // Stream audio chunks as they arrive
+        for await (const chunk of audioStream) {
+            res.write(chunk);
+        }
+        
+        res.end();
+    } catch (error) {
+        console.error('Error in streaming TTS:', error);
+        res.status(500).json({ error: 'Failed to generate speech' });
+    }
+});
+
+// Text-to-Speech Endpoint (ElevenLabs) - Full audio
 app.post('/api/tts', async (req: Request, res: Response) => {
     try {
         const { text } = req.body;
