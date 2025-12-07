@@ -176,8 +176,33 @@ const VoiceChat: React.FC = () => {
         }
     };
 
+    const pauseSpeaking = () => {
+        // Pause ElevenLabs audio (keeps position)
+        if (currentAudioRef.current) {
+            currentAudioRef.current.pause();
+        }
+        
+        // Stop browser TTS (can't pause, only stop)
+        if (synthRef.current.speaking) {
+            synthRef.current.cancel();
+        }
+        
+        setIsSpeaking(false);
+    };
+
+    const resumeSpeaking = () => {
+        // Resume ElevenLabs audio from where it paused
+        if (currentAudioRef.current) {
+            currentAudioRef.current.play();
+            setIsSpeaking(true);
+        } else if (lastResponseText) {
+            // If no audio ref, start fresh
+            speak(lastResponseText).catch(err => console.error('Speech error:', err));
+        }
+    };
+
     const stopSpeaking = () => {
-        // Stop ElevenLabs audio
+        // Stop and reset ElevenLabs audio
         if (currentAudioRef.current) {
             currentAudioRef.current.pause();
             currentAudioRef.current.currentTime = 0;
@@ -194,9 +219,9 @@ const VoiceChat: React.FC = () => {
 
     const togglePlayPause = () => {
         if (isSpeaking) {
-            stopSpeaking();
-        } else if (lastResponseText) {
-            speak(lastResponseText).catch(err => console.error('Speech error:', err));
+            pauseSpeaking();
+        } else {
+            resumeSpeaking();
         }
     };
 
@@ -205,7 +230,7 @@ const VoiceChat: React.FC = () => {
             return; // Don't auto-play if disabled
         }
 
-        // Stop any currently playing audio first
+        // Stop any currently playing audio first (reset to beginning)
         stopSpeaking();
 
         try {
@@ -523,12 +548,16 @@ const VoiceChat: React.FC = () => {
                                 ? 'bg-yellow-500 hover:bg-yellow-600' 
                                 : 'bg-green-500 hover:bg-green-600'
                         }`}
-                        title={isSpeaking ? "Stop speaking" : "Play last response"}
+                        title={isSpeaking ? "Pause" : "Play"}
                     >
                         {isSpeaking ? (
-                            <Volume2 className="h-6 w-6 text-white" />
+                            <svg className="h-6 w-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+                            </svg>
                         ) : (
-                            <Volume2 className="h-6 w-6 text-white" />
+                            <svg className="h-6 w-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
                         )}
                     </button>
                 )}
