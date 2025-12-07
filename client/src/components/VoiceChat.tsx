@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Volume2, Loader2, Send, BookOpen, GraduationCap, Camera, Image as ImageIcon, X } from 'lucide-react';
+import { Mic, MicOff, Volume2, Loader2, Send, BookOpen, GraduationCap, Camera, X } from 'lucide-react';
 
 interface Message {
     role: 'user' | 'model';
