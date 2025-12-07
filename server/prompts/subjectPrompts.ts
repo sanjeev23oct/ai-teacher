@@ -170,6 +170,16 @@ TEACHING STYLE:
 LANGUAGE: ${language}
 Use warm, conversational tone. Include emojis naturally (🎯, 💡, ✨, 🔢).
 
+IMPORTANT - TEXT-TO-SPEECH FORMATTING:
+Your response will be read aloud by text-to-speech. Write naturally for speech:
+- Write "2 plus 3" instead of "2 + 3"
+- Write "x squared" instead of "x^2"
+- Write "a divided by b" instead of "a/b"
+- Write "x multiplied by y" or "x times y" instead of "x * y"
+- Write "equals" instead of "="
+- Avoid excessive symbols - write them as words
+- Keep mathematical expressions readable when spoken aloud
+
 EXAMPLE PHRASES (use these naturally in ${language}):
 - "${LANGUAGE_PHRASES[language].stepByStep}"
 - "${LANGUAGE_PHRASES[language].applyFormula}"
@@ -217,6 +227,13 @@ TEACHING STYLE:
 
 LANGUAGE: ${language}
 Use warm, conversational tone. Include emojis naturally (⚛️, 💡, 🚀, ⚡).
+
+IMPORTANT - TEXT-TO-SPEECH FORMATTING:
+Your response will be read aloud by text-to-speech. Write naturally for speech:
+- Write "F equals m times a" instead of "F = ma"
+- Write "velocity squared" instead of "v^2"
+- Write formulas in words that sound natural when spoken
+- Avoid excessive symbols - write them as words
 
 EXAMPLE PHRASES (use these naturally in ${language}):
 - "${LANGUAGE_PHRASES[language].imagine}"
@@ -266,6 +283,13 @@ TEACHING STYLE:
 LANGUAGE: ${language}
 Use warm, conversational tone. Include emojis naturally (🧪, 💡, ⚗️, 🔬).
 
+IMPORTANT - TEXT-TO-SPEECH FORMATTING:
+Your response will be read aloud by text-to-speech. Write naturally for speech:
+- Write "H 2 O" or "water" instead of "H2O"
+- Write "2 N a plus C l 2" instead of "2Na + Cl2"
+- Write chemical equations in words that sound natural when spoken
+- Avoid excessive symbols - write them as words
+
 EXAMPLE PHRASES (use these naturally in ${language}):
 - "${LANGUAGE_PHRASES[language].whatsHappening}"
 - "${LANGUAGE_PHRASES[language].lookAtAtoms}"
@@ -314,6 +338,12 @@ TEACHING STYLE:
 LANGUAGE: ${language}
 Use warm, conversational tone. Include emojis naturally (🧬, 💡, 🌱, 🦠).
 
+IMPORTANT - TEXT-TO-SPEECH FORMATTING:
+Your response will be read aloud by text-to-speech. Write naturally for speech:
+- Write terms clearly and avoid excessive abbreviations
+- Spell out complex scientific names phonetically if needed
+- Write in a way that sounds natural when spoken aloud
+
 RESPONSE FORMAT:
 You must respond with a valid JSON object with this exact structure:
 {
@@ -357,6 +387,12 @@ TEACHING STYLE:
 LANGUAGE: ${language}
 Use warm, conversational tone. Include emojis naturally (📚, 💡, ✍️, 📖).
 
+IMPORTANT - TEXT-TO-SPEECH FORMATTING:
+Your response will be read aloud by text-to-speech. Write naturally for speech:
+- Write in complete, natural sentences
+- Avoid excessive punctuation marks
+- Write in a way that sounds natural when spoken aloud
+
 RESPONSE FORMAT:
 You must respond with a valid JSON object with this exact structure:
 {
@@ -399,6 +435,12 @@ TEACHING STYLE:
 
 LANGUAGE: ${language}
 Use warm, conversational tone. Include emojis naturally (🌍, 💡, 📜, 🗺️).
+
+IMPORTANT - TEXT-TO-SPEECH FORMATTING:
+Your response will be read aloud by text-to-speech. Write naturally for speech:
+- Write dates and years clearly (e.g., "nineteen forty-seven" or "1947")
+- Write in complete, natural sentences
+- Write in a way that sounds natural when spoken aloud
 
 RESPONSE FORMAT:
 You must respond with a valid JSON object with this exact structure:

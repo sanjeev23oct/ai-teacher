@@ -1135,6 +1135,73 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     }
 });
 
+// CBSE Class 10 Voice Tutor Endpoint
+app.post('/api/voice-tutor/chat', async (req: Request, res: Response) => {
+    try {
+        const { message, class: classNum, subject, history } = req.body;
+
+        if (!message || !classNum || !subject) {
+            return res.status(400).json({ error: 'Message, class, and subject are required' });
+        }
+
+        // Import CBSE prompts and AI service
+        const { getCBSEClass10Prompt, isSupportedClass, getUnsupportedClassMessage } = await import('./prompts/cbseClass10Prompts');
+        const { aiService } = await import('./services/aiService');
+
+        // Check if class is supported
+        if (!isSupportedClass(classNum)) {
+            const boundaryMessage = getUnsupportedClassMessage(classNum, subject);
+            return res.json({ text: boundaryMessage });
+        }
+
+        // Get subject-specific CBSE Class 10 prompt
+        const systemPrompt = getCBSEClass10Prompt(subject as any);
+
+        // Convert history to standard format
+        const conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+        
+        if (history && Array.isArray(history)) {
+            history.forEach((msg: any) => {
+                if (msg.role === 'user') {
+                    conversationHistory.push({
+                        role: 'user',
+                        content: msg.parts[0].text
+                    });
+                } else if (msg.role === 'model') {
+                    conversationHistory.push({
+                        role: 'assistant',
+                        content: msg.parts[0].text
+                    });
+                }
+            });
+        }
+
+        // Build full prompt with conversation history
+        let fullPrompt = systemPrompt + '\n\n';
+        
+        if (conversationHistory.length > 0) {
+            fullPrompt += 'Previous conversation:\n';
+            conversationHistory.forEach(msg => {
+                fullPrompt += `${msg.role === 'user' ? 'Student' : 'Teacher'}: ${msg.content}\n`;
+            });
+            fullPrompt += '\n';
+        }
+        
+        fullPrompt += `Student: ${message}\n\nTeacher:`;
+
+        // Use AI service (respects .env configuration)
+        const result = await aiService.generateContent({
+            prompt: fullPrompt,
+        });
+
+        res.json({ text: result.text });
+
+    } catch (error) {
+        console.error('Error in voice tutor chat:', error);
+        res.status(500).json({ error: 'Failed to process chat request' });
+    }
+});
+
 // Dual mode grading handler
 async function handleDualModeGrading(
     req: Request,
