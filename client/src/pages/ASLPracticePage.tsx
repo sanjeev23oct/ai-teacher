@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Mic, MicOff, Loader2, RefreshCw, Users, User } from 'lucide-react';
-import { getApiUrl } from '../config';
 
 // Import task data
 const getRandomTask = () => {
@@ -170,18 +169,24 @@ const ASLPracticePage: React.FC = () => {
       formData.append('taskId', currentTask.id.toString());
       formData.append('mode', mode);
       
-      const response = await fetch(getApiUrl('/api/asl/score'), {
+      const response = await fetch('/api/asl/score', {
         method: 'POST',
         body: formData,
+        credentials: 'include',
       });
       
-      if (!response.ok) throw new Error('Scoring failed');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Server error:', errorData);
+        throw new Error(errorData.error || 'Scoring failed');
+      }
       
       const data = await response.json();
+      console.log('Scoring result:', data);
       setResult(data);
     } catch (error) {
       console.error('Error scoring:', error);
-      alert('Failed to score your response. Please try again.');
+      alert(`Failed to score: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsProcessing(false);
     }

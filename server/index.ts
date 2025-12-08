@@ -10,6 +10,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as questionPaperService from './services/questionPaperService';
 import * as gradingService from './services/gradingService';
 import * as authService from './services/authService';
+import * as aslScoringService from './services/aslScoringService';
 import { calculateImageHash } from './lib/imageHash';
 import { authMiddleware, optionalAuthMiddleware } from './middleware/auth';
 import prisma from './lib/prisma';
@@ -1970,8 +1971,6 @@ app.get('/api/dashboard/stats', authMiddleware, async (req: Request, res: Respon
 // ============================================================================
 // ASL (Assessment of Speaking and Listening) Routes
 // ============================================================================
-
-import * as aslScoringService from './services/aslScoringService';
 
 // Score ASL response
 app.post('/api/asl/score', upload.single('audio'), async (req: Request, res: Response) => {
