@@ -2032,6 +2032,60 @@ app.post('/api/asl/score', upload.single('audio'), async (req: Request, res: Res
   }
 });
 
+// ASL Follow-up Chat
+app.post('/api/asl/chat', async (req: Request, res: Response) => {
+  try {
+    const { message, context, history } = req.body;
+    
+    if (!message || !context) {
+      return res.status(400).json({ error: 'Message and context required' });
+    }
+
+    // Build conversational prompt
+    const systemPrompt = `You are a warm, friendly CBSE English teacher having a follow-up conversation with a Class 9-10 student about their ASL practice.
+
+STUDENT'S CONTEXT:
+- Task: "${context.taskTitle}"
+- Prompt: "${context.taskPrompt}"
+- Score: ${context.score}/5
+- Feedback given: ${context.fixes.join('; ')}
+- What they said: "${context.transcription}"
+
+YOUR PERSONALITY:
+- Talk like a real teacher in conversational Hinglish
+- Be warm, encouraging, and supportive
+- Quote specific things they said when relevant
+- Give concrete examples they can use
+- Make it feel like a coaching session, not a lecture
+
+RESPONSE STYLE:
+✅ DO: "Haan dekho, tumne bola '${context.transcription?.substring(0, 30)}...' - isme improvement ho sakta hai"
+✅ DO: "Agar tum kehte 'for example, in my school...' toh zyada specific lagega"
+✅ DO: "You're doing well! Bas thoda aur detail add karo"
+
+❌ DON'T: Use formal language like "enhance", "demonstrate", "adequate"
+❌ DON'T: Give generic advice without examples
+❌ DON'T: Be discouraging or harsh
+
+Keep responses concise (2-3 sentences max). Be specific and actionable.`;
+
+    const conversationHistory = history.map((msg: any) => ({
+      role: msg.role,
+      content: msg.content
+    }));
+
+    const { aiService } = require('./services/aiService');
+    const result = await aiService.generateContent({
+      prompt: `${systemPrompt}\n\nStudent asks: "${message}"\n\nRespond as their teacher:`
+    });
+
+    res.json({ response: result.text });
+  } catch (error) {
+    console.error('ASL chat error:', error);
+    res.status(500).json({ error: 'Failed to process chat message' });
+  }
+});
+
 // Catch-all route for React Router (must be last)
 if (process.env.NODE_ENV === 'production') {
   app.use((req: Request, res: Response) => {

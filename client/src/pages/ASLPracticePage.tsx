@@ -19,6 +19,12 @@ interface ASLResult {
   transcription?: string;
 }
 
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: number;
+}
+
 const ASLPracticePage: React.FC = () => {
   const [selectedClass, setSelectedClass] = useState<9 | 10>(9);
   const [mode, setMode] = useState<Mode>('solo');
@@ -32,6 +38,10 @@ const ASLPracticePage: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState<ASLResult | null>(null);
   const [isPlayingFeedback, setIsPlayingFeedback] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [playingMessageIndex, setPlayingMessageIndex] = useState<number | null>(null);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -269,6 +279,7 @@ const ASLPracticePage: React.FC = () => {
 
   const handleNewTask = () => {
     setResult(null);
+    setChatMessages([]);
     const nextIndex = tasks.findIndex(t => t.id === selectedTask?.id) + 1;
     setSelectedTask(tasks[nextIndex % tasks.length] || tasks[0]);
     setTimeLeft(selectedTask?.duration || (mode === 'solo' ? 60 : 30));
@@ -276,6 +287,7 @@ const ASLPracticePage: React.FC = () => {
 
   const handleTryAgain = () => {
     setResult(null);
+    setChatMessages([]);
     setTimeLeft(selectedTask?.duration || (mode === 'solo' ? 60 : 30));
     
     // Clear current student's result in pair mode
@@ -292,6 +304,125 @@ const ASLPracticePage: React.FC = () => {
     setCurrentStudent(currentStudent === 1 ? 2 : 1);
     setResult(currentStudent === 1 ? student2Result : student1Result);
     setTimeLeft(selectedTask?.duration || 30);
+    setChatMessages([]); // Clear chat when switching students
+  };
+
+  const getSuggestions = () => {
+    if (!result) return [];
+    
+    if (result.score >= 4) {
+      return [
+        "Why did I get this score?",
+        "How can I get 5/5?",
+        "Give me an example"
+      ];
+    } else if (result.score >= 3) {
+      return [
+        "Why this score?",
+        "How to improve?",
+        "Give me examples",
+        "What did I do wrong?"
+      ];
+    } else {
+      return [
+        "How can I improve?",
+        "Give me examples",
+        "What should I say?",
+        "Why low score?"
+      ];
+    }
+  };
+
+  const sendMessage = async (message: string) => {
+    if (!message.trim() || !result || !selectedTask) return;
+
+    const userMessage: ChatMessage = {
+      role: 'user',
+      content: message.trim(),
+      timestamp: Date.now()
+    };
+
+    setChatMessages(prev => [...prev, userMessage]);
+    setChatInput('');
+    setIsSendingMessage(true);
+
+    try {
+      const response = await fetch('/api/asl/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: message.trim(),
+          context: {
+            taskTitle: selectedTask.title,
+            taskPrompt: selectedTask.prompt,
+            score: result.score,
+            fixes: result.fixes,
+            transcription: result.transcription,
+            mode,
+            currentStudent: mode === 'pair' ? currentStudent : undefined
+          },
+          history: chatMessages
+        })
+      });
+
+      if (!response.ok) throw new Error('Chat failed');
+
+      const data = await response.json();
+      
+      const assistantMessage: ChatMessage = {
+        role: 'assistant',
+        content: data.response,
+        timestamp: Date.now()
+      };
+
+      setChatMessages(prev => [...prev, assistantMessage]);
+    } catch (err) {
+      console.error('Chat error:', err);
+      const errorMessage: ChatMessage = {
+        role: 'assistant',
+        content: 'Sorry, I had trouble understanding that. Can you try asking differently?',
+        timestamp: Date.now()
+      };
+      setChatMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsSendingMessage(false);
+    }
+  };
+
+  const playMessageAudio = async (text: string, index: number) => {
+    if (playingMessageIndex === index) return;
+
+    setPlayingMessageIndex(index);
+    
+    try {
+      const response = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+
+      if (!response.ok) throw new Error('TTS failed');
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      
+      const audio = new Audio(audioUrl);
+      
+      audio.onended = () => {
+        setPlayingMessageIndex(null);
+        URL.revokeObjectURL(audioUrl);
+      };
+      
+      audio.onerror = () => {
+        setPlayingMessageIndex(null);
+        URL.revokeObjectURL(audioUrl);
+      };
+      
+      await audio.play();
+    } catch (err) {
+      console.error('TTS error:', err);
+      setPlayingMessageIndex(null);
+    }
   };
 
   return (
@@ -497,7 +628,7 @@ const ASLPracticePage: React.FC = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="space-y-2">
+            <div className="space-y-2 mb-3">
               <button
                 onClick={playFeedback}
                 disabled={isPlayingFeedback}
@@ -519,6 +650,74 @@ const ASLPracticePage: React.FC = () => {
                 >
                   <RefreshCw className="inline w-4 h-4 mr-1" />
                   New Task
+                </button>
+              </div>
+            </div>
+
+            {/* Follow-up Chat */}
+            <div className="border-t border-gray-700 pt-3">
+              <h3 className="text-sm font-semibold text-white mb-2">Ask me anything:</h3>
+              
+              {/* Quick Suggestions */}
+              {chatMessages.length === 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {getSuggestions().map((suggestion, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => sendMessage(suggestion)}
+                      disabled={isSendingMessage}
+                      className="px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded text-xs text-gray-300 transition-all disabled:opacity-50"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Chat Messages */}
+              {chatMessages.length > 0 && (
+                <div className="max-h-48 overflow-y-auto mb-2 space-y-2">
+                  {chatMessages.map((msg, idx) => (
+                    <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[85%] rounded-lg p-2 text-sm ${
+                        msg.role === 'user' 
+                          ? 'bg-primary text-white' 
+                          : 'bg-gray-800 text-gray-300'
+                      }`}>
+                        <p className="whitespace-pre-wrap">{msg.content}</p>
+                        {msg.role === 'assistant' && (
+                          <button
+                            onClick={() => playMessageAudio(msg.content, idx)}
+                            disabled={playingMessageIndex === idx}
+                            className="mt-1 text-xs text-gray-400 hover:text-white flex items-center gap-1"
+                          >
+                            <Volume2 className="w-3 h-3" />
+                            {playingMessageIndex === idx ? 'Playing...' : 'Play'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Chat Input */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && !isSendingMessage && sendMessage(chatInput)}
+                  placeholder="Type your question..."
+                  disabled={isSendingMessage}
+                  className="flex-1 px-3 py-1.5 bg-gray-900 border border-gray-700 rounded text-white text-sm placeholder-gray-500 disabled:opacity-50"
+                />
+                <button
+                  onClick={() => sendMessage(chatInput)}
+                  disabled={isSendingMessage || !chatInput.trim()}
+                  className="px-4 py-1.5 bg-primary hover:bg-primary-hover rounded text-white text-sm transition-all disabled:opacity-50"
+                >
+                  {isSendingMessage ? '...' : 'Send'}
                 </button>
               </div>
             </div>
