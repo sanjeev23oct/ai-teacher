@@ -18,6 +18,10 @@ import prisma from './lib/prisma';
 
 dotenv.config();
 
+// Debug: Check if env vars are loaded
+console.log('ENV CHECK - GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? 'SET ✓' : 'NOT SET ✗');
+console.log('ENV CHECK - ELEVENLABS_API_KEY:', process.env.ELEVENLABS_API_KEY ? 'SET ✓' : 'NOT SET ✗');
+
 // Types for enhanced grading response
 interface Annotation {
     id: string;

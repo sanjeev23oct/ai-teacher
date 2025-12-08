@@ -1,12 +1,19 @@
 import { ElevenLabsClient } from 'elevenlabs';
 
-const elevenlabs = process.env.ELEVENLABS_API_KEY 
-  ? new ElevenLabsClient({ apiKey: process.env.ELEVENLABS_API_KEY })
-  : null;
+// Lazy initialization - create client when first needed, not at module load
+let elevenlabs: ElevenLabsClient | null = null;
+
+function getElevenLabsClient(): ElevenLabsClient | null {
+  if (elevenlabs === null && process.env.ELEVENLABS_API_KEY) {
+    elevenlabs = new ElevenLabsClient({ apiKey: process.env.ELEVENLABS_API_KEY });
+    console.log('✓ ElevenLabs client initialized');
+  }
+  return elevenlabs;
+}
 
 // Configuration from environment variables
-const VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'pNInz6obpgDQGcFmaJgB'; // Adam voice (default)
-const MODEL_ID = process.env.ELEVENLABS_MODEL_ID || 'eleven_turbo_v2_5';
+const getVoiceId = () => process.env.ELEVENLABS_VOICE_ID || 'pNInz6obpgDQGcFmaJgB'; // Adam voice (default)
+const getModelId = () => process.env.ELEVENLABS_MODEL_ID || 'eleven_turbo_v2_5';
 
 /**
  * Humanize mathematical symbols and notation for natural speech
@@ -59,7 +66,8 @@ function humanizeMathText(text: string): string {
 }
 
 export async function textToSpeech(text: string): Promise<Buffer | null> {
-  if (!elevenlabs) {
+  const client = getElevenLabsClient();
+  if (!client) {
     console.log('ElevenLabs not configured, skipping TTS');
     return null;
   }
@@ -67,13 +75,15 @@ export async function textToSpeech(text: string): Promise<Buffer | null> {
   try {
     // Humanize mathematical notation for natural speech
     const humanizedText = humanizeMathText(text);
-    console.log(`Attempting ElevenLabs TTS with voice: ${VOICE_ID}, model: ${MODEL_ID}`);
+    const voiceId = getVoiceId();
+    const modelId = getModelId();
+    console.log(`Attempting ElevenLabs TTS with voice: ${voiceId}, model: ${modelId}`);
     
     // Use multilingual turbo model for Hinglish support
-    const audio = await elevenlabs.generate({
-      voice: VOICE_ID,
+    const audio = await client.generate({
+      voice: voiceId,
       text: humanizedText,
-      model_id: MODEL_ID,
+      model_id: modelId,
       voice_settings: {
         stability: 0.5,
         similarity_boost: 0.75,
@@ -105,7 +115,8 @@ export async function textToSpeechStream(
   voiceId?: string,
   modelId?: string
 ): Promise<AsyncIterable<Buffer> | null> {
-  if (!elevenlabs) {
+  const client = getElevenLabsClient();
+  if (!client) {
     console.log('ElevenLabs not configured, skipping TTS');
     return null;
   }
@@ -115,13 +126,13 @@ export async function textToSpeechStream(
     const humanizedText = humanizeMathText(text);
     
     // Use provided voice/model or defaults
-    const voice = voiceId || VOICE_ID;
-    const model = modelId || MODEL_ID;
+    const voice = voiceId || getVoiceId();
+    const model = modelId || getModelId();
     
     console.log(`Attempting ElevenLabs streaming TTS with voice: ${voice}, model: ${model}`);
     
     // Use streaming for faster response
-    const audioStream = await elevenlabs.generate({
+    const audioStream = await client.generate({
       voice,
       text: humanizedText,
       model_id: model,
@@ -145,7 +156,8 @@ export async function textToSpeechStream(
 
 // Alternative: Use a specific Indian English voice if available
 export async function textToSpeechHinglish(text: string): Promise<Buffer | null> {
-  if (!elevenlabs) {
+  const client = getElevenLabsClient();
+  if (!client) {
     console.log('ElevenLabs not configured, skipping TTS');
     return null;
   }
@@ -155,7 +167,7 @@ export async function textToSpeechHinglish(text: string): Promise<Buffer | null>
     const humanizedText = humanizeMathText(text);
     
     // Try using a voice that handles Indian accent and Hinglish better
-    const audio = await elevenlabs.generate({
+    const audio = await client.generate({
       voice: "zT03pEAEi0VHKciJODfn", // Custom voice ID
       text: humanizedText,
       model_id: "eleven_multilingual_v2", // Better for Hinglish code-switching
