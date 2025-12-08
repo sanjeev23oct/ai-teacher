@@ -24,6 +24,9 @@ const ASLPracticePage: React.FC = () => {
   const [mode, setMode] = useState<Mode>('solo');
   const [tasks, setTasks] = useState<ASLTask[]>([]);
   const [selectedTask, setSelectedTask] = useState<ASLTask | null>(null);
+  const [currentStudent, setCurrentStudent] = useState<1 | 2>(1);
+  const [student1Result, setStudent1Result] = useState<ASLResult | null>(null);
+  const [student2Result, setStudent2Result] = useState<ASLResult | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [timeLeft, setTimeLeft] = useState(60);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -208,6 +211,15 @@ const ASLPracticePage: React.FC = () => {
       const data = await response.json();
       console.log('Scoring result:', data);
       setResult(data);
+      
+      // Store result for current student in pair mode
+      if (mode === 'pair') {
+        if (currentStudent === 1) {
+          setStudent1Result(data);
+        } else {
+          setStudent2Result(data);
+        }
+      }
     } catch (error) {
       console.error('Error scoring:', error);
       alert(`Failed to score: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -265,120 +277,175 @@ const ASLPracticePage: React.FC = () => {
   const handleTryAgain = () => {
     setResult(null);
     setTimeLeft(selectedTask?.duration || (mode === 'solo' ? 60 : 30));
+    
+    // Clear current student's result in pair mode
+    if (mode === 'pair') {
+      if (currentStudent === 1) {
+        setStudent1Result(null);
+      } else {
+        setStudent2Result(null);
+      }
+    }
+  };
+
+  const switchStudent = () => {
+    setCurrentStudent(currentStudent === 1 ? 2 : 1);
+    setResult(currentStudent === 1 ? student2Result : student1Result);
+    setTimeLeft(selectedTask?.duration || 30);
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
-      {/* Class and Task Selection */}
-      <div className="mb-4 flex gap-4">
-        <div className="flex-1">
-          <label className="block text-sm text-gray-400 mb-2">Class</label>
+    <div className="max-w-3xl mx-auto p-3 sm:p-4">
+      {/* Compact Controls */}
+      <div className="mb-3 space-y-2">
+        {/* Class, Task, and Mode in one row */}
+        <div className="flex gap-2 items-center">
           <select
             value={selectedClass}
             onChange={(e) => setSelectedClass(Number(e.target.value) as 9 | 10)}
-            className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white"
+            className="px-3 py-1.5 bg-gray-900 border border-gray-700 rounded text-white text-sm"
           >
             <option value={9}>Class 9</option>
             <option value={10}>Class 10</option>
           </select>
-        </div>
-        <div className="flex-1">
-          <label className="block text-sm text-gray-400 mb-2">Task</label>
-          <select
-            value={selectedTask?.id || ''}
-            onChange={(e) => setSelectedTask(tasks.find(t => t.id === e.target.value) || null)}
-            className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white"
+          
+          <button
+            onClick={() => {
+              setMode('solo');
+              setCurrentStudent(1);
+              setStudent1Result(null);
+              setStudent2Result(null);
+              setResult(null);
+            }}
+            className={`px-3 py-1.5 rounded border transition-all text-sm ${
+              mode === 'solo'
+                ? 'border-primary bg-primary/20 text-white'
+                : 'border-gray-700 bg-gray-900 text-gray-400'
+            }`}
           >
-            {tasks.map(task => (
-              <option key={task.id} value={task.id}>{task.title}</option>
-            ))}
-          </select>
+            <User className="inline w-4 h-4 mr-1" />
+            Solo
+          </button>
+          <button
+            onClick={() => {
+              setMode('pair');
+              setCurrentStudent(1);
+              setStudent1Result(null);
+              setStudent2Result(null);
+              setResult(null);
+            }}
+            className={`px-3 py-1.5 rounded border transition-all text-sm ${
+              mode === 'pair'
+                ? 'border-primary bg-primary/20 text-white'
+                : 'border-gray-700 bg-gray-900 text-gray-400'
+            }`}
+          >
+            <Users className="inline w-4 h-4 mr-1" />
+            Pair
+          </button>
         </div>
-      </div>
 
-      {/* Mode Toggle */}
-      <div className="flex gap-2 mb-6">
-        <button
-          onClick={() => setMode('solo')}
-          className={`flex-1 py-3 rounded-lg border-2 transition-all ${
-            mode === 'solo'
-              ? 'border-primary bg-primary/20 text-white'
-              : 'border-gray-700 bg-gray-900 text-gray-400'
-          }`}
+        {/* Task Selection */}
+        <select
+          value={selectedTask?.id || ''}
+          onChange={(e) => setSelectedTask(tasks.find(t => t.id === e.target.value) || null)}
+          className="w-full px-3 py-1.5 bg-gray-900 border border-gray-700 rounded text-white text-sm"
         >
-          <User className="inline w-5 h-5 mr-2" />
-          Solo Practice
-        </button>
-        <button
-          onClick={() => setMode('pair')}
-          className={`flex-1 py-3 rounded-lg border-2 transition-all ${
-            mode === 'pair'
-              ? 'border-primary bg-primary/20 text-white'
-              : 'border-gray-700 bg-gray-900 text-gray-400'
-          }`}
-        >
-          <Users className="inline w-5 h-5 mr-2" />
-          Pair Discussion
-        </button>
+          {tasks.map(task => (
+            <option key={task.id} value={task.id}>{task.title}</option>
+          ))}
+        </select>
+
+        {/* Student Selector for Pair Mode */}
+        {mode === 'pair' && (
+          <div className="flex gap-1.5">
+            <button
+              onClick={() => switchStudent()}
+              disabled={isRecording || isProcessing}
+              className={`flex-1 py-1 px-2 rounded border transition-all text-xs ${
+                currentStudent === 1
+                  ? 'border-green-500 bg-green-500/20 text-white font-semibold'
+                  : 'border-gray-700 bg-gray-900 text-gray-400'
+              } disabled:opacity-50`}
+            >
+              S1{student1Result && <span className="ml-1 text-yellow-500">★{student1Result.score}</span>}
+            </button>
+            <button
+              onClick={() => switchStudent()}
+              disabled={isRecording || isProcessing}
+              className={`flex-1 py-1 px-2 rounded border transition-all text-xs ${
+                currentStudent === 2
+                  ? 'border-green-500 bg-green-500/20 text-white font-semibold'
+                  : 'border-gray-700 bg-gray-900 text-gray-400'
+              } disabled:opacity-50`}
+            >
+              S2{student2Result && <span className="ml-1 text-yellow-500">★{student2Result.score}</span>}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Main Content */}
-      <div className="bg-surface rounded-xl border border-gray-800 p-6">
+      <div className="bg-surface rounded-lg border border-gray-800 p-3 sm:p-4">
         {!result ? (
           <>
             {/* Task Display */}
             {selectedTask && (
-              <div className="mb-6">
-                <h2 className="text-xl font-semibold text-white mb-2">
+              <div className="mb-3">
+                <h2 className="text-base sm:text-lg font-semibold text-white mb-1">
                   {selectedTask.title}
                 </h2>
-                <p className="text-gray-300 text-lg mb-2">{selectedTask.prompt}</p>
-                <p className="text-sm text-primary mt-2">
-                  Duration: {selectedTask.duration} seconds
+                <p className="text-gray-300 text-sm mb-1">{selectedTask.prompt}</p>
+                <p className="text-xs text-primary">
+                  Duration: {selectedTask.duration}s
                 </p>
               </div>
             )}
 
             {/* Recording Area */}
-            <div className="mb-6">
+            <div className="mb-3">
               {/* Waveform Canvas */}
               <canvas
                 ref={canvasRef}
                 width={600}
-                height={100}
-                className="w-full rounded-lg mb-4 bg-gray-900"
+                height={80}
+                className="w-full rounded-lg mb-3 bg-gray-900"
               />
 
-              {/* Timer */}
-              <div className="text-center mb-4">
-                <div className={`text-6xl font-bold ${isRecording ? 'text-red-500' : 'text-gray-500'}`}>
+              {/* Timer and Record Button */}
+              <div className="flex flex-col items-center mb-3">
+                <div className={`text-4xl sm:text-5xl font-bold mb-2 ${isRecording ? 'text-red-500' : 'text-gray-500'}`}>
                   {timeLeft}s
                 </div>
-              </div>
-
-              {/* Record Button */}
-              <div className="flex justify-center">
+                
                 <button
                   onClick={isRecording ? stopRecording : startRecording}
                   disabled={isProcessing}
-                  className={`p-8 rounded-full transition-all ${
+                  className={`relative p-5 sm:p-6 rounded-full transition-all ${
                     isRecording
-                      ? 'bg-red-500 hover:bg-red-600 animate-pulse'
+                      ? 'bg-red-500 hover:bg-red-600'
                       : 'bg-primary hover:bg-primary-hover'
-                  } disabled:opacity-50`}
+                  } disabled:opacity-50 shadow-lg`}
                 >
                   {isRecording ? (
-                    <MicOff className="w-12 h-12 text-white" />
+                    <>
+                      <div className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-75"></div>
+                      <MicOff className="relative w-8 h-8 sm:w-10 sm:h-10 text-white" />
+                    </>
                   ) : (
-                    <Mic className="w-12 h-12 text-white" />
+                    <Mic className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
                   )}
                 </button>
+                
+                <p className="text-xs text-gray-400 mt-2">
+                  {isRecording ? 'Tap to stop recording' : 'Tap to start recording'}
+                </p>
               </div>
 
               {isProcessing && (
-                <div className="text-center mt-4">
-                  <Loader2 className="inline w-6 h-6 animate-spin text-primary" />
-                  <p className="text-gray-400 mt-2">Analyzing your response...</p>
+                <div className="text-center py-2">
+                  <Loader2 className="inline w-5 h-5 animate-spin text-primary" />
+                  <p className="text-gray-400 text-sm mt-1">Analyzing...</p>
                 </div>
               )}
             </div>
@@ -386,24 +453,24 @@ const ASLPracticePage: React.FC = () => {
             {/* New Task Button */}
             <button
               onClick={handleNewTask}
-              className="w-full py-3 bg-gray-700 hover:bg-gray-600 rounded-lg text-white transition-all"
+              className="w-full py-2 bg-gray-700 hover:bg-gray-600 rounded text-white transition-all text-sm"
             >
-              <RefreshCw className="inline w-5 h-5 mr-2" />
+              <RefreshCw className="inline w-4 h-4 mr-1" />
               New Task
             </button>
           </>
         ) : (
           <>
             {/* Results Display */}
-            <div className="text-center mb-6">
-              <h2 className="text-3xl font-bold text-white mb-2">
+            <div className="text-center mb-3">
+              <h2 className="text-2xl font-bold text-white mb-1">
                 Score: {result.score}/5
               </h2>
-              <div className="flex justify-center gap-1 mb-4">
+              <div className="flex justify-center gap-1 mb-2">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <span
                     key={star}
-                    className={`text-3xl ${
+                    className={`text-2xl ${
                       star <= result.score ? 'text-yellow-500' : 'text-gray-600'
                     }`}
                   >
@@ -411,16 +478,17 @@ const ASLPracticePage: React.FC = () => {
                   </span>
                 ))}
               </div>
+              <p className="text-sm text-gray-400">
+                {result.score >= 4 ? '✅ Great job!' : result.score >= 3 ? '👍 Good effort!' : '💪 Keep practicing!'}
+              </p>
             </div>
 
             {/* Feedback */}
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-white mb-3">
-                {result.score >= 4 ? '✅ Great job!' : result.score >= 3 ? '👍 Good effort!' : '💪 Keep practicing!'}
-              </h3>
-              <div className="space-y-2">
+            <div className="mb-3">
+              <h3 className="text-sm font-semibold text-white mb-2">Ways to improve:</h3>
+              <div className="space-y-1.5">
                 {result.fixes.map((fix, index) => (
-                  <div key={index} className="bg-gray-800 p-3 rounded-lg">
+                  <div key={index} className="bg-gray-800 p-2 rounded text-sm">
                     <span className="text-primary font-semibold">{index + 1}. </span>
                     <span className="text-gray-300">{fix}</span>
                   </div>
@@ -429,30 +497,30 @@ const ASLPracticePage: React.FC = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3 mb-4">
+            <div className="space-y-2">
               <button
                 onClick={playFeedback}
                 disabled={isPlayingFeedback}
-                className="flex-1 py-3 bg-green-600 hover:bg-green-700 rounded-lg text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full py-2 bg-green-600 hover:bg-green-700 rounded text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
               >
-                <Volume2 className="w-5 h-5" />
+                <Volume2 className="w-4 h-4" />
                 {isPlayingFeedback ? 'Playing...' : 'Hear Feedback'}
               </button>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={handleTryAgain}
-                className="flex-1 py-3 bg-primary hover:bg-primary-hover rounded-lg text-white transition-all"
-              >
-                Try Again
-              </button>
-              <button
-                onClick={handleNewTask}
-                className="flex-1 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg text-white transition-all"
-              >
-                <RefreshCw className="inline w-5 h-5 mr-2" />
-                New Task
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleTryAgain}
+                  className="flex-1 py-2 bg-primary hover:bg-primary-hover rounded text-white transition-all text-sm"
+                >
+                  Try Again
+                </button>
+                <button
+                  onClick={handleNewTask}
+                  className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white transition-all text-sm"
+                >
+                  <RefreshCw className="inline w-4 h-4 mr-1" />
+                  New Task
+                </button>
+              </div>
             </div>
           </>
         )}
