@@ -64,38 +64,28 @@ const Home = () => {
   return (
     <div className="py-12">
       <div className="text-center mb-12">
-        <h1 className="text-5xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent">
-          Your Personal AI Teacher
+        <h1 className="text-4xl sm:text-5xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent">
+          Master CBSE English with AI
         </h1>
-        <p className="text-xl text-gray-400 mb-10 max-w-2xl mx-auto">
-          Grade handwritten exams instantly and learn with an interactive voice tutor.
+        <p className="text-lg sm:text-xl text-gray-400 mb-10 max-w-2xl mx-auto px-4">
+          Practice ASL speaking, get instant doubt solutions, and learn with voice conversations - all powered by AI
         </p>
         
-        {user ? (
-          <div className="flex justify-center space-x-4">
-            <a href="/grade" className="btn-primary text-lg px-8 py-3">Grade New Exam</a>
-            <a href="/doubts" className="px-8 py-3 bg-purple-600 hover:bg-purple-700 rounded-md text-white transition-colors font-medium">
-              Ask a Doubt
-            </a>
-            <a href="/history" className="px-8 py-3 bg-gray-800 hover:bg-gray-700 rounded-md text-white transition-colors font-medium border border-gray-700">
-              View History
-            </a>
-          </div>
-        ) : (
-          <div>
-            <div className="flex justify-center space-x-4 mb-6">
-              <a href="/grade" className="btn-primary text-lg px-8 py-3">Grade Exam</a>
-              <a href="/doubts" className="px-8 py-3 bg-purple-600 hover:bg-purple-700 rounded-md text-white transition-colors font-medium">
-                Ask a Doubt
-              </a>
-              <a href="/voice" className="px-8 py-3 bg-gray-800 hover:bg-gray-700 rounded-md text-white transition-colors font-medium border border-gray-700">
-                Voice Tutor
-              </a>
-            </div>
-            <p className="text-gray-500 text-sm">
-              <a href="/signup" className="text-primary hover:underline">Sign up free</a> to track your progress
-            </p>
-          </div>
+        <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
+          <a href="/asl" className="btn-primary text-base sm:text-lg px-6 sm:px-8 py-2.5 sm:py-3">
+            🎤 ASL Practice
+          </a>
+          <a href="/doubts" className="px-6 sm:px-8 py-2.5 sm:py-3 bg-purple-600 hover:bg-purple-700 rounded-md text-white transition-colors font-medium text-base sm:text-lg">
+            💡 Ask Doubt
+          </a>
+          <a href="/voice" className="px-6 sm:px-8 py-2.5 sm:py-3 bg-green-600 hover:bg-green-700 rounded-md text-white transition-colors font-medium text-base sm:text-lg">
+            🗣️ Voice Tutor
+          </a>
+        </div>
+        {!user && (
+          <p className="text-gray-500 text-sm mt-6">
+            <a href="/signup" className="text-primary hover:underline">Sign up free</a> to track your progress
+          </p>
         )}
       </div>
 
@@ -103,21 +93,21 @@ const Home = () => {
       <div className="max-w-6xl mx-auto mt-16 mb-12">
         <h2 className="text-3xl font-bold text-center text-white mb-8">Everything You Need to Excel</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-surface rounded-lg p-6 text-center hover:border-2 hover:border-primary transition-all">
-            <div className="text-5xl mb-4">📝</div>
-            <h3 className="text-xl font-semibold text-white mb-2">Instant Grading</h3>
-            <p className="text-gray-400 text-sm">Upload handwritten exams and get detailed feedback with visual annotations in seconds</p>
-          </div>
-          <div className="bg-surface rounded-lg p-6 text-center hover:border-2 hover:border-purple-600 transition-all">
+          <a href="/asl" className="bg-surface rounded-lg p-6 text-center hover:border-2 hover:border-primary transition-all cursor-pointer">
+            <div className="text-5xl mb-4">🎤</div>
+            <h3 className="text-xl font-semibold text-white mb-2">ASL Practice</h3>
+            <p className="text-gray-400 text-sm">Practice CBSE speaking tasks with AI scoring and instant feedback on fluency and grammar</p>
+          </a>
+          <a href="/doubts" className="bg-surface rounded-lg p-6 text-center hover:border-2 hover:border-purple-600 transition-all cursor-pointer">
             <div className="text-5xl mb-4">💡</div>
             <h3 className="text-xl font-semibold text-white mb-2">Doubt Solver</h3>
             <p className="text-gray-400 text-sm">Ask any question and get step-by-step explanations in your language with clickable annotations</p>
-          </div>
-          <div className="bg-surface rounded-lg p-6 text-center hover:border-2 hover:border-primary transition-all">
-            <div className="text-5xl mb-4">🎤</div>
+          </a>
+          <a href="/voice" className="bg-surface rounded-lg p-6 text-center hover:border-2 hover:border-green-600 transition-all cursor-pointer">
+            <div className="text-5xl mb-4">🗣️</div>
             <h3 className="text-xl font-semibold text-white mb-2">Voice Tutor</h3>
             <p className="text-gray-400 text-sm">Have natural conversations with AI in Hinglish for personalized learning</p>
-          </div>
+          </a>
         </div>
       </div>
 
