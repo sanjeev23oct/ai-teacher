@@ -18,6 +18,79 @@ import WorksheetViewPage from './pages/WorksheetViewPage';
 import RevisionFriendPage from './pages/RevisionFriendPage';
 import DashboardDoubtCard from './components/DashboardDoubtCard';
 
+// Group Study Coming Soon Card
+const GroupStudyCard = () => {
+  const [showModal, setShowModal] = React.useState(false);
+  
+  return (
+    <>
+      <div 
+        onClick={() => setShowModal(true)}
+        className="bg-gradient-to-br from-orange-900/40 to-orange-800/20 rounded-xl p-6 hover:scale-[1.02] transition-all cursor-pointer border border-orange-700/50 relative"
+      >
+        <div className="absolute top-3 right-3 bg-orange-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+          Coming Soon
+        </div>
+        <div className="text-center">
+          <div className="text-5xl mb-4">👥</div>
+          <h3 className="text-xl font-bold text-white mb-2">Group Study</h3>
+          <p className="text-gray-300 text-sm mb-3">Dosto ke saath milke padho - more fun!</p>
+          <ul className="text-gray-400 text-xs space-y-1 text-left">
+            <li>✓ Create study rooms with friends</li>
+            <li>✓ Quiz battles & competitions</li>
+            <li>✓ Voice discussions with AI help</li>
+          </ul>
+        </div>
+      </div>
+      
+      {showModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setShowModal(false)}>
+          <div className="bg-surface rounded-xl p-6 max-w-md w-full border border-gray-700" onClick={e => e.stopPropagation()}>
+            <div className="text-center mb-4">
+              <div className="text-5xl mb-3">👥</div>
+              <h3 className="text-2xl font-bold text-white mb-2">Group Study - Coming Soon!</h3>
+              <p className="text-gray-400">Hum kuch amazing bana rahe hain tumhare liye!</p>
+            </div>
+            
+            <div className="space-y-3 mb-6">
+              <div className="flex items-start gap-3 p-3 bg-background rounded-lg">
+                <span className="text-2xl">🎯</span>
+                <div>
+                  <h4 className="text-white font-medium">Study Rooms</h4>
+                  <p className="text-gray-400 text-sm">Apne friends ke saath real-time mein padho</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 bg-background rounded-lg">
+                <span className="text-2xl">🏆</span>
+                <div>
+                  <h4 className="text-white font-medium">Quiz Battles</h4>
+                  <p className="text-gray-400 text-sm">Classmates ke saath compete karo quizzes mein</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 bg-background rounded-lg">
+                <span className="text-2xl">💬</span>
+                <div>
+                  <h4 className="text-white font-medium">Voice Discussions</h4>
+                  <p className="text-gray-400 text-sm">Doubts discuss karo AI moderation ke saath</p>
+                </div>
+              </div>
+            </div>
+            
+            <p className="text-center text-orange-400 font-medium mb-4">Watch this space! Jaldi aa raha hai! 🚀</p>
+            
+            <button
+              onClick={() => setShowModal(false)}
+              className="w-full py-2 bg-primary hover:bg-blue-700 rounded-lg text-white font-medium transition-colors"
+            >
+              Got it!
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
 // Home page component
 const Home = () => {
   const { user, token } = useAuth();
@@ -63,52 +136,87 @@ const Home = () => {
   }, [user, token]);
   
   return (
-    <div className="py-12">
-      <div className="text-center mb-12">
-        <h1 className="text-4xl sm:text-5xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent">
-          Master CBSE English with AI
+    <div className="py-8 sm:py-12">
+      <div className="text-center mb-10 px-4">
+        <h1 className="text-3xl sm:text-5xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+          Padhai Made Easy! 📚
         </h1>
-        <p className="text-lg sm:text-xl text-gray-400 mb-10 max-w-2xl mx-auto px-4">
-          Practice ASL speaking, get instant doubt solutions, and learn with voice conversations - all powered by AI
+        <p className="text-base sm:text-xl text-gray-400 mb-8 max-w-2xl mx-auto">
+          Your personal AI study buddy that speaks Hinglish. Revise topics, practice speaking, ace your exams!
         </p>
         
         <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
-          <a href="/asl" className="btn-primary text-base sm:text-lg px-6 sm:px-8 py-2.5 sm:py-3">
-            🎤 ASL Practice
+          <a href="/revision-friend" className="btn-primary text-base sm:text-lg px-6 sm:px-8 py-2.5 sm:py-3">
+            📚 Quick Revise
           </a>
-          <a href="/doubts" className="px-6 sm:px-8 py-2.5 sm:py-3 bg-purple-600 hover:bg-purple-700 rounded-md text-white transition-colors font-medium text-base sm:text-lg">
-            💡 Ask Doubt
-          </a>
-          <a href="/voice" className="px-6 sm:px-8 py-2.5 sm:py-3 bg-green-600 hover:bg-green-700 rounded-md text-white transition-colors font-medium text-base sm:text-lg">
-            🗣️ Voice Tutor
+          <a href="/asl" className="px-6 sm:px-8 py-2.5 sm:py-3 bg-purple-600 hover:bg-purple-700 rounded-md text-white transition-colors font-medium text-base sm:text-lg">
+            🎤 Speaking Practice
           </a>
         </div>
         {!user && (
           <p className="text-gray-500 text-sm mt-6">
-            <a href="/signup" className="text-primary hover:underline">Sign up free</a> to track your progress
+            <a href="/signup" className="text-primary hover:underline">Sign up free</a> to save your progress
           </p>
         )}
       </div>
 
-      {/* Features Showcase */}
-      <div className="max-w-6xl mx-auto mt-16 mb-12">
-        <h2 className="text-3xl font-bold text-center text-white mb-8">Everything You Need to Excel</h2>
+      {/* Main Features - Only 3 */}
+      <div className="max-w-5xl mx-auto mt-12 mb-12 px-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <a href="/asl" className="bg-surface rounded-lg p-6 text-center hover:border-2 hover:border-primary transition-all cursor-pointer">
-            <div className="text-5xl mb-4">🎤</div>
-            <h3 className="text-xl font-semibold text-white mb-2">ASL Practice</h3>
-            <p className="text-gray-400 text-sm">Practice CBSE speaking tasks with AI scoring and instant feedback on fluency and grammar</p>
+          <a href="/revision-friend" className="bg-gradient-to-br from-green-900/40 to-green-800/20 rounded-xl p-6 hover:scale-[1.02] transition-all cursor-pointer border border-green-700/50">
+            <div className="text-center">
+              <div className="text-5xl mb-4">📚</div>
+              <h3 className="text-xl font-bold text-white mb-2">Quick Revise</h3>
+              <p className="text-gray-300 text-sm mb-3">3-minute revision sessions jaise dost ke saath padhai!</p>
+              <ul className="text-gray-400 text-xs space-y-1 text-left">
+                <li>✓ AI explains topic in simple Hinglish</li>
+                <li>✓ Quick quiz to test understanding</li>
+                <li>✓ Audio explanations - just listen & learn</li>
+              </ul>
+            </div>
           </a>
-          <a href="/doubts" className="bg-surface rounded-lg p-6 text-center hover:border-2 hover:border-purple-600 transition-all cursor-pointer">
-            <div className="text-5xl mb-4">💡</div>
-            <h3 className="text-xl font-semibold text-white mb-2">Doubt Solver</h3>
-            <p className="text-gray-400 text-sm">Ask any question and get step-by-step explanations in your language with clickable annotations</p>
+          
+          <a href="/asl" className="bg-gradient-to-br from-purple-900/40 to-purple-800/20 rounded-xl p-6 hover:scale-[1.02] transition-all cursor-pointer border border-purple-700/50">
+            <div className="text-center">
+              <div className="text-5xl mb-4">🎤</div>
+              <h3 className="text-xl font-bold text-white mb-2">Speaking Practice</h3>
+              <p className="text-gray-300 text-sm mb-3">CBSE speaking tasks with instant AI feedback!</p>
+              <ul className="text-gray-400 text-xs space-y-1 text-left">
+                <li>✓ Real CBSE speaking topics</li>
+                <li>✓ AI scores fluency & grammar</li>
+                <li>✓ Practice anytime, anywhere</li>
+              </ul>
+            </div>
           </a>
-          <a href="/voice" className="bg-surface rounded-lg p-6 text-center hover:border-2 hover:border-green-600 transition-all cursor-pointer">
-            <div className="text-5xl mb-4">🗣️</div>
-            <h3 className="text-xl font-semibold text-white mb-2">Voice Tutor</h3>
-            <p className="text-gray-400 text-sm">Have natural conversations with AI in Hinglish for personalized learning</p>
-          </a>
+          
+          <GroupStudyCard />
+        </div>
+      </div>
+
+      {/* Why StudyBuddy */}
+      <div className="max-w-4xl mx-auto mt-12 mb-12 px-4">
+        <h2 className="text-2xl font-bold text-center text-white mb-6">Why Students Love Us 💜</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+          <div className="p-4">
+            <div className="text-3xl mb-2">🗣️</div>
+            <p className="text-white font-medium text-sm">Hinglish mein</p>
+            <p className="text-gray-500 text-xs">Easy to understand</p>
+          </div>
+          <div className="p-4">
+            <div className="text-3xl mb-2">⚡</div>
+            <p className="text-white font-medium text-sm">Super Fast</p>
+            <p className="text-gray-500 text-xs">Instant answers</p>
+          </div>
+          <div className="p-4">
+            <div className="text-3xl mb-2">🎧</div>
+            <p className="text-white font-medium text-sm">Audio Support</p>
+            <p className="text-gray-500 text-xs">Listen & learn</p>
+          </div>
+          <div className="p-4">
+            <div className="text-3xl mb-2">📱</div>
+            <p className="text-white font-medium text-sm">Mobile First</p>
+            <p className="text-gray-500 text-xs">Study anywhere</p>
+          </div>
         </div>
       </div>
 

@@ -1,13 +1,19 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { GraduationCap, Mic, Upload, History, User, LogOut, HelpCircle, BookmarkCheck, Menu, X } from 'lucide-react';
+import { Mic, Upload, History, User, LogOut, HelpCircle, BookmarkCheck, Menu, X, Users } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const Navigation: React.FC = () => {
     const { user, logout } = useAuth();
     const [showDropdown, setShowDropdown] = useState(false);
     const [showMobileMenu, setShowMobileMenu] = useState(false);
+    const [showComingSoon, setShowComingSoon] = useState(false);
     const navigate = useNavigate();
+    
+    const handleComingSoon = () => {
+        setShowComingSoon(true);
+        setShowMobileMenu(false);
+    };
 
     const handleLogout = () => {
         logout();
@@ -26,8 +32,8 @@ const Navigation: React.FC = () => {
                 <div className="flex items-center justify-between h-16">
                     <div className="flex items-center">
                         <Link to="/" className="flex items-center space-x-2">
-                            <GraduationCap className="h-8 w-8 text-primary" />
-                            <span className="text-xl font-bold text-white">AI Teacher</span>
+                            <span className="text-2xl">📚</span>
+                            <span className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">StudyBuddy</span>
                         </Link>
                     </div>
                     <div className="hidden md:block">
@@ -39,22 +45,22 @@ const Navigation: React.FC = () => {
                                 <Upload className="h-4 w-4" />
                                 <span>Grade Exam</span>
                             </Link>
-                            <Link to="/voice" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1">
-                                <Mic className="h-4 w-4" />
-                                <span>Voice Tutor</span>
-                            </Link>
-                            <Link to="/asl" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1">
-                                <Mic className="h-4 w-4" />
-                                <span>ASL Practice</span>
-                            </Link>
                             <Link to="/doubts" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1">
                                 <HelpCircle className="h-4 w-4" />
                                 <span>Ask Doubt</span>
                             </Link>
                             <Link to="/revision-friend" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1">
                                 <BookmarkCheck className="h-4 w-4" />
-                                <span>Revision Friend</span>
+                                <span>Quick Revise</span>
                             </Link>
+                            <Link to="/asl" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1">
+                                <Mic className="h-4 w-4" />
+                                <span>Speaking Practice</span>
+                            </Link>
+                            <button onClick={handleComingSoon} className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1">
+                                <Users className="h-4 w-4" />
+                                <span>Group Study</span>
+                            </button>
                             {user && (
                                 <>
                                     <Link to="/revision" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1">
@@ -150,22 +156,22 @@ const Navigation: React.FC = () => {
                                 <Upload className="h-4 w-4" />
                                 <span>Grade Exam</span>
                             </Link>
-                            <Link to="/voice" onClick={closeMobileMenu} className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2">
-                                <Mic className="h-4 w-4" />
-                                <span>Voice Tutor</span>
-                            </Link>
-                            <Link to="/asl" onClick={closeMobileMenu} className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2">
-                                <Mic className="h-4 w-4" />
-                                <span>ASL Practice</span>
-                            </Link>
                             <Link to="/doubts" onClick={closeMobileMenu} className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2">
                                 <HelpCircle className="h-4 w-4" />
                                 <span>Ask Doubt</span>
                             </Link>
                             <Link to="/revision-friend" onClick={closeMobileMenu} className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2">
                                 <BookmarkCheck className="h-4 w-4" />
-                                <span>Revision Friend</span>
+                                <span>Quick Revise</span>
                             </Link>
+                            <Link to="/asl" onClick={closeMobileMenu} className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2">
+                                <Mic className="h-4 w-4" />
+                                <span>Speaking Practice</span>
+                            </Link>
+                            <button onClick={handleComingSoon} className="text-gray-300 hover:text-white w-full text-left px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2">
+                                <Users className="h-4 w-4" />
+                                <span>Group Study</span>
+                            </button>
                             {user && (
                                 <>
                                     <Link to="/revision" onClick={closeMobileMenu} className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2">
@@ -203,6 +209,52 @@ const Navigation: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            {/* Coming Soon Modal */}
+            {showComingSoon && (
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setShowComingSoon(false)}>
+                    <div className="bg-surface rounded-xl p-6 max-w-md w-full border border-gray-700" onClick={e => e.stopPropagation()}>
+                        <div className="text-center mb-4">
+                            <div className="text-5xl mb-3">👥</div>
+                            <h3 className="text-2xl font-bold text-white mb-2">Group Study - Coming Soon!</h3>
+                            <p className="text-gray-400">We're building something amazing for you!</p>
+                        </div>
+                        
+                        <div className="space-y-3 mb-6">
+                            <div className="flex items-start gap-3 p-3 bg-background rounded-lg">
+                                <span className="text-2xl">🎯</span>
+                                <div>
+                                    <h4 className="text-white font-medium">Study with Friends</h4>
+                                    <p className="text-gray-400 text-sm">Create study rooms and revise together in real-time</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-3 p-3 bg-background rounded-lg">
+                                <span className="text-2xl">🏆</span>
+                                <div>
+                                    <h4 className="text-white font-medium">Quiz Battles</h4>
+                                    <p className="text-gray-400 text-sm">Compete with classmates on topic quizzes</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-3 p-3 bg-background rounded-lg">
+                                <span className="text-2xl">💬</span>
+                                <div>
+                                    <h4 className="text-white font-medium">Voice Discussions</h4>
+                                    <p className="text-gray-400 text-sm">Discuss doubts together with AI moderation</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <p className="text-center text-primary font-medium mb-4">Watch this space! 🚀</p>
+                        
+                        <button
+                            onClick={() => setShowComingSoon(false)}
+                            className="w-full py-2 bg-primary hover:bg-blue-700 rounded-lg text-white font-medium transition-colors"
+                        >
+                            Got it!
+                        </button>
+                    </div>
+                </div>
+            )}
         </nav>
     );
 };
