@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { BookOpen, Play, Pause, RotateCcw, Clock, CheckCircle, Volume2, BookmarkCheck } from 'lucide-react';
+import { BookOpen, Play, RotateCcw, Clock, CheckCircle, Volume2, BookmarkCheck } from 'lucide-react';
 import { getApiUrl } from '../config';
 
 interface QuizQuestion {
@@ -25,6 +25,7 @@ interface RevisionSession {
   quizAnswers?: string[];
   quizResults?: QuizResult[];
   quizScore?: number;
+  quizSummary?: string;
 }
 
 interface RevisionHistory {
@@ -46,6 +47,7 @@ const RevisionFriendPage: React.FC = () => {
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [currentAnswer, setCurrentAnswer] = useState('');
   const [isGrading, setIsGrading] = useState(false);
+  const [autoPlayAudio, setAutoPlayAudio] = useState(true);
   
   const timerRef = useRef<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -83,12 +85,29 @@ const RevisionFriendPage: React.FC = () => {
     fetchSuggestions();
   }, []);
 
+  // Auto-play audio when content changes (if enabled and not in quiz phase)
+  useEffect(() => {
+    if (autoPlayAudio && session?.content && session.hasAudio && session.phase !== 'quiz' && !isPlayingAudio) {
+      // Small delay to ensure UI is ready
+      const timer = setTimeout(() => {
+        playAudio();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [session?.content, session?.phase]);
+
   useEffect(() => {
     if (session && isActive && session.timeLeft > 0) {
       timerRef.current = window.setInterval(() => {
         setSession(prev => {
           if (!prev || prev.timeLeft <= 1) {
-            handlePhaseComplete();
+            // Don't auto-advance if audio is playing - let it finish
+            if (!isPlayingAudio) {
+              handlePhaseComplete();
+            } else {
+              // Pause timer, will resume when audio ends
+              setIsActive(false);
+            }
             return prev;
           }
           return { ...prev, timeLeft: prev.timeLeft - 1 };
@@ -106,7 +125,7 @@ const RevisionFriendPage: React.FC = () => {
         clearInterval(timerRef.current);
       }
     };
-  }, [session, isActive]);
+  }, [session, isActive, isPlayingAudio]);
 
   const fetchRevisionHistory = async () => {
     try {
@@ -139,6 +158,13 @@ const RevisionFriendPage: React.FC = () => {
   const startRevision = async (revisionTopic?: string) => {
     const targetTopic = revisionTopic || topic;
     if (!targetTopic.trim()) return;
+
+    // Stop any playing audio from previous session
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setIsPlayingAudio(false);
 
     setIsLoading(true);
     try {
@@ -229,6 +255,13 @@ const RevisionFriendPage: React.FC = () => {
         if (response.ok) {
           const data = await response.json();
           
+          // Stop any playing audio when transitioning
+          if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current = null;
+          }
+          setIsPlayingAudio(false);
+          
           // Parse quiz questions if entering quiz phase
           const quizQuestions = next.phase === 'quiz' ? parseQuizQuestions(data.content) : undefined;
           
@@ -241,9 +274,14 @@ const RevisionFriendPage: React.FC = () => {
             quizQuestions,
             currentQuestionIndex: next.phase === 'quiz' ? 0 : undefined,
             quizAnswers: next.phase === 'quiz' ? [] : undefined,
+            quizResults: undefined,
+            quizScore: undefined,
           } : null);
           
-          if (next.time > 0) {
+          // For quiz phase, pause timer until questions are answered
+          if (next.phase === 'quiz') {
+            setIsActive(false);
+          } else if (next.time > 0) {
             setIsActive(true);
           }
         }
@@ -279,6 +317,13 @@ const RevisionFriendPage: React.FC = () => {
     setIsGrading(true);
     setIsActive(false);
     
+    // Stop any playing audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setIsPlayingAudio(false);
+    
     try {
       const response = await fetch(getApiUrl('/api/revision-friend/grade-quiz'), {
         method: 'POST',
@@ -297,6 +342,7 @@ const RevisionFriendPage: React.FC = () => {
           ...prev,
           quizResults: data.results,
           quizScore: data.score,
+          quizSummary: data.summaryMessage,
         } : null);
       }
     } catch (err) {
@@ -338,6 +384,11 @@ const RevisionFriendPage: React.FC = () => {
       audio.onended = () => {
         setIsPlayingAudio(false);
         URL.revokeObjectURL(audioBlobUrl);
+        
+        // Auto-advance if timer is at 0
+        if (session && session.timeLeft === 0) {
+          handlePhaseComplete();
+        }
       };
       audio.onerror = () => {
         setIsPlayingAudio(false);
@@ -354,11 +405,17 @@ const RevisionFriendPage: React.FC = () => {
   const resetSession = () => {
     setSession(null);
     setIsActive(false);
+    setIsPlayingAudio(false);
+    setCurrentAnswer('');
+    
     if (timerRef.current) {
       clearInterval(timerRef.current);
+      timerRef.current = null;
     }
+    
     if (audioRef.current) {
       audioRef.current.pause();
+      audioRef.current = null;
     }
   };
 
@@ -367,7 +424,7 @@ const RevisionFriendPage: React.FC = () => {
       explanation: 'Listen to explanation',
       repeat: 'Repeat key points',
       quiz: 'Answer questions',
-      drill: 'Practice weak areas',
+      drill: 'Rapid fire drill',
       complete: 'Session complete!',
     };
     return descriptions[phase as keyof typeof descriptions] || phase;
@@ -382,6 +439,16 @@ const RevisionFriendPage: React.FC = () => {
       complete: <CheckCircle className="w-5 h-5 text-green-500" />,
     };
     return icons[phase as keyof typeof icons] || <Clock className="w-5 h-5" />;
+  };
+
+  const getNextPhaseName = (currentPhase: string) => {
+    const nextPhases: Record<string, string> = {
+      explanation: 'Start Repeat',
+      repeat: 'Start Quiz',
+      quiz: 'Start Rapid Fire',
+      drill: 'Complete',
+    };
+    return nextPhases[currentPhase] || 'Next Phase';
   };
 
   return (
@@ -421,7 +488,7 @@ const RevisionFriendPage: React.FC = () => {
                   onChange={(e) => setTopic(e.target.value)}
                   placeholder="e.g., photosynthesis, Beehive Ch1..."
                   className="flex-1 px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white text-sm placeholder-gray-500"
-                  onKeyPress={(e) => e.key === 'Enter' && !isLoading && startRevision()}
+                  onKeyDown={(e) => e.key === 'Enter' && !isLoading && startRevision()}
                 />
                 
                 <button
@@ -493,11 +560,40 @@ const RevisionFriendPage: React.FC = () => {
             <p className="text-sm text-gray-400">{session.subject}</p>
           </div>
 
-          {/* Phase Progress */}
+          {/* Phase Overview */}
+          <div className="mb-4">
+            <div className="flex justify-between items-center text-xs text-gray-400 mb-2">
+              <span className={session.phase === 'explanation' ? 'text-primary font-semibold' : ''}>
+                1. Summary
+              </span>
+              <span className={session.phase === 'repeat' ? 'text-primary font-semibold' : ''}>
+                2. Repeat
+              </span>
+              <span className={session.phase === 'quiz' ? 'text-primary font-semibold' : ''}>
+                3. Quiz
+              </span>
+              <span className={session.phase === 'drill' ? 'text-primary font-semibold' : ''}>
+                4. Rapid Fire
+              </span>
+            </div>
+            <div className="h-1 bg-gray-800 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-primary transition-all duration-300"
+                style={{ 
+                  width: session.phase === 'explanation' ? '25%' : 
+                         session.phase === 'repeat' ? '50%' : 
+                         session.phase === 'quiz' ? '75%' : 
+                         session.phase === 'drill' ? '100%' : '100%' 
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Current Phase */}
           <div className="flex justify-center mb-4">
             <div className="flex items-center gap-2 text-sm">
               {getPhaseIcon(session.phase)}
-              <span className="text-white">{getPhaseDescription(session.phase)}</span>
+              <span className="text-white font-semibold">{getPhaseDescription(session.phase)}</span>
             </div>
           </div>
 
@@ -508,27 +604,31 @@ const RevisionFriendPage: React.FC = () => {
               {session.quizResults ? (
                 /* Quiz Results */
                 <div>
-                  <h3 className="text-lg font-semibold text-white mb-3">
-                    Quiz Results: {session.quizScore}/{session.quizQuestions.length}
-                  </h3>
-                  <div className="space-y-3">
+                  <div className="mb-4 text-center">
+                    <h3 className="text-xl font-bold text-white mb-3">
+                      {session.quizSummary || `Here are your quiz results! You scored ${session.quizScore} out of ${session.quizQuestions.length}`}
+                    </h3>
+                  </div>
+                  <div className="space-y-4">
                     {session.quizQuestions.map((q, idx) => {
                       const result = session.quizResults?.[idx];
                       if (!result) return null;
                       
                       return (
                         <div key={idx} className="border-b border-gray-700 pb-3 last:border-0">
-                          <p className="text-sm text-gray-300 mb-1">Q{idx + 1}: {q.question}</p>
-                          <p className="text-xs text-gray-400 mb-1">Your answer: {session.quizAnswers?.[idx]}</p>
-                          <p className="text-xs text-gray-400 mb-1">Correct: {q.correctAnswer}</p>
-                          <div className={`text-xs mt-1 ${
-                            result.grade === 'correct' ? 'text-green-400' :
-                            result.grade === 'partial' ? 'text-yellow-400' :
-                            'text-red-400'
+                          <p className="text-sm font-semibold text-white mb-2">Question {idx + 1}: {q.question}</p>
+                          <p className="text-xs text-gray-400 mb-1">
+                            <span className="font-medium">Your answer:</span> {session.quizAnswers?.[idx]}
+                          </p>
+                          <p className="text-xs text-gray-400 mb-2">
+                            <span className="font-medium">Correct answer:</span> {q.correctAnswer}
+                          </p>
+                          <div className={`text-sm mt-2 p-2 rounded ${
+                            result.grade === 'correct' ? 'bg-green-900/30 text-green-300' :
+                            result.grade === 'partial' ? 'bg-yellow-900/30 text-yellow-300' :
+                            'bg-red-900/30 text-red-300'
                           }`}>
-                            {result.grade === 'correct' ? '✓ Correct' :
-                             result.grade === 'partial' ? '~ Partial' :
-                             '✗ Incorrect'} - {result.feedback}
+                            {result.feedback}
                           </div>
                         </div>
                       );
@@ -551,7 +651,7 @@ const RevisionFriendPage: React.FC = () => {
                       type="text"
                       value={currentAnswer}
                       onChange={(e) => setCurrentAnswer(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && submitQuizAnswer()}
+                      onKeyDown={(e) => e.key === 'Enter' && submitQuizAnswer()}
                       placeholder="Type your answer..."
                       className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm"
                       disabled={isGrading}
@@ -597,14 +697,27 @@ const RevisionFriendPage: React.FC = () => {
           {/* Audio Controls */}
           {session.hasAudio && session.content && (
             <div className="text-center mb-4">
-              <button
-                onClick={playAudio}
-                disabled={isPlayingAudio}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-white text-sm transition-all disabled:opacity-50 flex items-center gap-2 mx-auto"
-              >
-                <Volume2 className="w-4 h-4" />
-                {isPlayingAudio ? 'Playing...' : 'Play Audio'}
-              </button>
+              <div className="flex items-center justify-center gap-3">
+                <button
+                  onClick={playAudio}
+                  disabled={isPlayingAudio}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-white text-sm transition-all disabled:opacity-50 flex items-center gap-2"
+                >
+                  <Volume2 className="w-4 h-4" />
+                  {isPlayingAudio ? 'Playing...' : 'Play Audio'}
+                </button>
+                <button
+                  onClick={() => setAutoPlayAudio(!autoPlayAudio)}
+                  className={`px-3 py-2 rounded text-xs transition-all ${
+                    autoPlayAudio 
+                      ? 'bg-green-600 hover:bg-green-700 text-white' 
+                      : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                  }`}
+                  title={autoPlayAudio ? 'Auto-play enabled' : 'Auto-play disabled'}
+                >
+                  Auto {autoPlayAudio ? '✓' : '✗'}
+                </button>
+              </div>
             </div>
           )}
 
@@ -618,7 +731,7 @@ const RevisionFriendPage: React.FC = () => {
                     onClick={handlePhaseComplete}
                     className="px-4 py-2 bg-primary hover:bg-blue-700 rounded text-white text-sm transition-all"
                   >
-                    Continue to Drill
+                    {getNextPhaseName(session.phase)}
                   </button>
                 ) : session.phase === 'quiz' && !session.quizResults ? (
                   /* Quiz in progress */
@@ -626,20 +739,19 @@ const RevisionFriendPage: React.FC = () => {
                     Answer all questions to continue
                   </div>
                 ) : (
-                  /* Normal phase controls */
+                  /* Normal phase controls - show skip and next phase buttons */
                   <>
                     <button
-                      onClick={() => setIsActive(!isActive)}
-                      className="px-4 py-2 bg-primary hover:bg-blue-700 rounded text-white text-sm transition-all flex items-center gap-2"
+                      onClick={handlePhaseComplete}
+                      className="px-4 py-2 bg-primary hover:bg-blue-700 rounded text-white text-sm transition-all"
                     >
-                      {isActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                      {isActive ? 'Pause' : 'Resume'}
+                      {getNextPhaseName(session.phase)}
                     </button>
                     <button
                       onClick={handlePhaseComplete}
                       className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm transition-all"
                     >
-                      Next Phase
+                      Skip →
                     </button>
                   </>
                 )}
