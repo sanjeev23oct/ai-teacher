@@ -7,10 +7,7 @@ interface QuizQuestion {
   correctAnswer: string;
 }
 
-interface QuizResult {
-  grade: 'correct' | 'partial' | 'incorrect';
-  feedback: string;
-}
+
 
 interface RevisionSession {
   sessionId: string;
@@ -23,9 +20,8 @@ interface RevisionSession {
   quizQuestions?: QuizQuestion[];
   currentQuestionIndex?: number;
   quizAnswers?: string[];
-  quizResults?: QuizResult[];
-  quizScore?: number;
-  quizSummary?: string;
+  quizReview?: string; // Conversational review from AI
+  quizComplete?: boolean;
 }
 
 interface RevisionHistory {
@@ -340,9 +336,8 @@ const RevisionFriendPage: React.FC = () => {
         const data = await response.json();
         setSession(prev => prev ? {
           ...prev,
-          quizResults: data.results,
-          quizScore: data.score,
-          quizSummary: data.summaryMessage,
+          quizReview: data.conversationalReview,
+          quizComplete: true,
         } : null);
       }
     } catch (err) {
@@ -601,39 +596,10 @@ const RevisionFriendPage: React.FC = () => {
           {session.phase === 'quiz' && session.quizQuestions ? (
             /* Interactive Quiz */
             <div className="bg-gray-900 rounded-lg p-4 mb-4">
-              {session.quizResults ? (
-                /* Quiz Results */
-                <div>
-                  <div className="mb-4 text-center">
-                    <h3 className="text-xl font-bold text-white mb-3">
-                      {session.quizSummary || `Here are your quiz results! You scored ${session.quizScore} out of ${session.quizQuestions.length}`}
-                    </h3>
-                  </div>
-                  <div className="space-y-4">
-                    {session.quizQuestions.map((q, idx) => {
-                      const result = session.quizResults?.[idx];
-                      if (!result) return null;
-                      
-                      return (
-                        <div key={idx} className="border-b border-gray-700 pb-3 last:border-0">
-                          <p className="text-sm font-semibold text-white mb-2">Question {idx + 1}: {q.question}</p>
-                          <p className="text-xs text-gray-400 mb-1">
-                            <span className="font-medium">Your answer:</span> {session.quizAnswers?.[idx]}
-                          </p>
-                          <p className="text-xs text-gray-400 mb-2">
-                            <span className="font-medium">Correct answer:</span> {q.correctAnswer}
-                          </p>
-                          <div className={`text-sm mt-2 p-2 rounded ${
-                            result.grade === 'correct' ? 'bg-green-900/30 text-green-300' :
-                            result.grade === 'partial' ? 'bg-yellow-900/30 text-yellow-300' :
-                            'bg-red-900/30 text-red-300'
-                          }`}>
-                            {result.feedback}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+              {session.quizComplete && session.quizReview ? (
+                /* Conversational Quiz Review */
+                <div className="text-gray-200 text-sm leading-relaxed whitespace-pre-wrap">
+                  {session.quizReview}
                 </div>
               ) : session.currentQuestionIndex !== undefined && session.currentQuestionIndex < session.quizQuestions.length ? (
                 /* Current Question */
@@ -725,7 +691,7 @@ const RevisionFriendPage: React.FC = () => {
           <div className="flex gap-2 justify-center">
             {session.phase !== 'complete' ? (
               <>
-                {session.phase === 'quiz' && session.quizResults ? (
+                {session.phase === 'quiz' && session.quizComplete ? (
                   /* Quiz completed, show next button */
                   <button
                     onClick={handlePhaseComplete}
@@ -733,7 +699,7 @@ const RevisionFriendPage: React.FC = () => {
                   >
                     {getNextPhaseName(session.phase)}
                   </button>
-                ) : session.phase === 'quiz' && !session.quizResults ? (
+                ) : session.phase === 'quiz' && !session.quizComplete ? (
                   /* Quiz in progress */
                   <div className="text-xs text-gray-400">
                     Answer all questions to continue

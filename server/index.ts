@@ -2232,63 +2232,41 @@ app.post('/api/revision-friend/grade-quiz', async (req: Request, res: Response) 
 
     const { aiService } = require('./services/aiService');
     
-    // Grade each answer
-    const results = [];
+    // Build a summary of all Q&A for the AI to review
+    let qaList = '';
     for (let i = 0; i < answers.length; i++) {
-      const prompt = `You are a friendly CBSE teacher grading a Class 9-10 student's quiz answer on "${topic}".
-
-Question ${i + 1}
-Student's Answer: "${answers[i]}"
-Correct Answer: "${correctAnswers[i]}"
-
-Grade the answer and give encouraging, conversational feedback in Hinglish.
-
-Respond in EXACTLY this format:
-Line 1: Write ONLY one word - "correct" OR "partial" OR "incorrect"
-Line 2: Give warm, specific feedback (2-3 sentences)
-
-IMPORTANT RULES:
-1. For CORRECT answers: Say "Your answer is correct!" then praise what they got right
-2. For PARTIAL answers: Say "Your answer is partially correct." then explain what's right and what's missing
-3. For INCORRECT answers: Say "Your answer is incorrect." then explain the correct answer simply
-
-Example feedback:
-CORRECT: "Your answer is correct! Bilkul sahi - tumne photosynthesis ka main concept perfectly samjha. Great job! 🌟"
-PARTIAL: "Your answer is partially correct. Tumne chlorophyll mention kiya jo sahi hai, but sunlight ka role bhi important tha. The correct answer includes both chlorophyll and sunlight."
-INCORRECT: "Your answer is incorrect. Koi baat nahi! The correct answer is: Photosynthesis is the process where plants convert light energy into chemical energy. Remember this for next time!"
-
-Give clear, encouraging feedback:`;
-
-      const result = await aiService.generateContent({ prompt });
-      const lines = result.text.trim().split('\n').filter(l => l.trim());
-      const grade = lines[0].toLowerCase().trim();
-      const feedback = lines.slice(1).join(' ').trim();
-      
-      results.push({
-        grade: grade.includes('correct') ? (grade.includes('partial') ? 'partial' : 'correct') : 'incorrect',
-        feedback: feedback || 'Good effort!'
-      });
+      qaList += `Question ${i + 1}: What was asked\nStudent answered: "${answers[i]}"\nCorrect answer should be: "${correctAnswers[i]}"\n\n`;
     }
 
-    // Calculate score
-    const score = results.filter(r => r.grade === 'correct').length;
-    const total = answers.length;
+    // Generate ONE conversational review of all answers
+    const prompt = `You are a warm, encouraging study buddy reviewing a CBSE Class 9-10 student's quiz on "${topic}".
+
+Here are the questions and answers:
+${qaList}
+
+Write a friendly, conversational review in Hinglish. Talk to the student like a supportive friend would. 
+
+Structure your response like this:
+1. Start with an excited greeting like "Chalo dekhe tumne kaisa kiya! 🎯"
+2. Go through each question one by one:
+   - Say "Question 1 mein tumne likha [their answer]..."
+   - If correct: celebrate! "Wah! Bilkul sahi! 🌟"
+   - If wrong: be kind and explain "Hmm, yahan thoda miss ho gaya. Actually correct answer hai [answer]. Yaad rakhna..."
+3. End with encouragement like "Overall achha effort! Keep practicing! 💪"
+
+Keep it natural, warm, and educational. Don't use bullet points or formal formatting. Write like you're talking to a friend.`;
+
+    const result = await aiService.generateContent({ prompt });
+    const conversationalReview = result.text.trim();
     
-    // Generate exciting summary message
-    let summaryMessage = '';
-    const percentage = (score / total) * 100;
-    
-    if (percentage === 100) {
-      summaryMessage = `Wow! Perfect score! 🎉 You got all ${total} questions right! Tumne ${topic} ko bilkul master kar liya hai!`;
-    } else if (percentage >= 66) {
-      summaryMessage = `Great job! 👏 You scored ${score} out of ${total}! Bahut achha performance! Thoda aur practice karo aur tum perfect ho jaoge!`;
-    } else if (percentage >= 33) {
-      summaryMessage = `Good try! 💪 You got ${score} out of ${total} correct. Koi baat nahi, practice se sab ho jayega! Let's review the answers together.`;
-    } else {
-      summaryMessage = `Don't worry! 🌟 You scored ${score} out of ${total}. Yeh topic thoda tricky hai, but we'll learn it together! Check the feedback below to understand better.`;
-    }
-    
-    res.json({ results, score, total, summaryMessage });
+    res.json({ 
+      conversationalReview,
+      questions: correctAnswers.map((correct: string, i: number) => ({
+        question: `Question ${i + 1}`,
+        studentAnswer: answers[i],
+        correctAnswer: correct
+      }))
+    });
   } catch (error) {
     console.error('Error grading quiz:', error);
     res.status(500).json({ error: 'Failed to grade quiz' });
