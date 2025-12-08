@@ -37,6 +37,10 @@ const Navigation: React.FC = () => {
                                 <Mic className="h-4 w-4" />
                                 <span>Voice Tutor</span>
                             </Link>
+                            <Link to="/asl" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1">
+                                <Mic className="h-4 w-4" />
+                                <span>ASL Practice</span>
+                            </Link>
                             <Link to="/doubts" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1">
                                 <HelpCircle className="h-4 w-4" />
                                 <span>Ask Doubt</span>

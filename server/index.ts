@@ -1967,6 +1967,50 @@ app.get('/api/dashboard/stats', authMiddleware, async (req: Request, res: Respon
     }
 });
 
+// ============================================================================
+// ASL (Assessment of Speaking and Listening) Routes
+// ============================================================================
+
+import * as aslScoringService from './services/aslScoringService';
+
+// Score ASL response
+app.post('/api/asl/score', upload.single('audio'), async (req: Request, res: Response) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No audio file provided' });
+    }
+
+    const { taskId, mode } = req.body;
+    
+    // Read audio file
+    const audioBuffer = fs.readFileSync(req.file.path);
+    
+    // Transcribe audio
+    const transcription = await aslScoringService.transcribeAudio(audioBuffer);
+    
+    // Get task details (you'll need to import task data)
+    // For now, using placeholder
+    const taskPrompt = "Sample task prompt";
+    const keywords = ["example", "keywords"];
+    
+    // Score the response
+    const result = await aslScoringService.scoreASLResponse({
+      transcription,
+      taskPrompt,
+      keywords,
+      duration: mode === 'solo' ? 60 : 30
+    });
+    
+    // Clean up uploaded file
+    fs.unlinkSync(req.file.path);
+    
+    res.json(result);
+  } catch (error) {
+    console.error('ASL scoring error:', error);
+    res.status(500).json({ error: 'Failed to score ASL response' });
+  }
+});
+
 // Catch-all route for React Router (must be last)
 if (process.env.NODE_ENV === 'production') {
   app.use((req: Request, res: Response) => {

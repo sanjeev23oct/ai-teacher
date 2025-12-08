@@ -1,0 +1,179 @@
+{
+  "metadata": {
+    "academicYear": "2025-26",
+    "totalTasks": 50,
+    "totalPairTopics": 12,
+    "source": "NCERT Textbooks 2025-26 + CBSE English Syllabus",
+    "legalCompliance": {
+      "chapterTitlesOnly": true,
+      "transformedIntoQuestions": true,
+      "fairUseKeywords": true,
+      "noCopiedContent": true
+    }
+  },
+  "coverage": {
+    "class9": {
+      "total": 25,
+      "books": {
+        "Beehive": {
+          "type": "Main Textbook",
+          "chapters": 9,
+          "taskIds": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+          "chapters_list": [
+            "The Fun They Had",
+            "The Sound of Music",
+            "The Little Girl",
+            "A Truly Beautiful Mind",
+            "The Snake and the Mirror",
+            "My Childhood",
+            "Reach for the Top",
+            "Kathmandu",
+            "If I Were You"
+          ]
+        },
+        "Moments": {
+          "type": "Supplementary Reader",
+          "chapters": 8,
+          "taskIds": [10, 11, 12, 13, 14, 15, 16, 17],
+          "chapters_list": [
+            "The Lost Child",
+            "The Adventures of Toto",
+            "Iswaran the Storyteller",
+            "In the Kingdom of Fools",
+            "The Happy Prince",
+            "The Last Leaf",
+            "A House is Not a Home",
+            "The Beggar"
+          ],
+          "removed_2025": [
+            "The Accidental Tourist",
+            "Weathering the Storm in Ersama"
+          ]
+        },
+        "SyllabusTopics": {
+          "type": "CBSE Prescribed Themes",
+          "topics": 7,
+          "taskIds": [37, 38, 39, 40, 41, 42, 43],
+          "topics_list": [
+            "Environment",
+            "Health and Fitness",
+            "Technology",
+            "Family Values",
+            "Social Issues",
+            "Career and Goals",
+            "Reading Habits"
+          ]
+        }
+      }
+    },
+    "class10": {
+      "total": 25,
+      "books": {
+        "FirstFlight": {
+          "type": "Main Textbook",
+          "chapters": 9,
+          "taskIds": [18, 19, 20, 21, 22, 23, 24, 25, 26],
+          "chapters_list": [
+            "A Letter to God",
+            "Nelson Mandela: Long Walk to Freedom",
+            "Two Stories about Flying",
+            "From the Diary of Anne Frank",
+            "Glimpses of India",
+            "Mijbil the Otter",
+            "Madam Rides the Bus",
+            "The Sermon at Benares",
+            "The Proposal"
+          ]
+        },
+        "FootprintsWithoutFeet": {
+          "type": "Supplementary Reader",
+          "chapters": 10,
+          "taskIds": [27, 28, 29, 30, 31, 32, 33, 34, 35, 36],
+          "chapters_list": [
+            "A Triumph of Surgery",
+            "The Thief's Story",
+            "The Midnight Visitor",
+            "A Question of Trust",
+            "Footprints Without Feet",
+            "The Making of a Scientist",
+            "The Necklace",
+            "The Hack Driver",
+            "Bholi",
+            "The Book that Saved the Earth"
+          ]
+        },
+        "SyllabusTopics": {
+          "type": "CBSE Prescribed Themes",
+          "topics": 7,
+          "taskIds": [44, 45, 46, 47, 48, 49, 50],
+          "topics_list": [
+            "Climate Change",
+            "Women Empowerment",
+            "Digital India",
+            "Youth and Nation Building",
+            "Mental Health",
+            "Indian Culture",
+            "Time Management"
+          ]
+        }
+      }
+    },
+    "pairDiscussions": {
+      "total": 12,
+      "difficulty": {
+        "easy": 4,
+        "medium": 5,
+        "hard": 3
+      },
+      "topics": [
+        "Homework - Good or Bad?",
+        "Mobile Phones in School",
+        "Online vs Offline Classes",
+        "School Uniform - Necessary?",
+        "Competitive Exams - Stress or Motivation?",
+        "Books vs Movies",
+        "Social Media - Connecting or Dividing?",
+        "Sports vs Studies - What's More Important?",
+        "Junk Food in School Canteens",
+        "Learning Foreign Languages",
+        "Climate Change - Individual vs Government Responsibility",
+        "Science Stream vs Commerce Stream"
+      ]
+    }
+  },
+  "weeklyCycle": {
+    "Monday": "Class 9 chapters",
+    "Tuesday": "Class 9 chapters",
+    "Wednesday": "Class 9 chapters",
+    "Thursday": "Class 10 chapters",
+    "Friday": "Class 10 chapters",
+    "Saturday": "Class 10 chapters",
+    "Sunday": "Value-based questions (moral lessons)"
+  },
+  "usageInstructions": {
+    "randomTask": "Use getRandomTask() for any random prompt",
+    "classSpecific": "Use getRandomTaskByClass(9) or getRandomTaskByClass(10)",
+    "weeklyRotation": "Use getTaskForToday() for automatic Mon-Sun cycle",
+    "pairDebate": "Use getRandomPairTopic() for AI debate practice",
+    "filtering": "Use getTasksByBook() to focus on specific textbook"
+  },
+  "aiScoringKeywords": {
+    "description": "Each task has 4-6 keywords for AI to score student responses",
+    "examples": [
+      "future, school, computer, teacher, technology, books",
+      "deaf, music, determination, percussion, inspire, courage",
+      "Lencho, faith, God, postman, money, hailstorm"
+    ],
+    "scoringLogic": "Award points when student uses these keywords naturally in 60-second response"
+  },
+  "updateGuide": {
+    "forYear2026-27": [
+      "Step 1: Download new NCERT textbooks from ncert.nic.in",
+      "Step 2: Check CBSE syllabus for any removed/added chapters",
+      "Step 3: Update chapter_list arrays in this JSON",
+      "Step 4: Modify corresponding prompts in syllabusTasks.js",
+      "Step 5: Update citations and academicYear metadata",
+      "Step 6: Test getRandomTask() returns valid chapters"
+    ]
+  }
+}

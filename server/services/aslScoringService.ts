@@ -1,0 +1,197 @@
+import { aiService } from './aiService';
+
+interface ASLScoringResult {
+  score: number; // 1-5
+  fixes: string[]; // Exactly 3 fixes
+  transcription: string;
+}
+
+/**
+ * CBSE ASL Scoring Rubric
+ * Based on official CBSE guidelines
+ */
+const ASL_SCORING_PROMPT = `You are a CBSE English teacher scoring ASL (Assessment of Speaking and Listening) for Class 9-10 students.
+
+CBSE SCORING RUBRIC (1-5):
+
+5/5 - EXCELLENT:
+- Fluent, clear pronunciation
+- Good vocabulary and grammar
+- Confident delivery
+- Relevant content with examples
+
+4/5 - VERY GOOD:
+- Mostly fluent with minor hesitations
+- Adequate vocabulary
+- Clear enough to understand
+- Relevant content
+
+3/5 - GOOD:
+- Some hesitations and pauses
+- Basic vocabulary
+- Understandable despite errors
+- Stays on topic
+
+2/5 - SATISFACTORY:
+- Frequent pauses and hesitations
+- Limited vocabulary
+- Some communication breakdown
+- Partially relevant
+
+1/5 - NEEDS IMPROVEMENT:
+- Very hesitant, many long pauses
+- Very limited vocabulary
+- Difficult to understand
+- Off-topic or too brief
+
+YOUR TASK:
+1. Read the transcription of student's speech
+2. Score it 1-5 based on the rubric above
+3. Provide EXACTLY 3 simple, actionable fixes in Class 9-appropriate language
+
+IMPORTANT:
+- Be encouraging but honest
+- Fixes should be specific and actionable
+- Use simple language (not technical terms)
+- Each fix should be one short sentence
+- Understand Hinglish (mixed Hindi-English) naturally
+
+RESPONSE FORMAT (JSON only):
+{
+  "score": 3,
+  "fixes": [
+    "Too many 'um's - breathe instead",
+    "Add examples from the chapter",
+    "Speak a bit louder"
+  ]
+}`;
+
+/**
+ * Score student's ASL response
+ */
+export async function scoreASLResponse(params: {
+  transcription: string;
+  taskPrompt: string;
+  keywords: string[];
+  duration: number;
+}): Promise<ASLScoringResult> {
+  const { transcription, taskPrompt, keywords, duration } = params;
+
+  // Build scoring prompt with context
+  const prompt = `${ASL_SCORING_PROMPT}
+
+TASK GIVEN TO STUDENT:
+"${taskPrompt}"
+
+EXPECTED KEYWORDS: ${keywords.join(', ')}
+
+STUDENT'S RESPONSE (${duration}s):
+"${transcription}"
+
+Now score this response and provide exactly 3 fixes. Return ONLY valid JSON.`;
+
+  try {
+    const response = await aiService.generateText(prompt);
+    
+    // Parse JSON response
+    let jsonStr = response;
+    if (response.includes('```json')) {
+      jsonStr = response.split('```json')[1].split('```')[0];
+    } else if (response.includes('```')) {
+      jsonStr = response.split('```')[1].split('```')[0];
+    }
+    
+    const result = JSON.parse(jsonStr.trim());
+    
+    // Validate response
+    if (!result.score || !result.fixes || result.fixes.length !== 3) {
+      throw new Error('Invalid scoring response format');
+    }
+    
+    // Ensure score is 1-5
+    result.score = Math.max(1, Math.min(5, result.score));
+    
+    return {
+      score: result.score,
+      fixes: result.fixes,
+      transcription
+    };
+  } catch (error) {
+    console.error('ASL scoring error:', error);
+    throw new Error('Failed to score ASL response');
+  }
+}
+
+/**
+ * Transcribe audio using AI
+ */
+export async function transcribeAudio(audioBuffer: Buffer): Promise<string> {
+  // For now, use a simple approach
+  // In production, you might want to use Whisper API or similar
+  
+  // Convert audio to base64
+  const base64Audio = audioBuffer.toString('base64');
+  
+  const prompt = `Transcribe this audio recording. The student is speaking in English or Hinglish (mixed Hindi-English). 
+  
+Return ONLY the transcription text, nothing else.`;
+
+  try {
+    // Note: Gemini can handle audio, but you might want to use Whisper for better accuracy
+    const transcription = await aiService.generateText(prompt);
+    return transcription.trim();
+  } catch (error) {
+    console.error('Transcription error:', error);
+    // Fallback: return a message
+    return '[Transcription unavailable - please check audio quality]';
+  }
+}
+
+/**
+ * Detect filler words and hesitations
+ */
+export function analyzeFillerWords(transcription: string): {
+  fillerCount: number;
+  fillers: string[];
+} {
+  const fillerWords = ['um', 'uh', 'like', 'you know', 'basically', 'actually', 'so', 'well'];
+  const text = transcription.toLowerCase();
+  
+  let fillerCount = 0;
+  const foundFillers: string[] = [];
+  
+  fillerWords.forEach(filler => {
+    const regex = new RegExp(`\\b${filler}\\b`, 'gi');
+    const matches = text.match(regex);
+    if (matches) {
+      fillerCount += matches.length;
+      if (!foundFillers.includes(filler)) {
+        foundFillers.push(filler);
+      }
+    }
+  });
+  
+  return { fillerCount, fillers: foundFillers };
+}
+
+/**
+ * Check if response uses expected keywords
+ */
+export function checkKeywordUsage(transcription: string, keywords: string[]): {
+  usedCount: number;
+  usedKeywords: string[];
+} {
+  const text = transcription.toLowerCase();
+  const usedKeywords: string[] = [];
+  
+  keywords.forEach(keyword => {
+    if (text.includes(keyword.toLowerCase())) {
+      usedKeywords.push(keyword);
+    }
+  });
+  
+  return {
+    usedCount: usedKeywords.length,
+    usedKeywords
+  };
+}

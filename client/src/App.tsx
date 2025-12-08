@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 import GradeExamPage from './pages/GradeExamPage';
 import VoiceTutorPage from './pages/VoiceTutorPage';
+import ASLPracticePage from './pages/ASLPracticePage';
 import SignupPage from './pages/SignupPage';
 import LoginPage from './pages/LoginPage';
 import HistoryPage from './pages/HistoryPage';
@@ -230,6 +231,7 @@ function App() {
           <Route path="/" element={<Layout><Home /></Layout>} />
           <Route path="/grade" element={<Layout><GradeExamPage /></Layout>} />
           <Route path="/voice" element={<Layout><VoiceTutorPage /></Layout>} />
+          <Route path="/asl" element={<Layout><ASLPracticePage /></Layout>} />
           <Route path="/history" element={<Layout><HistoryPage /></Layout>} />
           <Route path="/exams/:id" element={<Layout><ExamDetailPage /></Layout>} />
           <Route path="/doubts" element={<Layout><DoubtsPage /></Layout>} />
