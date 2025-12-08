@@ -1,17 +1,23 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { GraduationCap, Mic, Upload, History, User, LogOut, HelpCircle, BookmarkCheck } from 'lucide-react';
+import { GraduationCap, Mic, Upload, History, User, LogOut, HelpCircle, BookmarkCheck, Menu, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const Navigation: React.FC = () => {
     const { user, logout } = useAuth();
     const [showDropdown, setShowDropdown] = useState(false);
+    const [showMobileMenu, setShowMobileMenu] = useState(false);
     const navigate = useNavigate();
 
     const handleLogout = () => {
         logout();
         setShowDropdown(false);
+        setShowMobileMenu(false);
         navigate('/');
+    };
+
+    const closeMobileMenu = () => {
+        setShowMobileMenu(false);
     };
 
     return (
@@ -59,16 +65,26 @@ const Navigation: React.FC = () => {
                             )}
                         </div>
                     </div>
-                    <div className="relative">
-                        {user ? (
-                            <>
-                                <button
-                                    onClick={() => setShowDropdown(!showDropdown)}
-                                    className="flex items-center space-x-2 text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                                >
-                                    <User className="h-4 w-4" />
-                                    <span>{user.name}</span>
-                                </button>
+                    <div className="flex items-center space-x-2">
+                        {/* Mobile menu button */}
+                        <button
+                            onClick={() => setShowMobileMenu(!showMobileMenu)}
+                            className="md:hidden text-gray-300 hover:text-white p-2"
+                        >
+                            {showMobileMenu ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                        </button>
+
+                        {/* User dropdown */}
+                        <div className="relative hidden md:block">
+                            {user ? (
+                                <>
+                                    <button
+                                        onClick={() => setShowDropdown(!showDropdown)}
+                                        className="flex items-center space-x-2 text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                                    >
+                                        <User className="h-4 w-4" />
+                                        <span>{user.name}</span>
+                                    </button>
                                 {showDropdown && (
                                     <div className="absolute right-0 mt-2 w-48 bg-surface border border-gray-700 rounded-lg shadow-lg py-1">
                                         <Link
@@ -115,8 +131,69 @@ const Navigation: React.FC = () => {
                                 </Link>
                             </div>
                         )}
+                        </div>
                     </div>
                 </div>
+
+                {/* Mobile menu */}
+                {showMobileMenu && (
+                    <div className="md:hidden border-t border-gray-800">
+                        <div className="px-2 pt-2 pb-3 space-y-1">
+                            <Link to="/" onClick={closeMobileMenu} className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium">
+                                Home
+                            </Link>
+                            <Link to="/grade" onClick={closeMobileMenu} className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2">
+                                <Upload className="h-4 w-4" />
+                                <span>Grade Exam</span>
+                            </Link>
+                            <Link to="/voice" onClick={closeMobileMenu} className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2">
+                                <Mic className="h-4 w-4" />
+                                <span>Voice Tutor</span>
+                            </Link>
+                            <Link to="/asl" onClick={closeMobileMenu} className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2">
+                                <Mic className="h-4 w-4" />
+                                <span>ASL Practice</span>
+                            </Link>
+                            <Link to="/doubts" onClick={closeMobileMenu} className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2">
+                                <HelpCircle className="h-4 w-4" />
+                                <span>Ask Doubt</span>
+                            </Link>
+                            {user && (
+                                <>
+                                    <Link to="/revision" onClick={closeMobileMenu} className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2">
+                                        <BookmarkCheck className="h-4 w-4" />
+                                        <span>Revision</span>
+                                    </Link>
+                                    <Link to="/history" onClick={closeMobileMenu} className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2">
+                                        <History className="h-4 w-4" />
+                                        <span>Exam History</span>
+                                    </Link>
+                                    <Link to="/doubts/history" onClick={closeMobileMenu} className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2">
+                                        <HelpCircle className="h-4 w-4" />
+                                        <span>Doubt History</span>
+                                    </Link>
+                                    <button
+                                        onClick={handleLogout}
+                                        className="text-gray-300 hover:text-white w-full text-left px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2"
+                                    >
+                                        <LogOut className="h-4 w-4" />
+                                        <span>Log Out</span>
+                                    </button>
+                                </>
+                            )}
+                            {!user && (
+                                <>
+                                    <Link to="/login" onClick={closeMobileMenu} className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium">
+                                        Log In
+                                    </Link>
+                                    <Link to="/signup" onClick={closeMobileMenu} className="text-primary hover:text-primary-hover block px-3 py-2 rounded-md text-base font-medium">
+                                        Sign Up
+                                    </Link>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
         </nav>
     );
