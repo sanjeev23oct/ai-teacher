@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Mic, MicOff, Loader2, RefreshCw, Users, User, Volume2 } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 type Mode = 'solo' | 'pair';
 
@@ -26,6 +27,7 @@ interface ChatMessage {
 }
 
 const ASLPracticePage: React.FC = () => {
+  const { languageCode } = useLanguage();
   const [selectedClass, setSelectedClass] = useState<9 | 10>(9);
   const [mode, setMode] = useState<Mode>('solo');
   const [tasks, setTasks] = useState<ASLTask[]>([]);
@@ -205,6 +207,7 @@ const ASLPracticePage: React.FC = () => {
       formData.append('audio', audioBlob);
       formData.append('taskId', selectedTask.id);
       formData.append('mode', mode);
+      formData.append('languageCode', languageCode);
       
       const response = await fetch('/api/asl/score', {
         method: 'POST',
@@ -352,6 +355,7 @@ const ASLPracticePage: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: message.trim(),
+          languageCode,
           context: {
             taskTitle: selectedTask.title,
             taskPrompt: selectedTask.prompt,

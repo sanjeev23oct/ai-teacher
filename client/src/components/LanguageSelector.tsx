@@ -1,3 +1,6 @@
+import React from 'react';
+
+// Language options for doubt explanations
 export type Language = 
   | 'English'
   | 'Hindi'
@@ -5,68 +8,51 @@ export type Language =
   | 'Bengali'
   | 'Tamil'
   | 'Telugu'
-  | 'Marathi'
-  | 'Gujarati'
   | 'Kannada'
   | 'Malayalam'
   | 'Punjabi';
-
-interface LanguageOption {
-  id: Language;
-  label: string;
-  nativeLabel: string;
-}
-
-const LANGUAGES: LanguageOption[] = [
-  { id: 'English', label: 'English', nativeLabel: 'English' },
-  { id: 'Hindi', label: 'Hindi', nativeLabel: 'हिंदी' },
-  { id: 'Hinglish', label: 'Hinglish', nativeLabel: 'Hinglish' },
-  { id: 'Bengali', label: 'Bengali', nativeLabel: 'বাংলা' },
-  { id: 'Tamil', label: 'Tamil', nativeLabel: 'தமிழ்' },
-  { id: 'Telugu', label: 'Telugu', nativeLabel: 'తెలుగు' },
-  { id: 'Marathi', label: 'Marathi', nativeLabel: 'मराठी' },
-  { id: 'Gujarati', label: 'Gujarati', nativeLabel: 'ગુજરાતી' },
-  { id: 'Kannada', label: 'Kannada', nativeLabel: 'ಕನ್ನಡ' },
-  { id: 'Malayalam', label: 'Malayalam', nativeLabel: 'മലയാളം' },
-  { id: 'Punjabi', label: 'Punjabi', nativeLabel: 'ਪੰਜਾਬੀ' },
-];
 
 interface LanguageSelectorProps {
   selectedLanguage: Language | null;
   onSelect: (language: Language) => void;
 }
 
-export default function LanguageSelector({ selectedLanguage, onSelect }: LanguageSelectorProps) {
+const languages: { value: Language; label: string; description: string }[] = [
+  { value: 'Hinglish', label: 'Hinglish', description: 'Hindi-English mix - Most popular!' },
+  { value: 'English', label: 'English', description: 'Pure English explanations' },
+  { value: 'Hindi', label: 'Hindi', description: 'शुद्ध हिंदी में समझाएं' },
+  { value: 'Bengali', label: 'Bengali', description: 'বাংলায় ব্যাখ্যা' },
+  { value: 'Tamil', label: 'Tamil', description: 'தமிழில் விளக்கம்' },
+  { value: 'Telugu', label: 'Telugu', description: 'తెలుగులో వివరణ' },
+  { value: 'Kannada', label: 'Kannada', description: 'ಕನ್ನಡದಲ್ಲಿ ವಿವರಣೆ' },
+  { value: 'Malayalam', label: 'Malayalam', description: 'മലയാളത്തിൽ വിശദീകരണം' },
+  { value: 'Punjabi', label: 'Punjabi', description: 'ਪੰਜਾਬੀ ਵਿੱਚ ਵਿਆਖਿਆ' },
+];
+
+const LanguageSelector: React.FC<LanguageSelectorProps> = ({ selectedLanguage, onSelect }) => {
   return (
-    <div className="w-full">
-      <h2 className="text-xl font-semibold text-white mb-4">Select Language</h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-        {LANGUAGES.map((language) => (
+    <div>
+      <h2 className="text-xl font-semibold text-white mb-2">Choose Explanation Language</h2>
+      <p className="text-gray-400 mb-6">How would you like the explanation?</p>
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {languages.map((lang) => (
           <button
-            key={language.id}
-            onClick={() => onSelect(language.id)}
-            className={`
-              p-3 rounded-lg border-2 transition-all duration-200
-              flex flex-col items-center gap-1
-              min-h-[80px]
-              ${
-                selectedLanguage === language.id
-                  ? 'bg-primary border-white shadow-lg scale-105'
-                  : 'bg-surface border-gray-700 hover:border-gray-500 hover:scale-102'
-              }
-            `}
+            key={lang.value}
+            onClick={() => onSelect(lang.value)}
+            className={`p-4 rounded-lg border transition-all text-left ${
+              selectedLanguage === lang.value
+                ? 'border-primary bg-primary/10'
+                : 'border-gray-700 hover:border-gray-600 hover:bg-gray-800/50'
+            }`}
           >
-            <span className="text-lg font-semibold text-white">
-              {language.nativeLabel}
-            </span>
-            {language.label !== language.nativeLabel && (
-              <span className="text-xs text-gray-400">
-                {language.label}
-              </span>
-            )}
+            <div className="font-medium text-white">{lang.label}</div>
+            <div className="text-sm text-gray-400 mt-1">{lang.description}</div>
           </button>
         ))}
       </div>
     </div>
   );
-}
+};
+
+export default LanguageSelector;

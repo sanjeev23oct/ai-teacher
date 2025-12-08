@@ -483,6 +483,24 @@ export function buildPrompt(subject: Subject, language: Language): string {
   return promptBuilder(language);
 }
 
+// Build prompt with language code (for integration with language service)
+export function buildPromptWithLanguageCode(subject: Subject, languageCode: string): string {
+  // Map language codes to Language type
+  const codeToLanguage: Record<string, Language> = {
+    'hi': 'Hinglish',
+    'ta': 'Tamil',
+    'te': 'Telugu',
+    'kn': 'Kannada',
+    'ml': 'Malayalam',
+    'bn': 'Bengali',
+    'pa': 'Punjabi',
+    'en': 'English',
+  };
+  
+  const language = codeToLanguage[languageCode] || 'Hinglish';
+  return buildPrompt(subject, language);
+}
+
 // Get conversation prompt for follow-up questions
 export function buildConversationPrompt(
   subject: Subject,

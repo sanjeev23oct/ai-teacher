@@ -99,7 +99,12 @@ export async function textToSpeech(text: string): Promise<Buffer | null> {
 }
 
 // Streaming TTS - returns stream for immediate playback
-export async function textToSpeechStream(text: string): Promise<AsyncIterable<Buffer> | null> {
+// Accepts optional voice and model parameters for multi-language support
+export async function textToSpeechStream(
+  text: string,
+  voiceId?: string,
+  modelId?: string
+): Promise<AsyncIterable<Buffer> | null> {
   if (!elevenlabs) {
     console.log('ElevenLabs not configured, skipping TTS');
     return null;
@@ -108,13 +113,18 @@ export async function textToSpeechStream(text: string): Promise<AsyncIterable<Bu
   try {
     // Humanize mathematical notation for natural speech
     const humanizedText = humanizeMathText(text);
-    console.log(`Attempting ElevenLabs streaming TTS with voice: ${VOICE_ID}, model: ${MODEL_ID}`);
+    
+    // Use provided voice/model or defaults
+    const voice = voiceId || VOICE_ID;
+    const model = modelId || MODEL_ID;
+    
+    console.log(`Attempting ElevenLabs streaming TTS with voice: ${voice}, model: ${model}`);
     
     // Use streaming for faster response
     const audioStream = await elevenlabs.generate({
-      voice: VOICE_ID,
+      voice,
       text: humanizedText,
-      model_id: MODEL_ID,
+      model_id: model,
       voice_settings: {
         stability: 0.5,
         similarity_boost: 0.75,

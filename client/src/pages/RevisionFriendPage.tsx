@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { BookOpen, Play, RotateCcw, Clock, CheckCircle, Volume2, BookmarkCheck } from 'lucide-react';
 import { getApiUrl } from '../config';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface QuizQuestion {
   question: string;
@@ -33,6 +34,7 @@ interface RevisionHistory {
 }
 
 const RevisionFriendPage: React.FC = () => {
+  const { languageCode } = useLanguage();
   const [topic, setTopic] = useState('');
   const [subject, setSubject] = useState('English');
   const [session, setSession] = useState<RevisionSession | null>(null);
@@ -168,7 +170,7 @@ const RevisionFriendPage: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ topic: targetTopic, subject })
+        body: JSON.stringify({ topic: targetTopic, subject, languageCode })
       });
 
       if (!response.ok) throw new Error('Failed to start revision');
@@ -362,7 +364,7 @@ const RevisionFriendPage: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ content: session.content })
+        body: JSON.stringify({ content: session.content, languageCode })
       });
 
       if (!response.ok) {

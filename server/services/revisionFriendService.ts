@@ -1,6 +1,7 @@
 import prisma from '../lib/prisma';
 import { aiService } from './aiService';
 import { textToSpeechStream } from './ttsService';
+import { languageService } from './languageService';
 import { v4 as uuidv4 } from 'uuid';
 
 // TypeScript interfaces
@@ -8,6 +9,7 @@ export interface RevisionRequest {
   topic: string;
   subject: string;
   userId?: string;
+  languageCode?: string;
 }
 
 export interface RevisionPhaseResponse {
@@ -41,6 +43,7 @@ interface ActiveSession {
   currentPhase: string;
   startTime: Date;
   phaseHistory: string[];
+  languageCode: string;
 }
 
 const activeSessions = new Map<string, ActiveSession>();
@@ -58,8 +61,10 @@ class RevisionFriendService {
    * Start a new revision session
    */
   async startRevision(request: RevisionRequest): Promise<RevisionPhaseResponse> {
-    const { topic, subject, userId } = request;
+    const { topic, subject, userId, languageCode = 'en' } = request;
     const sessionId = uuidv4();
+    
+    console.log(`[RevisionFriend] Starting revision - Topic: ${topic}, Subject: ${subject}, Language: ${languageCode}`);
 
     // Create active session
     const session: ActiveSession = {
@@ -70,6 +75,7 @@ class RevisionFriendService {
       currentPhase: 'explanation',
       startTime: new Date(),
       phaseHistory: ['explanation'],
+      languageCode,
     };
     activeSessions.set(sessionId, session);
 
@@ -84,8 +90,8 @@ class RevisionFriendService {
       },
     });
 
-    // Generate explanation content
-    const content = await this.generatePhaseContent('explanation', topic, subject);
+    // Generate explanation content with language support
+    const content = await this.generatePhaseContent('explanation', topic, subject, undefined, languageCode);
 
     return {
       sessionId,
@@ -127,12 +133,13 @@ class RevisionFriendService {
       },
     });
 
-    // Generate content for next phase
+    // Generate content for next phase with language support
     const content = await this.generatePhaseContent(
       nextPhase,
       session.topic,
       session.subject,
-      session.phaseHistory
+      session.phaseHistory,
+      session.languageCode
     );
 
     return {
@@ -305,30 +312,31 @@ class RevisionFriendService {
     phase: string,
     topic: string,
     subject: string,
-    phaseHistory?: string[]
+    phaseHistory?: string[],
+    languageCode: string = 'en'
   ): Promise<string> {
     const prompts = {
       explanation: `You are a friendly tutor helping a CBSE Class 9-10 student revise "${topic}" in ${subject}.
 
-Provide a 60-second explanation in simple Hinglish covering:
+Provide a 60-second explanation covering:
 - Main concept in easy words
 - 2-3 key points to remember
 - One practical example
 - Why it's important for exams
 
-Keep it conversational like: "Dekho yaar, ${topic} basically ye hai..."
+Keep it conversational and friendly, like a friend explaining.
 Make it feel like a friend explaining, not a teacher lecturing.
 
 Give a clear, engaging 60-second explanation:`,
 
       repeat: `Create a 30-second repetition exercise for "${topic}" in ${subject}.
 
-Format: "Now tumhara turn - repeat these 3 main points:
+Format: "Now your turn - repeat these 3 main points:
 1. [Point 1]
 2. [Point 2]
 3. [Point 3]
 
-Bolo loudly and clearly!"
+Say it loudly and clearly!"
 
 List 3 key points the student should repeat:`,
 
@@ -360,13 +368,21 @@ You've got this! 💪"
 Create the final drill:`,
     };
 
-    const prompt = prompts[phase as keyof typeof prompts];
-    if (!prompt) {
+    const basePrompt = prompts[phase as keyof typeof prompts];
+    if (!basePrompt) {
       throw new Error(`Invalid phase: ${phase}`);
     }
 
+    // Build language-aware prompt - this adds the language instruction at the beginning
+    const prompt = languageService.buildLanguageAwarePrompt(basePrompt, languageCode);
+    
+    // Debug logging
+    console.log(`[RevisionFriend] Generating ${phase} content for language: ${languageCode}`);
+    console.log(`[RevisionFriend] Language instruction: ${languageService.getPromptInstruction(languageCode).substring(0, 100)}...`);
+
     try {
       const result = await aiService.generateContent({ prompt });
+      console.log(`[RevisionFriend] Generated content (first 200 chars): ${result.text.substring(0, 200)}...`);
       return result.text;
     } catch (error) {
       console.error(`Error generating ${phase} content:`, error);
@@ -376,15 +392,29 @@ Create the final drill:`,
   }
 
   /**
-   * Get audio stream for content
+   * Get audio stream for content with language support
    */
-  async getAudioStream(content: string): Promise<AsyncIterable<Buffer> | null> {
+  async getAudioStream(content: string, languageCode?: string): Promise<AsyncIterable<Buffer> | null> {
     try {
-      return await textToSpeechStream(content);
+      // Get TTS config for the language
+      const voiceId = languageCode ? languageService.getTTSVoiceId(languageCode) : undefined;
+      const model = languageCode ? languageService.getTTSModel(languageCode) : undefined;
+      
+      console.log(`[RevisionFriend] Getting audio stream - Language: ${languageCode}, Voice: ${voiceId}, Model: ${model}`);
+      
+      return await textToSpeechStream(content, voiceId, model);
     } catch (error) {
       console.error('Error generating audio stream:', error);
       return null;
     }
+  }
+
+  /**
+   * Get language code for a session
+   */
+  getSessionLanguage(sessionId: string): string {
+    const session = activeSessions.get(sessionId);
+    return session?.languageCode || 'en';
   }
 
   /**

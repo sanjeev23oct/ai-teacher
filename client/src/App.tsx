@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { LanguageProvider } from './contexts/LanguageContext';
 
 import GradeExamPage from './pages/GradeExamPage';
 import VoiceTutorPage from './pages/VoiceTutorPage';
@@ -142,7 +143,10 @@ const Home = () => {
           Padhai Made Easy! 📚
         </h1>
         <p className="text-base sm:text-xl text-gray-400 mb-8 max-w-2xl mx-auto">
-          Your personal AI study buddy that speaks Hinglish. Revise topics, practice speaking, ace your exams!
+          Your personal AI study buddy in your language! Revise topics, practice speaking, ace your exams!
+        </p>
+        <p className="text-sm text-gray-500 mb-4">
+          🌐 Available in English, Hinglish, Tamil, Telugu, Kannada, Malayalam, Bengali & Punjabi
         </p>
         
         <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
@@ -198,9 +202,9 @@ const Home = () => {
         <h2 className="text-2xl font-bold text-center text-white mb-6">Why Students Love Us 💜</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
           <div className="p-4">
-            <div className="text-3xl mb-2">🗣️</div>
-            <p className="text-white font-medium text-sm">Hinglish mein</p>
-            <p className="text-gray-500 text-xs">Easy to understand</p>
+            <div className="text-3xl mb-2">🌐</div>
+            <p className="text-white font-medium text-sm">Your Language</p>
+            <p className="text-gray-500 text-xs">8 languages supported</p>
           </div>
           <div className="p-4">
             <div className="text-3xl mb-2">⚡</div>
@@ -321,25 +325,27 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <Routes>
-          {/* Auth routes without layout */}
-          <Route path="/signup" element={<SignupPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          
-          {/* Main routes with layout */}
-          <Route path="/" element={<Layout><Home /></Layout>} />
-          <Route path="/grade" element={<Layout><GradeExamPage /></Layout>} />
-          <Route path="/voice" element={<Layout><VoiceTutorPage /></Layout>} />
-          <Route path="/asl" element={<Layout><ASLPracticePage /></Layout>} />
-          <Route path="/history" element={<Layout><HistoryPage /></Layout>} />
-          <Route path="/exams/:id" element={<Layout><ExamDetailPage /></Layout>} />
-          <Route path="/doubts" element={<Layout><DoubtsPage /></Layout>} />
-          <Route path="/doubts/worksheet/:worksheetId" element={<Layout><WorksheetViewPage /></Layout>} />
-          <Route path="/doubts/:doubtId" element={<Layout><DoubtExplanationPage /></Layout>} />
-          <Route path="/doubts/history" element={<Layout><DoubtsHistoryPage /></Layout>} />
-          <Route path="/revision" element={<Layout><RevisionAreaPage /></Layout>} />
-          <Route path="/revision-friend" element={<Layout><RevisionFriendPage /></Layout>} />
-        </Routes>
+        <LanguageProvider>
+          <Routes>
+              {/* Auth routes without layout */}
+              <Route path="/signup" element={<SignupPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              
+              {/* Main routes with layout */}
+              <Route path="/" element={<Layout><Home /></Layout>} />
+              <Route path="/grade" element={<Layout><GradeExamPage /></Layout>} />
+              <Route path="/voice" element={<Layout><VoiceTutorPage /></Layout>} />
+              <Route path="/asl" element={<Layout><ASLPracticePage /></Layout>} />
+              <Route path="/history" element={<Layout><HistoryPage /></Layout>} />
+              <Route path="/exams/:id" element={<Layout><ExamDetailPage /></Layout>} />
+              <Route path="/doubts" element={<Layout><DoubtsPage /></Layout>} />
+              <Route path="/doubts/worksheet/:worksheetId" element={<Layout><WorksheetViewPage /></Layout>} />
+              <Route path="/doubts/:doubtId" element={<Layout><DoubtExplanationPage /></Layout>} />
+              <Route path="/doubts/history" element={<Layout><DoubtsHistoryPage /></Layout>} />
+              <Route path="/revision" element={<Layout><RevisionAreaPage /></Layout>} />
+              <Route path="/revision-friend" element={<Layout><RevisionFriendPage /></Layout>} />
+            </Routes>
+        </LanguageProvider>
       </AuthProvider>
     </Router>
   );

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mic, Upload, History, User, LogOut, HelpCircle, BookmarkCheck, Menu, X, Users } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import LanguagePreferenceSelector from './LanguagePreferenceSelector';
 
 const Navigation: React.FC = () => {
     const { user, logout } = useAuth();
@@ -76,6 +77,9 @@ const Navigation: React.FC = () => {
                         </div>
                     </div>
                     <div className="flex items-center space-x-2">
+                        {/* Language preference selector */}
+                        <LanguagePreferenceSelector className="hidden md:block" />
+
                         {/* Mobile menu button */}
                         <button
                             onClick={() => setShowMobileMenu(!showMobileMenu)}
@@ -149,6 +153,10 @@ const Navigation: React.FC = () => {
                 {showMobileMenu && (
                     <div className="md:hidden border-t border-gray-800">
                         <div className="px-2 pt-2 pb-3 space-y-1">
+                            {/* Language preference selector for mobile */}
+                            <div className="px-3 py-2 border-b border-gray-700 mb-2">
+                                <LanguagePreferenceSelector />
+                            </div>
                             <Link to="/" onClick={closeMobileMenu} className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium">
                                 Home
                             </Link>

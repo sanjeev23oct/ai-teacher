@@ -11,6 +11,7 @@ import * as questionPaperService from './services/questionPaperService';
 import * as gradingService from './services/gradingService';
 import * as authService from './services/authService';
 import * as aslScoringService from './services/aslScoringService';
+import { languageService } from './services/languageService';
 import { calculateImageHash } from './lib/imageHash';
 import { authMiddleware, optionalAuthMiddleware } from './middleware/auth';
 import prisma from './lib/prisma';
@@ -231,6 +232,80 @@ app.post('/api/auth/logout', authMiddleware, async (req: Request, res: Response)
     } catch (error) {
         console.error('Logout error:', error);
         res.status(500).json({ error: 'Failed to log out' });
+    }
+});
+
+// ============================================
+// USER PREFERENCES ENDPOINTS
+// ============================================
+
+// Get available languages
+app.get('/api/languages', async (req: Request, res: Response) => {
+    try {
+        const languages = languageService.getAllLanguages();
+        res.json({ languages });
+    } catch (error) {
+        console.error('Error fetching languages:', error);
+        res.status(500).json({ error: 'Failed to fetch languages' });
+    }
+});
+
+// Get user's language preference
+app.get('/api/user/language', authMiddleware, async (req: Request, res: Response) => {
+    try {
+        const userId = req.user!.id;
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { languagePreference: true }
+        });
+
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const languageConfig = languageService.getLanguageConfigOrDefault(user.languagePreference);
+        res.json({
+            languageCode: user.languagePreference,
+            language: languageConfig
+        });
+    } catch (error) {
+        console.error('Error fetching language preference:', error);
+        res.status(500).json({ error: 'Failed to fetch language preference' });
+    }
+});
+
+// Update user's language preference
+app.put('/api/user/language', authMiddleware, async (req: Request, res: Response) => {
+    try {
+        const userId = req.user!.id;
+        const { languageCode } = req.body;
+
+        if (!languageCode) {
+            return res.status(400).json({ error: 'Language code is required' });
+        }
+
+        if (!languageService.isValidLanguage(languageCode)) {
+            return res.status(400).json({ 
+                error: 'Invalid language code',
+                validCodes: languageService.getAllLanguages().map(l => l.code)
+            });
+        }
+
+        const updatedUser = await prisma.user.update({
+            where: { id: userId },
+            data: { languagePreference: languageCode },
+            select: { languagePreference: true }
+        });
+
+        const languageConfig = languageService.getLanguageConfigOrDefault(updatedUser.languagePreference);
+        res.json({
+            success: true,
+            languageCode: updatedUser.languagePreference,
+            language: languageConfig
+        });
+    } catch (error) {
+        console.error('Error updating language preference:', error);
+        res.status(500).json({ error: 'Failed to update language preference' });
     }
 });
 
@@ -2093,7 +2168,7 @@ Keep responses concise (2-3 sentences max). Be specific and actionable.`;
 // Start revision session
 app.post('/api/revision-friend/start', optionalAuthMiddleware, async (req: Request, res: Response) => {
   try {
-    const { topic, subject } = req.body;
+    const { topic, subject, languageCode } = req.body;
     
     if (!topic || !subject) {
       return res.status(400).json({ error: 'Topic and subject required' });
@@ -2104,6 +2179,7 @@ app.post('/api/revision-friend/start', optionalAuthMiddleware, async (req: Reque
       topic,
       subject,
       userId: req.user?.id,
+      languageCode: languageCode || 'en', // Default to English if not provided
     });
 
     res.json(result);
@@ -2188,14 +2264,14 @@ app.get('/api/revision-friend/suggestions', optionalAuthMiddleware, async (req: 
 // Stream audio for revision content
 app.post('/api/revision-friend/audio/stream', async (req: Request, res: Response) => {
   try {
-    const { content } = req.body;
+    const { content, languageCode } = req.body;
     
     if (!content) {
       return res.status(400).json({ error: 'Content is required' });
     }
 
     const { revisionFriendService } = require('./services/revisionFriendService');
-    const audioStream = await revisionFriendService.getAudioStream(content);
+    const audioStream = await revisionFriendService.getAudioStream(content, languageCode || 'en');
 
     if (!audioStream) {
       return res.status(503).json({ 

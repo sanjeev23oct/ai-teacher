@@ -1,0 +1,103 @@
+# Implementation Plan
+
+- [x] 1. Create language configuration and service
+  - [x] 1.1 Create language configuration file with all 7 languages
+    - Create `server/config/languages.ts` with LanguageConfig interface
+    - Define all 7 languages: Hindi, Tamil, Telugu, Kannada, Malayalam, Bengali, Punjabi
+    - Include code, name, nativeName, mixName, flag, ttsVoiceId, promptInstruction for each
+    - _Requirements: 1.4, 7.1, 7.3_
+  - [ ]* 1.2 Write property test for language configuration completeness
+    - **Property 5: Language configuration completeness**
+    - **Validates: Requirements 7.3**
+  - [x] 1.3 Create language service
+    - Create `server/services/languageService.ts`
+    - Implement getLanguageConfig, getPromptInstruction, getTTSVoiceId, getAllLanguages, isValidLanguage
+    - _Requirements: 7.1, 7.4_
+
+- [x] 2. Update database schema for language preference
+  - [x] 2.1 Add languagePreference field to User model
+    - Update `server/prisma/schema.prisma` to add languagePreference field with default 'hi'
+    - Run Prisma migration
+    - _Requirements: 6.1_
+  - [x] 2.2 Create API endpoints for language preference
+    - GET `/api/user/language` - Get user's language preference
+    - PUT `/api/user/language` - Update user's language preference
+    - _Requirements: 1.2, 6.1_
+  - [ ]* 2.3 Write property test for preference persistence round-trip
+    - **Property 1: Language preference persistence round-trip**
+    - **Validates: Requirements 1.2, 6.1, 6.2**
+
+- [x] 3. Create frontend language context and selector
+  - [x] 3.1 Create LanguageContext
+    - Create `client/src/contexts/LanguageContext.tsx`
+    - Implement language state, setLanguage function, local storage sync
+    - Load preference from API for logged-in users
+    - _Requirements: 1.2, 6.2, 6.3_
+  - [ ]* 3.2 Write property test for database preference sync
+    - **Property 6: Database preference sync on login**
+    - **Validates: Requirements 6.3, 6.4**
+  - [x] 3.3 Create LanguageSelector component
+    - Create `client/src/components/LanguageSelector.tsx`
+    - Show dropdown with flags and native names
+    - Update context on selection without page reload
+    - _Requirements: 2.1, 2.2, 2.3, 2.4_
+  - [ ]* 3.4 Write property test for language selector state consistency
+    - **Property 2: Language selector state consistency**
+    - **Validates: Requirements 2.3**
+  - [x] 3.5 Add LanguageSelector to Navigation
+    - Update `client/src/components/Navigation.tsx` to include LanguageSelector
+    - Position in navigation bar with current language display
+    - _Requirements: 2.1, 2.4_
+
+- [x] 4. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 5. Integrate language into AI prompts
+  - [x] 5.1 Update revision prompts to include language instruction
+    - Modify `server/prompts/revisionPrompts.ts` or create language-aware prompt builder
+    - Include language instruction from config in all revision prompts
+    - _Requirements: 3.1, 3.4_
+  - [ ]* 5.2 Write property test for AI prompt language instruction
+    - **Property 3: AI prompt includes language instruction**
+    - **Validates: Requirements 3.1**
+  - [x] 5.3 Update doubt explanation prompts
+    - Modify doubt-related prompts to include language instruction
+    - Ensure step-by-step solutions use selected language
+    - _Requirements: 5.1, 5.2, 5.3_
+  - [x] 5.4 Update quiz grading prompts
+    - Modify quiz feedback prompts to use selected language
+    - _Requirements: 3.3_
+
+- [x] 6. Integrate language into TTS service
+  - [x] 6.1 Update TTS service for multilingual support
+    - Modify `server/services/ttsService.ts` to accept language parameter
+    - Use eleven_multilingual_v2 model for regional languages
+    - Select voice ID based on language config
+    - _Requirements: 4.1, 4.2, 4.3, 4.4_
+  - [ ]* 6.2 Write property test for TTS configuration
+    - **Property 4: TTS configuration uses correct voice and model**
+    - **Validates: Requirements 4.1, 4.3**
+
+- [x] 7. Update frontend pages to use language context
+  - [x] 7.1 Update RevisionFriendPage to pass language to API
+    - Modify API calls to include language preference
+    - _Requirements: 3.1_
+  - [x] 7.2 Update DoubtsPage to pass language to API
+    - Modify doubt submission to include language preference
+    - _Requirements: 5.1_
+  - [x] 7.3 Update ASLPracticePage to pass language to API
+    - Modify speaking practice to use language preference
+    - _Requirements: 3.1_
+
+- [x] 8. Add first-time language selection prompt
+  - [x] 8.1 Create LanguagePrompt component
+    - Create modal/dialog for first-time users
+    - Show all languages with descriptions
+    - Save selection and dismiss
+    - _Requirements: 1.1_
+  - [x] 8.2 Integrate prompt into App.tsx
+    - Show prompt when no language preference exists
+    - _Requirements: 1.1_
+
+- [x] 9. Final Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
