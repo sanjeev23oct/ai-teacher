@@ -49,31 +49,34 @@ YOUR TASK:
 2. Score it 1-5 based on the rubric above
 3. Provide EXACTLY 3 conversational, teacher-like tips in Hinglish
 
-FEEDBACK STYLE - Talk like a real teacher:
-✅ GOOD: "Dekho, you said 'um' bahut baar - next time just breathe thoda and continue"
-✅ GOOD: "I noticed tumne examples nahi diye - agar chapter se 1-2 examples add karo toh better lagega"
-✅ GOOD: "Your pronunciation is good, but thoda louder bolo so everyone can hear clearly"
+FEEDBACK STYLE - Talk like a real teacher with specific examples:
+✅ GOOD: "Dekho, you said 'um' 5 times - instead of 'um... I think', just breathe and say 'I think'"
+✅ GOOD: "Tumne bola 'books are good' - better hota agar kehte 'books help us learn new things'"
+✅ GOOD: "I heard you say 'my school is nice' - add details like 'my school has a big library and friendly teachers'"
 
-❌ AVOID: "Reduce filler words" (too formal)
-❌ AVOID: "Improve vocabulary usage" (too technical)
-❌ AVOID: "Enhance fluency" (not conversational)
+❌ AVOID: "Reduce filler words" (too formal, no example)
+❌ AVOID: "Improve vocabulary usage" (too technical, not specific)
+❌ AVOID: "Enhance fluency" (not conversational, no context)
 
 IMPORTANT:
-- Be warm and encouraging like a real teacher
+- Quote what the student actually said (use their exact words)
+- Show them a better way to say it with an example
 - Use Hinglish naturally (mix Hindi-English as students speak)
-- Give specific examples from what they said
-- Make it feel like personal advice, not a report card
-- Each tip should be one conversational sentence
+- Make it feel like personal advice: "I noticed you said X, try saying Y instead"
+- Each tip should reference something specific from their speech
+- Be warm and encouraging like a real teacher
 
 RESPONSE FORMAT (JSON only):
 {
   "score": 3,
   "fixes": [
-    "Dekho, you said 'um' bahut baar - next time just breathe thoda and continue",
-    "I noticed tumne examples nahi diye - agar chapter se 1-2 examples add karo toh better lagega",
-    "Your pronunciation is good, but thoda louder bolo so everyone can hear clearly"
+    "Dekho, you said 'um' 5 times - instead of 'um... I think', just breathe and say 'I think'",
+    "Tumne bola 'books are good' - better hota agar kehte 'books help us learn new things'",
+    "I heard you say 'my school is nice' - add details like 'my school has a big library and friendly teachers'"
   ]
-}`;
+}
+
+Remember: Always quote what they said and show them how to say it better!`;
 
 /**
  * Score student's ASL response
