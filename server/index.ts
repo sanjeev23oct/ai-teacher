@@ -2086,6 +2086,193 @@ Keep responses concise (2-3 sentences max). Be specific and actionable.`;
   }
 });
 
+// ============================================================================
+// Revision Friend Routes
+// ============================================================================
+
+// Start revision session
+app.post('/api/revision-friend/start', optionalAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { topic, subject } = req.body;
+    
+    if (!topic || !subject) {
+      return res.status(400).json({ error: 'Topic and subject required' });
+    }
+
+    const { revisionFriendService } = require('./services/revisionFriendService');
+    const result = await revisionFriendService.startRevision({
+      topic,
+      subject,
+      userId: req.user?.id,
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error('Revision start error:', error);
+    res.status(500).json({ error: 'Failed to start revision session' });
+  }
+});
+
+// Get next phase
+app.post('/api/revision-friend/next-phase', async (req: Request, res: Response) => {
+  try {
+    const { sessionId, currentPhase } = req.body;
+    
+    if (!sessionId || !currentPhase) {
+      return res.status(400).json({ error: 'Session ID and current phase required' });
+    }
+
+    const { revisionFriendService } = require('./services/revisionFriendService');
+    const result = await revisionFriendService.getNextPhase(sessionId, currentPhase);
+
+    res.json(result);
+  } catch (error) {
+    console.error('Next phase error:', error);
+    res.status(500).json({ error: 'Failed to get next phase' });
+  }
+});
+
+// Complete revision session
+app.post('/api/revision-friend/complete', async (req: Request, res: Response) => {
+  try {
+    const { sessionId, performance } = req.body;
+    
+    if (!sessionId || !performance) {
+      return res.status(400).json({ error: 'Session ID and performance data required' });
+    }
+
+    const { revisionFriendService } = require('./services/revisionFriendService');
+    await revisionFriendService.completeRevision(sessionId, performance);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Complete revision error:', error);
+    res.status(500).json({ error: 'Failed to complete revision session' });
+  }
+});
+
+// Get revision history
+app.get('/api/revision-friend/history', optionalAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    
+    if (!userId) {
+      return res.json({ history: [] });
+    }
+
+    const { revisionFriendService } = require('./services/revisionFriendService');
+    const history = await revisionFriendService.getRevisionHistory(userId);
+
+    res.json({ history });
+  } catch (error) {
+    console.error('Get history error:', error);
+    res.status(500).json({ error: 'Failed to get revision history' });
+  }
+});
+
+// Get suggestions
+app.get('/api/revision-friend/suggestions', optionalAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+
+    const { revisionFriendService } = require('./services/revisionFriendService');
+    const suggestions = await revisionFriendService.getSuggestions(userId);
+
+    res.json({ suggestions });
+  } catch (error) {
+    console.error('Get suggestions error:', error);
+    res.status(500).json({ error: 'Failed to get suggestions' });
+  }
+});
+
+// Stream audio for revision content
+app.post('/api/revision-friend/audio/stream', async (req: Request, res: Response) => {
+  try {
+    const { content } = req.body;
+    
+    if (!content) {
+      return res.status(400).json({ error: 'Content is required' });
+    }
+
+    const { revisionFriendService } = require('./services/revisionFriendService');
+    const audioStream = await revisionFriendService.getAudioStream(content);
+
+    if (!audioStream) {
+      return res.status(503).json({ 
+        error: 'TTS service not available',
+        message: 'ElevenLabs API key not configured.'
+      });
+    }
+
+    res.set({
+      'Content-Type': 'audio/mpeg',
+      'Transfer-Encoding': 'chunked'
+    });
+
+    // Stream audio chunks as they arrive
+    for await (const chunk of audioStream) {
+      res.write(chunk);
+    }
+    
+    res.end();
+  } catch (error) {
+    console.error('Error in revision audio streaming:', error);
+    res.status(500).json({ error: 'Failed to generate speech' });
+  }
+});
+
+// Grade quiz answers
+app.post('/api/revision-friend/grade-quiz', async (req: Request, res: Response) => {
+  try {
+    const { answers, correctAnswers, topic } = req.body;
+    
+    if (!answers || !correctAnswers) {
+      return res.status(400).json({ error: 'Answers and correct answers required' });
+    }
+
+    const { aiService } = require('./services/aiService');
+    
+    // Grade each answer
+    const results = [];
+    for (let i = 0; i < answers.length; i++) {
+      const prompt = `Grade this student answer for a CBSE Class 9-10 quiz on "${topic}".
+
+Question ${i + 1}
+Student Answer: "${answers[i]}"
+Correct Answer: "${correctAnswers[i]}"
+
+Respond with ONLY:
+- "correct" if the answer is right or very close
+- "partial" if the answer has some correct elements
+- "incorrect" if the answer is wrong
+
+Then on a new line, give a brief 1-sentence feedback in Hinglish.
+
+Format:
+[correct/partial/incorrect]
+[feedback]`;
+
+      const result = await aiService.generateContent({ prompt });
+      const lines = result.text.trim().split('\n');
+      const grade = lines[0].toLowerCase().trim();
+      const feedback = lines.slice(1).join(' ').trim();
+      
+      results.push({
+        grade: grade.includes('correct') ? (grade.includes('partial') ? 'partial' : 'correct') : 'incorrect',
+        feedback
+      });
+    }
+
+    // Calculate score
+    const score = results.filter(r => r.grade === 'correct').length;
+    
+    res.json({ results, score, total: answers.length });
+  } catch (error) {
+    console.error('Error grading quiz:', error);
+    res.status(500).json({ error: 'Failed to grade quiz' });
+  }
+});
+
 // Catch-all route for React Router (must be last)
 if (process.env.NODE_ENV === 'production') {
   app.use((req: Request, res: Response) => {

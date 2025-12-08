@@ -51,6 +51,10 @@ const Navigation: React.FC = () => {
                                 <HelpCircle className="h-4 w-4" />
                                 <span>Ask Doubt</span>
                             </Link>
+                            <Link to="/revision-friend" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1">
+                                <BookmarkCheck className="h-4 w-4" />
+                                <span>Revision Friend</span>
+                            </Link>
                             {user && (
                                 <>
                                     <Link to="/revision" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1">
@@ -157,6 +161,10 @@ const Navigation: React.FC = () => {
                             <Link to="/doubts" onClick={closeMobileMenu} className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2">
                                 <HelpCircle className="h-4 w-4" />
                                 <span>Ask Doubt</span>
+                            </Link>
+                            <Link to="/revision-friend" onClick={closeMobileMenu} className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2">
+                                <BookmarkCheck className="h-4 w-4" />
+                                <span>Revision Friend</span>
                             </Link>
                             {user && (
                                 <>

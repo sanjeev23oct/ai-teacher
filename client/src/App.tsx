@@ -15,6 +15,7 @@ import DoubtExplanationPage from './pages/DoubtExplanationPage';
 import DoubtsHistoryPage from './pages/DoubtsHistoryPage';
 import RevisionAreaPage from './pages/RevisionAreaPage';
 import WorksheetViewPage from './pages/WorksheetViewPage';
+import RevisionFriendPage from './pages/RevisionFriendPage';
 import DashboardDoubtCard from './components/DashboardDoubtCard';
 
 // Home page component
@@ -229,6 +230,7 @@ function App() {
           <Route path="/doubts/:doubtId" element={<Layout><DoubtExplanationPage /></Layout>} />
           <Route path="/doubts/history" element={<Layout><DoubtsHistoryPage /></Layout>} />
           <Route path="/revision" element={<Layout><RevisionAreaPage /></Layout>} />
+          <Route path="/revision-friend" element={<Layout><RevisionFriendPage /></Layout>} />
         </Routes>
       </AuthProvider>
     </Router>
