@@ -1972,6 +1972,25 @@ app.get('/api/dashboard/stats', authMiddleware, async (req: Request, res: Respon
 // ASL (Assessment of Speaking and Listening) Routes
 // ============================================================================
 
+// Get ASL tasks
+app.get('/api/asl/tasks', (req: Request, res: Response) => {
+  const { class: classNum, mode } = req.query;
+  
+  const { ASL_TASKS, getTasksByClass, getTasksByMode } = require('./data/aslTasks');
+  
+  let tasks = ASL_TASKS;
+  
+  if (classNum) {
+    tasks = getTasksByClass(Number(classNum));
+  }
+  
+  if (mode) {
+    tasks = tasks.filter((t: any) => t.mode === mode);
+  }
+  
+  res.json(tasks);
+});
+
 // Score ASL response
 app.post('/api/asl/score', upload.single('audio'), async (req: Request, res: Response) => {
   try {
@@ -1987,17 +2006,20 @@ app.post('/api/asl/score', upload.single('audio'), async (req: Request, res: Res
     // Transcribe audio
     const transcription = await aslScoringService.transcribeAudio(audioBuffer);
     
-    // Get task details (you'll need to import task data)
-    // For now, using placeholder
-    const taskPrompt = "Sample task prompt";
-    const keywords = ["example", "keywords"];
+    // Get task details
+    const { getTaskById } = require('./data/aslTasks');
+    const task = getTaskById(taskId);
+    
+    if (!task) {
+      return res.status(400).json({ error: 'Invalid task ID' });
+    }
     
     // Score the response
     const result = await aslScoringService.scoreASLResponse({
       transcription,
-      taskPrompt,
-      keywords,
-      duration: mode === 'solo' ? 60 : 30
+      taskPrompt: task.prompt,
+      keywords: task.keywords,
+      duration: task.duration
     });
     
     // Clean up uploaded file

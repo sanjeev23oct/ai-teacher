@@ -1,18 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, MicOff, Loader2, RefreshCw, Users, User } from 'lucide-react';
-
-// Import task data
-const getRandomTask = () => {
-  // This will be replaced with actual import once we move files
-  return {
-    id: 1,
-    prompt: "What will schools be like in 2157? Describe how technology might change education.",
-    duration: 60,
-    citation: "From NCERT Beehive Ch 1"
-  };
-};
+import { Mic, MicOff, Loader2, RefreshCw, Users, User, Volume2 } from 'lucide-react';
 
 type Mode = 'solo' | 'pair';
+
+interface ASLTask {
+  id: string;
+  class: 9 | 10;
+  mode: 'solo' | 'pair';
+  title: string;
+  prompt: string;
+  keywords: string[];
+  duration: number;
+}
 
 interface ASLResult {
   score: number;
@@ -21,20 +20,42 @@ interface ASLResult {
 }
 
 const ASLPracticePage: React.FC = () => {
+  const [selectedClass, setSelectedClass] = useState<9 | 10>(9);
   const [mode, setMode] = useState<Mode>('solo');
-  const [currentTask, setCurrentTask] = useState(getRandomTask());
+  const [tasks, setTasks] = useState<ASLTask[]>([]);
+  const [selectedTask, setSelectedTask] = useState<ASLTask | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [timeLeft, setTimeLeft] = useState(60);
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState<ASLResult | null>(null);
+  const [isPlayingFeedback, setIsPlayingFeedback] = useState(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<number | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
+
+  // Fetch tasks when class or mode changes
+  useEffect(() => {
+    fetchTasks();
+  }, [selectedClass, mode]);
+
+  const fetchTasks = async () => {
+    try {
+      const response = await fetch(`/api/asl/tasks?class=${selectedClass}&mode=${mode}`);
+      if (response.ok) {
+        const data = await response.json();
+        setTasks(data);
+        setSelectedTask(data[0] || null);
+      }
+    } catch (err) {
+      console.error('Failed to fetch tasks:', err);
+    }
+  };
 
   // Cleanup on unmount
   useEffect(() => {
@@ -71,10 +92,11 @@ const ASLPracticePage: React.FC = () => {
       
       mediaRecorderRef.current.start();
       setIsRecording(true);
-      setTimeLeft(mode === 'solo' ? 60 : 30);
+      const duration = selectedTask?.duration || (mode === 'solo' ? 60 : 30);
+      setTimeLeft(duration);
       
       // Start countdown timer
-      timerRef.current = setInterval(() => {
+      timerRef.current = window.setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
             stopRecording();
@@ -160,13 +182,15 @@ const ASLPracticePage: React.FC = () => {
   };
 
   const handleRecordingStop = async () => {
+    if (!selectedTask) return;
+
     const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
     setIsProcessing(true);
     
     try {
       const formData = new FormData();
       formData.append('audio', audioBlob);
-      formData.append('taskId', currentTask.id.toString());
+      formData.append('taskId', selectedTask.id);
       formData.append('mode', mode);
       
       const response = await fetch('/api/asl/score', {
@@ -192,19 +216,86 @@ const ASLPracticePage: React.FC = () => {
     }
   };
 
+  const playFeedback = async () => {
+    if (!result || isPlayingFeedback) return;
+
+    setIsPlayingFeedback(true);
+    
+    try {
+      const feedbackText = `You scored ${result.score} out of 5. Here are three ways to improve: ${result.fixes.join('. ')}`;
+      
+      const response = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: feedbackText })
+      });
+
+      if (!response.ok) throw new Error('TTS failed');
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+      
+      audio.onended = () => {
+        setIsPlayingFeedback(false);
+        URL.revokeObjectURL(audioUrl);
+      };
+      
+      audio.onerror = () => {
+        setIsPlayingFeedback(false);
+        URL.revokeObjectURL(audioUrl);
+      };
+      
+      await audio.play();
+    } catch (err) {
+      console.error('TTS error:', err);
+      setIsPlayingFeedback(false);
+    }
+  };
+
   const handleNewTask = () => {
     setResult(null);
-    setCurrentTask(getRandomTask());
-    setTimeLeft(mode === 'solo' ? 60 : 30);
+    const nextIndex = tasks.findIndex(t => t.id === selectedTask?.id) + 1;
+    setSelectedTask(tasks[nextIndex % tasks.length] || tasks[0]);
+    setTimeLeft(selectedTask?.duration || (mode === 'solo' ? 60 : 30));
   };
 
   const handleTryAgain = () => {
     setResult(null);
-    setTimeLeft(mode === 'solo' ? 60 : 30);
+    setTimeLeft(selectedTask?.duration || (mode === 'solo' ? 60 : 30));
   };
 
   return (
     <div className="max-w-4xl mx-auto p-4">
+      {/* Class and Task Selection */}
+      <div className="mb-4 flex gap-4">
+        <div className="flex-1">
+          <label className="block text-sm text-gray-400 mb-2">Class</label>
+          <select
+            value={selectedClass}
+            onChange={(e) => setSelectedClass(Number(e.target.value) as 9 | 10)}
+            className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white"
+          >
+            <option value={9}>Class 9</option>
+            <option value={10}>Class 10</option>
+          </select>
+        </div>
+        <div className="flex-1">
+          <label className="block text-sm text-gray-400 mb-2">Task</label>
+          <select
+            value={selectedTask?.id || ''}
+            onChange={(e) => setSelectedTask(tasks.find(t => t.id === e.target.value) || null)}
+            className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white"
+          >
+            {tasks.map(task => (
+              <option key={task.id} value={task.id}>{task.title}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       {/* Mode Toggle */}
       <div className="flex gap-2 mb-6">
         <button
@@ -236,16 +327,17 @@ const ASLPracticePage: React.FC = () => {
         {!result ? (
           <>
             {/* Task Display */}
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-white mb-2">
-                {mode === 'solo' ? 'Speaking Task' : 'Discussion Topic'}
-              </h2>
-              <p className="text-gray-300 text-lg mb-2">{currentTask.prompt}</p>
-              <p className="text-sm text-gray-500">{currentTask.citation}</p>
-              <p className="text-sm text-primary mt-2">
-                Duration: {mode === 'solo' ? '60' : '30'} seconds
-              </p>
-            </div>
+            {selectedTask && (
+              <div className="mb-6">
+                <h2 className="text-xl font-semibold text-white mb-2">
+                  {selectedTask.title}
+                </h2>
+                <p className="text-gray-300 text-lg mb-2">{selectedTask.prompt}</p>
+                <p className="text-sm text-primary mt-2">
+                  Duration: {selectedTask.duration} seconds
+                </p>
+              </div>
+            )}
 
             {/* Recording Area */}
             <div className="mb-6">
@@ -337,6 +429,16 @@ const ASLPracticePage: React.FC = () => {
             </div>
 
             {/* Action Buttons */}
+            <div className="flex gap-3 mb-4">
+              <button
+                onClick={playFeedback}
+                disabled={isPlayingFeedback}
+                className="flex-1 py-3 bg-green-600 hover:bg-green-700 rounded-lg text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <Volume2 className="w-5 h-5" />
+                {isPlayingFeedback ? 'Playing...' : 'Hear Feedback'}
+              </button>
+            </div>
             <div className="flex gap-3">
               <button
                 onClick={handleTryAgain}
