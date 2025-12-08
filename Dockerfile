@@ -52,5 +52,5 @@ EXPOSE 3001
 # Set environment
 ENV NODE_ENV=production
 
-# Start server
-CMD ["npm", "start"]
+# Start server with migrations
+CMD ["sh", "-c", "npx prisma migrate deploy && npm start"]
