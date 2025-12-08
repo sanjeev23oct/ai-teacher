@@ -1186,7 +1186,7 @@ app.post('/api/voice-tutor/chat-with-image', upload.single('image'), async (req:
         }
 
         // Import CBSE prompts and AI service
-        const { getCBSEClass10Prompt, isSupportedClass, getUnsupportedClassMessage } = await import('./prompts/cbseClass10Prompts');
+        const { getCBSEPrompt, isSupportedClass, getUnsupportedClassMessage } = await import('./prompts/cbsePrompts');
         const { aiService } = await import('./services/aiService');
 
         // Check if class is supported
@@ -1195,8 +1195,8 @@ app.post('/api/voice-tutor/chat-with-image', upload.single('image'), async (req:
             return res.json({ text: boundaryMessage });
         }
 
-        // Get subject-specific CBSE Class 10 prompt
-        const systemPrompt = getCBSEClass10Prompt(subject as any);
+        // Get class and subject-specific CBSE prompt
+        const systemPrompt = getCBSEPrompt(classNum as any, subject as any);
 
         // Read image file
         const imageBuffer = fs.readFileSync(imageFile.path);
@@ -1265,7 +1265,7 @@ app.post('/api/voice-tutor/chat', async (req: Request, res: Response) => {
         }
 
         // Import CBSE prompts and AI service
-        const { getCBSEClass10Prompt, isSupportedClass, getUnsupportedClassMessage } = await import('./prompts/cbseClass10Prompts');
+        const { getCBSEPrompt, isSupportedClass, getUnsupportedClassMessage } = await import('./prompts/cbsePrompts');
         const { aiService } = await import('./services/aiService');
 
         // Check if class is supported
@@ -1274,8 +1274,8 @@ app.post('/api/voice-tutor/chat', async (req: Request, res: Response) => {
             return res.json({ text: boundaryMessage });
         }
 
-        // Get subject-specific CBSE Class 10 prompt
-        const systemPrompt = getCBSEClass10Prompt(subject as any);
+        // Get class and subject-specific CBSE prompt
+        const systemPrompt = getCBSEPrompt(classNum as any, subject as any);
 
         // Convert history to standard format
         const conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
