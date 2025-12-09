@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { BookOpen, Play, RotateCcw, Clock, CheckCircle, Volume2, BookmarkCheck } from 'lucide-react';
+import { BookOpen, Play, RotateCcw, Clock, CheckCircle, Volume2, BookmarkCheck, LogIn } from 'lucide-react';
 import { getApiUrl } from '../config';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface QuizQuestion {
   question: string;
@@ -35,6 +36,7 @@ interface RevisionHistory {
 
 const RevisionFriendPage: React.FC = () => {
   const { languageCode } = useLanguage();
+  const { user, isLoading: authLoading } = useAuth();
   const [topic, setTopic] = useState('');
   const [subject, setSubject] = useState('English');
   const [session, setSession] = useState<RevisionSession | null>(null);
@@ -157,6 +159,13 @@ const RevisionFriendPage: React.FC = () => {
     const targetTopic = revisionTopic || topic;
     if (!targetTopic.trim()) return;
 
+    // Check authentication
+    if (!user) {
+      alert('Please login or create an account to use Revision Friend');
+      window.location.href = '/login?redirect=/revision-friend';
+      return;
+    }
+
     // Stop any playing audio from previous session
     if (audioRef.current) {
       audioRef.current.pause();
@@ -173,7 +182,15 @@ const RevisionFriendPage: React.FC = () => {
         body: JSON.stringify({ topic: targetTopic, subject, languageCode })
       });
 
-      if (!response.ok) throw new Error('Failed to start revision');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to start revision' }));
+        if (response.status === 401) {
+          alert(errorData.message || 'Please login to use Revision Friend');
+          window.location.href = '/login?redirect=/revision-friend';
+          return;
+        }
+        throw new Error(errorData.message || errorData.error || 'Failed to start revision');
+      }
 
       const data = await response.json();
       
@@ -459,6 +476,35 @@ const RevisionFriendPage: React.FC = () => {
           "Revise kara do" - Your 3-minute study buddy
         </p>
       </div>
+
+      {/* Authentication Required Message */}
+      {!authLoading && !user && (
+        <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-6 mb-6">
+          <div className="flex items-start gap-4">
+            <LogIn className="w-6 h-6 text-yellow-500 flex-shrink-0 mt-1" />
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-yellow-500 mb-2">Login Required</h3>
+              <p className="text-gray-300 text-sm mb-4">
+                Please create an account or login to use Revision Friend. We save your progress, track weak areas, and provide personalized suggestions.
+              </p>
+              <div className="flex gap-3">
+                <a
+                  href="/login?redirect=/revision-friend"
+                  className="px-4 py-2 bg-primary hover:bg-blue-700 rounded text-white text-sm transition-all"
+                >
+                  Login
+                </a>
+                <a
+                  href="/signup?redirect=/revision-friend"
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-white text-sm transition-all"
+                >
+                  Create Account
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {!session ? (
         <>

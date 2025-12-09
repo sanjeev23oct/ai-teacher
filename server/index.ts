@@ -1120,7 +1120,11 @@ If they ask for practice, acknowledge that you can help generate similar problem
               ).join('\n')
             : '';
 
-        const fullPrompt = `${systemPrompt}${conversationText}\n\nStudent: ${message}\n\nTeacher:`;
+        const fullPrompt = `${systemPrompt}${conversationText}
+
+Student: ${message}
+
+Teacher:`;
 
         // Use AI service (respects .env configuration)
         const result = await aiService.generateContent({
@@ -2155,7 +2159,11 @@ Keep responses concise (2-3 sentences max). Be specific and actionable.`;
 
     const { aiService } = require('./services/aiService');
     const result = await aiService.generateContent({
-      prompt: `${systemPrompt}\n\nStudent asks: "${message}"\n\nRespond as their teacher:`
+      prompt: `${systemPrompt}
+
+Student asks: "${message}"
+
+Respond as their teacher:`
     });
 
     res.json({ response: result.text });
@@ -2170,7 +2178,7 @@ Keep responses concise (2-3 sentences max). Be specific and actionable.`;
 // ============================================================================
 
 // Start revision session
-app.post('/api/revision-friend/start', optionalAuthMiddleware, async (req: Request, res: Response) => {
+app.post('/api/revision-friend/start', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { topic, subject, languageCode } = req.body;
     
@@ -2178,11 +2186,19 @@ app.post('/api/revision-friend/start', optionalAuthMiddleware, async (req: Reque
       return res.status(400).json({ error: 'Topic and subject required' });
     }
 
+    // Require authentication
+    if (!req.user?.id) {
+      return res.status(401).json({ 
+        error: 'Authentication required',
+        message: 'Please create an account or login to use Revision Friend'
+      });
+    }
+
     const { revisionFriendService } = require('./services/revisionFriendService');
     const result = await revisionFriendService.startRevision({
       topic,
       subject,
-      userId: req.user?.id,
+      userId: req.user.id,
       languageCode: languageCode || 'en', // Default to English if not provided
     });
 
@@ -2194,7 +2210,7 @@ app.post('/api/revision-friend/start', optionalAuthMiddleware, async (req: Reque
 });
 
 // Get next phase
-app.post('/api/revision-friend/next-phase', async (req: Request, res: Response) => {
+app.post('/api/revision-friend/next-phase', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { sessionId, currentPhase } = req.body;
     
@@ -2213,7 +2229,7 @@ app.post('/api/revision-friend/next-phase', async (req: Request, res: Response) 
 });
 
 // Complete revision session
-app.post('/api/revision-friend/complete', async (req: Request, res: Response) => {
+app.post('/api/revision-friend/complete', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { sessionId, performance } = req.body;
     
@@ -2232,12 +2248,15 @@ app.post('/api/revision-friend/complete', async (req: Request, res: Response) =>
 });
 
 // Get revision history
-app.get('/api/revision-friend/history', optionalAuthMiddleware, async (req: Request, res: Response) => {
+app.get('/api/revision-friend/history', authMiddleware, async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id;
     
     if (!userId) {
-      return res.json({ history: [] });
+      return res.status(401).json({ 
+        error: 'Authentication required',
+        message: 'Please login to view your revision history'
+      });
     }
 
     const { revisionFriendService } = require('./services/revisionFriendService');
@@ -2251,7 +2270,7 @@ app.get('/api/revision-friend/history', optionalAuthMiddleware, async (req: Requ
 });
 
 // Get suggestions
-app.get('/api/revision-friend/suggestions', optionalAuthMiddleware, async (req: Request, res: Response) => {
+app.get('/api/revision-friend/suggestions', authMiddleware, async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id;
 
@@ -2266,7 +2285,7 @@ app.get('/api/revision-friend/suggestions', optionalAuthMiddleware, async (req: 
 });
 
 // Stream audio for revision content
-app.post('/api/revision-friend/audio/stream', async (req: Request, res: Response) => {
+app.post('/api/revision-friend/audio/stream', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { content, languageCode } = req.body;
     
@@ -2302,7 +2321,7 @@ app.post('/api/revision-friend/audio/stream', async (req: Request, res: Response
 });
 
 // Grade quiz answers
-app.post('/api/revision-friend/grade-quiz', async (req: Request, res: Response) => {
+app.post('/api/revision-friend/grade-quiz', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { answers, correctAnswers, topic } = req.body;
     
@@ -2315,7 +2334,11 @@ app.post('/api/revision-friend/grade-quiz', async (req: Request, res: Response) 
     // Build a summary of all Q&A for the AI to review
     let qaList = '';
     for (let i = 0; i < answers.length; i++) {
-      qaList += `Question ${i + 1}: What was asked\nStudent answered: "${answers[i]}"\nCorrect answer should be: "${correctAnswers[i]}"\n\n`;
+      qaList += `Question ${i + 1}: What was asked
+Student answered: "${answers[i]}"
+Correct answer should be: "${correctAnswers[i]}"
+
+`;
     }
 
     // Generate ONE conversational review of all answers

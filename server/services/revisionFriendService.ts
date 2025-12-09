@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 export interface RevisionRequest {
   topic: string;
   subject: string;
-  userId?: string;
+  userId: string; // Required - no optional
   languageCode?: string;
 }
 
@@ -62,6 +62,11 @@ class RevisionFriendService {
    */
   async startRevision(request: RevisionRequest): Promise<RevisionPhaseResponse> {
     const { topic, subject, userId, languageCode = 'en' } = request;
+    
+    if (!userId) {
+      throw new Error('User ID is required for revision sessions');
+    }
+    
     const sessionId = uuidv4();
     
     console.log(`[RevisionFriend] Starting revision - Topic: ${topic}, Subject: ${subject}, Language: ${languageCode}`);
@@ -226,6 +231,10 @@ class RevisionFriendService {
    * Get revision history for a user
    */
   async getRevisionHistory(userId: string): Promise<RevisionHistory[]> {
+    if (!userId) {
+      throw new Error('User ID is required to get revision history');
+    }
+    
     const sessions = await prisma.revisionSession.findMany({
       where: {
         userId,
