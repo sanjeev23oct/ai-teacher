@@ -7,6 +7,7 @@ import LanguagePreferenceSelector from './LanguagePreferenceSelector';
 const Navigation: React.FC = () => {
     const { user, logout } = useAuth();
     const [showDropdown, setShowDropdown] = useState(false);
+    const [showDesktopMenu, setShowDesktopMenu] = useState(false);
     const [showMobileMenu, setShowMobileMenu] = useState(false);
     const [showComingSoon, setShowComingSoon] = useState(false);
     const navigate = useNavigate();
@@ -39,17 +40,7 @@ const Navigation: React.FC = () => {
                     </div>
                     <div className="hidden md:block">
                         <div className="ml-10 flex items-baseline space-x-4">
-                            <Link to="/" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
-                                Home
-                            </Link>
-                            <Link to="/grade" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1">
-                                <Upload className="h-4 w-4" />
-                                <span>Grade Exam</span>
-                            </Link>
-                            <Link to="/doubts" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1">
-                                <HelpCircle className="h-4 w-4" />
-                                <span>Ask Doubt</span>
-                            </Link>
+                            {/* Primary 3 links */}
                             <Link to="/revision-friend" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1">
                                 <BookmarkCheck className="h-4 w-4" />
                                 <span>Quick Revise</span>
@@ -62,18 +53,64 @@ const Navigation: React.FC = () => {
                                 <Users className="h-4 w-4" />
                                 <span>Group Study</span>
                             </button>
-                            {user && (
-                                <>
-                                    <Link to="/revision" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1">
-                                        <BookmarkCheck className="h-4 w-4" />
-                                        <span>Revision</span>
-                                    </Link>
-                                    <Link to="/history" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1">
-                                        <History className="h-4 w-4" />
-                                        <span>History</span>
-                                    </Link>
-                                </>
-                            )}
+                            
+                            {/* Hamburger menu for other features */}
+                            <div className="relative">
+                                <button
+                                    onClick={() => setShowDesktopMenu(!showDesktopMenu)}
+                                    className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1"
+                                >
+                                    <Menu className="h-4 w-4" />
+                                    <span>More</span>
+                                </button>
+                                {showDesktopMenu && (
+                                    <div className="absolute right-0 mt-2 w-56 bg-surface border border-gray-800 rounded-lg shadow-lg py-2 z-50">
+                                        <Link
+                                            to="/"
+                                            onClick={() => setShowDesktopMenu(false)}
+                                            className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-300 hover:bg-background"
+                                        >
+                                            <span>Home</span>
+                                        </Link>
+                                        <Link
+                                            to="/grade"
+                                            onClick={() => setShowDesktopMenu(false)}
+                                            className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-300 hover:bg-background"
+                                        >
+                                            <Upload className="h-4 w-4" />
+                                            <span>Grade Exam</span>
+                                        </Link>
+                                        <Link
+                                            to="/doubts"
+                                            onClick={() => setShowDesktopMenu(false)}
+                                            className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-300 hover:bg-background"
+                                        >
+                                            <HelpCircle className="h-4 w-4" />
+                                            <span>Ask Doubt</span>
+                                        </Link>
+                                        {user && (
+                                            <>
+                                                <Link
+                                                    to="/history"
+                                                    onClick={() => setShowDesktopMenu(false)}
+                                                    className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-300 hover:bg-background"
+                                                >
+                                                    <History className="h-4 w-4" />
+                                                    <span>Exam History</span>
+                                                </Link>
+                                                <Link
+                                                    to="/doubts/history"
+                                                    onClick={() => setShowDesktopMenu(false)}
+                                                    className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-300 hover:bg-background"
+                                                >
+                                                    <HelpCircle className="h-4 w-4" />
+                                                    <span>Doubt History</span>
+                                                </Link>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -116,14 +153,6 @@ const Navigation: React.FC = () => {
                                         >
                                             <HelpCircle className="h-4 w-4" />
                                             <span>Doubt History</span>
-                                        </Link>
-                                        <Link
-                                            to="/revision"
-                                            onClick={() => setShowDropdown(false)}
-                                            className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-300 hover:bg-background"
-                                        >
-                                            <BookmarkCheck className="h-4 w-4" />
-                                            <span>Revision Area</span>
                                         </Link>
                                         <button
                                             onClick={handleLogout}
@@ -182,10 +211,6 @@ const Navigation: React.FC = () => {
                             </button>
                             {user && (
                                 <>
-                                    <Link to="/revision" onClick={closeMobileMenu} className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2">
-                                        <BookmarkCheck className="h-4 w-4" />
-                                        <span>Revision</span>
-                                    </Link>
                                     <Link to="/history" onClick={closeMobileMenu} className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2">
                                         <History className="h-4 w-4" />
                                         <span>Exam History</span>

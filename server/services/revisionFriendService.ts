@@ -238,9 +238,9 @@ class RevisionFriendService {
     const sessions = await prisma.revisionSession.findMany({
       where: {
         userId,
-        completedAt: { not: null },
+        // Show both completed and in-progress sessions
       },
-      orderBy: { completedAt: 'desc' },
+      orderBy: { createdAt: 'desc' },
       take: 20,
     });
 
@@ -250,7 +250,7 @@ class RevisionFriendService {
       score: session.score || 0,
       date: session.completedAt
         ? new Date(session.completedAt).toLocaleDateString()
-        : '',
+        : `In Progress (${new Date(session.createdAt).toLocaleDateString()})`,
       weakAreas: session.weakAreas ? JSON.parse(session.weakAreas) : [],
     }));
   }

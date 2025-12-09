@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, LogIn } from 'lucide-react';
 import SubjectSelector from '../components/SubjectSelector';
 import LanguageSelector from '../components/LanguageSelector';
 import QuestionUpload from '../components/QuestionUpload';
@@ -34,6 +34,13 @@ export default function DoubtsPage() {
 
   const handleImageUpload = async (image: File) => {
     if (!subject || !language) return;
+
+    // Check authentication
+    if (!user) {
+      alert('Please login or create an account to ask doubts');
+      window.location.href = '/login?redirect=/doubts';
+      return;
+    }
 
     // Validate image size (max 10MB)
     if (image.size > 10 * 1024 * 1024) {
@@ -197,6 +204,35 @@ export default function DoubtsPage() {
             <p className="text-gray-400 mt-1">Get instant explanations for any question</p>
           </div>
         </div>
+        
+        {/* Authentication Required Message */}
+        {!user && (
+          <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-6 mb-6">
+            <div className="flex items-start gap-4">
+              <LogIn className="w-6 h-6 text-yellow-500 flex-shrink-0 mt-1" />
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-yellow-500 mb-2">Login Required</h3>
+                <p className="text-gray-300 text-sm mb-4">
+                  Please create an account or login to ask doubts. We'll save your questions and help you track your learning progress.
+                </p>
+                <div className="flex gap-3">
+                  <a
+                    href="/login?redirect=/doubts"
+                    className="px-4 py-2 bg-primary hover:bg-blue-700 rounded text-white text-sm transition-all"
+                  >
+                    Login
+                  </a>
+                  <a
+                    href="/signup?redirect=/doubts"
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-white text-sm transition-all"
+                  >
+                    Create Account
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Progress Indicator */}
         <div className="flex items-center gap-2 mb-8">

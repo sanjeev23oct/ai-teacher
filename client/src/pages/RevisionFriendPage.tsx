@@ -3,6 +3,7 @@ import { BookOpen, Play, RotateCcw, Clock, CheckCircle, Volume2, BookmarkCheck, 
 import { getApiUrl } from '../config';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
+import { authenticatedFetch } from '../utils/api';
 
 interface QuizQuestion {
   question: string;
@@ -81,9 +82,12 @@ const RevisionFriendPage: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchRevisionHistory();
-    fetchSuggestions();
-  }, []);
+    // Only fetch if user is logged in
+    if (user) {
+      fetchRevisionHistory();
+      fetchSuggestions();
+    }
+  }, [user]);
 
   // Auto-play audio when content changes (if enabled and not in quiz phase)
   useEffect(() => {
@@ -129,23 +133,27 @@ const RevisionFriendPage: React.FC = () => {
 
   const fetchRevisionHistory = async () => {
     try {
-      const response = await fetch(getApiUrl('/api/revision-friend/history'), {
-        credentials: 'include',
-      });
+      console.log('[RevisionFriend] Fetching history...');
+      const response = await authenticatedFetch(getApiUrl('/api/revision-friend/history'));
+      console.log('[RevisionFriend] History response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('[RevisionFriend] History data:', data);
         setHistory(data.history || []);
+        console.log('[RevisionFriend] History set, count:', data.history?.length || 0);
+      } else {
+        const errorText = await response.text();
+        console.error('[RevisionFriend] Failed to fetch history:', response.status, errorText);
       }
     } catch (err) {
-      console.error('Failed to fetch history:', err);
+      console.error('[RevisionFriend] Failed to fetch history:', err);
     }
   };
 
   const fetchSuggestions = async () => {
     try {
-      const response = await fetch(getApiUrl('/api/revision-friend/suggestions'), {
-        credentials: 'include',
-      });
+      const response = await authenticatedFetch(getApiUrl('/api/revision-friend/suggestions'));
       if (response.ok) {
         const data = await response.json();
         setSuggestions(data.suggestions || []);
@@ -175,10 +183,9 @@ const RevisionFriendPage: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const response = await fetch(getApiUrl('/api/revision-friend/start'), {
+      const response = await authenticatedFetch(getApiUrl('/api/revision-friend/start'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ topic: targetTopic, subject, languageCode })
       });
 
@@ -235,10 +242,9 @@ const RevisionFriendPage: React.FC = () => {
       
       // Complete session on backend
       try {
-        await fetch(getApiUrl('/api/revision-friend/complete'), {
+        await authenticatedFetch(getApiUrl('/api/revision-friend/complete'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
           body: JSON.stringify({ 
             sessionId: session.sessionId,
             performance: {
@@ -257,10 +263,9 @@ const RevisionFriendPage: React.FC = () => {
     } else {
       // Move to next phase
       try {
-        const response = await fetch(getApiUrl('/api/revision-friend/next-phase'), {
+        const response = await authenticatedFetch(getApiUrl('/api/revision-friend/next-phase'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
           body: JSON.stringify({ 
             sessionId: session.sessionId,
             currentPhase: session.phase,
@@ -340,10 +345,9 @@ const RevisionFriendPage: React.FC = () => {
     setIsPlayingAudio(false);
     
     try {
-      const response = await fetch(getApiUrl('/api/revision-friend/grade-quiz'), {
+      const response = await authenticatedFetch(getApiUrl('/api/revision-friend/grade-quiz'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           answers,
           correctAnswers: session.quizQuestions.map(q => q.correctAnswer),
@@ -377,10 +381,9 @@ const RevisionFriendPage: React.FC = () => {
       }
       
       // Use streaming audio endpoint with progressive playback
-      const response = await fetch(getApiUrl('/api/revision-friend/audio/stream'), {
+      const response = await authenticatedFetch(getApiUrl('/api/revision-friend/audio/stream'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ content: session.content, languageCode })
       });
 

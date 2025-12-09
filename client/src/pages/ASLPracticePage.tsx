@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, MicOff, Loader2, RefreshCw, Users, User, Volume2 } from 'lucide-react';
+import { Mic, MicOff, Loader2, RefreshCw, Users, User, Volume2, LogIn } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 
 type Mode = 'solo' | 'pair';
 
@@ -28,6 +29,7 @@ interface ChatMessage {
 
 const ASLPracticePage: React.FC = () => {
   const { languageCode } = useLanguage();
+  const { user } = useAuth();
   const [selectedClass, setSelectedClass] = useState<9 | 10>(9);
   const [mode, setMode] = useState<Mode>('solo');
   const [tasks, setTasks] = useState<ASLTask[]>([]);
@@ -82,6 +84,13 @@ const ASLPracticePage: React.FC = () => {
   }, []);
 
   const startRecording = async () => {
+    // Check authentication
+    if (!user) {
+      alert('Please login or create an account to practice ASL');
+      window.location.href = '/login?redirect=/asl-practice';
+      return;
+    }
+    
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       
@@ -431,6 +440,35 @@ const ASLPracticePage: React.FC = () => {
 
   return (
     <div className="max-w-3xl mx-auto p-3 sm:p-4">
+      {/* Authentication Required Message */}
+      {!user && (
+        <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-6 mb-6">
+          <div className="flex items-start gap-4">
+            <LogIn className="w-6 h-6 text-yellow-500 flex-shrink-0 mt-1" />
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-yellow-500 mb-2">Login Required</h3>
+              <p className="text-gray-300 text-sm mb-4">
+                Please create an account or login to practice ASL (Assessment of Speaking and Listening).
+              </p>
+              <div className="flex gap-3">
+                <a
+                  href="/login?redirect=/asl-practice"
+                  className="px-4 py-2 bg-primary hover:bg-blue-700 rounded text-white text-sm transition-all"
+                >
+                  Login
+                </a>
+                <a
+                  href="/signup?redirect=/asl-practice"
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-white text-sm transition-all"
+                >
+                  Create Account
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Compact Controls */}
       <div className="mb-3 space-y-2">
         {/* Class, Task, and Mode in one row */}

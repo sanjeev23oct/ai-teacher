@@ -1256,7 +1256,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
 });
 
 // CBSE Class 10 Voice Tutor with Image Support
-app.post('/api/voice-tutor/chat-with-image', upload.single('image'), async (req: Request, res: Response) => {
+app.post('/api/voice-tutor/chat-with-image', authMiddleware, upload.single('image'), async (req: Request, res: Response) => {
     try {
         const { message, class: classNum, subject, history } = req.body;
         const imageFile = req.file;
@@ -1340,7 +1340,7 @@ app.post('/api/voice-tutor/chat-with-image', upload.single('image'), async (req:
 });
 
 // CBSE Class 10 Voice Tutor Endpoint (text only)
-app.post('/api/voice-tutor/chat', async (req: Request, res: Response) => {
+app.post('/api/voice-tutor/chat', authMiddleware, async (req: Request, res: Response) => {
     try {
         const { message, class: classNum, subject, history } = req.body;
 
@@ -1474,14 +1474,21 @@ async function handleDualModeGrading(
 // ============================================
 
 // Explain Question Endpoint
-app.post('/api/doubts/explain', optionalAuthMiddleware, upload.single('questionImage'), async (req: Request, res: Response) => {
+app.post('/api/doubts/explain', authMiddleware, upload.single('questionImage'), async (req: Request, res: Response) => {
     try {
         const { questionText, subject, language, questionNumber, worksheetId } = req.body;
         const userId = req.user?.id;
 
+        // Require authentication
+        if (!userId) {
+            return res.status(401).json({ 
+                error: 'Authentication required',
+                message: 'Please create an account or login to ask doubts'
+            });
+        }
+
         // Debug logging
-        console.log('[Doubt] Auth header:', req.headers.authorization ? 'Present' : 'Missing');
-        console.log('[Doubt] User ID:', userId || 'NULL (Guest)');
+        console.log('[Doubt] User ID:', userId);
 
         // Log worksheet question requests for debugging
         if (questionNumber && worksheetId) {
@@ -1535,7 +1542,7 @@ app.post('/api/doubts/explain', optionalAuthMiddleware, upload.single('questionI
 });
 
 // Doubt Chat Endpoint
-app.post('/api/doubts/chat', async (req: Request, res: Response) => {
+app.post('/api/doubts/chat', authMiddleware, async (req: Request, res: Response) => {
     try {
         const { conversationId, doubtId, message, conversationHistory } = req.body;
 
@@ -1563,7 +1570,7 @@ app.post('/api/doubts/chat', async (req: Request, res: Response) => {
 });
 
 // Doubt Chat Streaming Endpoint
-app.post('/api/doubts/chat/stream', async (req: Request, res: Response) => {
+app.post('/api/doubts/chat/stream', authMiddleware, async (req: Request, res: Response) => {
     try {
         const { conversationId, doubtId, message, conversationHistory } = req.body;
 
@@ -1601,10 +1608,17 @@ app.post('/api/doubts/chat/stream', async (req: Request, res: Response) => {
 });
 
 // Get Doubt History Endpoint
-app.get('/api/doubts/history', optionalAuthMiddleware, async (req: Request, res: Response) => {
+app.get('/api/doubts/history', authMiddleware, async (req: Request, res: Response) => {
     try {
-        // Show all records regardless of auth status (for development)
-        const userId = req.user?.id || null;
+        const userId = req.user?.id;
+        
+        if (!userId) {
+            return res.status(401).json({ 
+                error: 'Authentication required',
+                message: 'Please login to view your doubt history'
+            });
+        }
+        
         const page = parseInt(req.query.page as string) || 1;
         const limit = parseInt(req.query.limit as string) || 20;
         const subject = req.query.subject as string;
@@ -1631,7 +1645,7 @@ app.get('/api/doubts/history', optionalAuthMiddleware, async (req: Request, res:
 });
 
 // Get Single Doubt Endpoint
-app.get('/api/doubts/:doubtId', optionalAuthMiddleware, async (req: Request, res: Response) => {
+app.get('/api/doubts/:doubtId', authMiddleware, async (req: Request, res: Response) => {
     try {
         const { doubtId } = req.params;
 
@@ -1718,7 +1732,7 @@ app.post('/api/doubts/migrate', authMiddleware, async (req: Request, res: Respon
 // ============================================
 
 // Create worksheet
-app.post('/api/worksheets/create', optionalAuthMiddleware, upload.single('image'), async (req: Request, res: Response) => {
+app.post('/api/worksheets/create', authMiddleware, upload.single('image'), async (req: Request, res: Response) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'No image uploaded' });
@@ -1751,7 +1765,7 @@ app.post('/api/worksheets/create', optionalAuthMiddleware, upload.single('image'
 });
 
 // Get worksheet question
-app.get('/api/worksheets/:worksheetId/question/:number', optionalAuthMiddleware, async (req: Request, res: Response) => {
+app.get('/api/worksheets/:worksheetId/question/:number', authMiddleware, async (req: Request, res: Response) => {
     try {
         const { worksheetId, number } = req.params;
         const { worksheetService } = await import('./services/worksheetService');
@@ -1780,7 +1794,7 @@ app.get('/api/worksheets/:worksheetId/question/:number', optionalAuthMiddleware,
 });
 
 // Skip question
-app.post('/api/worksheets/:worksheetId/skip/:number', optionalAuthMiddleware, async (req: Request, res: Response) => {
+app.post('/api/worksheets/:worksheetId/skip/:number', authMiddleware, async (req: Request, res: Response) => {
     try {
         const { worksheetId, number } = req.params;
         const { worksheetService } = await import('./services/worksheetService');
@@ -1802,7 +1816,7 @@ app.post('/api/worksheets/:worksheetId/skip/:number', optionalAuthMiddleware, as
 });
 
 // Get worksheet progress
-app.get('/api/worksheets/:worksheetId/progress', optionalAuthMiddleware, async (req: Request, res: Response) => {
+app.get('/api/worksheets/:worksheetId/progress', authMiddleware, async (req: Request, res: Response) => {
     try {
         const { worksheetId } = req.params;
         const { worksheetService } = await import('./services/worksheetService');
@@ -1820,7 +1834,7 @@ app.get('/api/worksheets/:worksheetId/progress', optionalAuthMiddleware, async (
 });
 
 // Cache question explanation
-app.post('/api/worksheets/:worksheetId/question/:number/cache', optionalAuthMiddleware, async (req: Request, res: Response) => {
+app.post('/api/worksheets/:worksheetId/question/:number/cache', authMiddleware, async (req: Request, res: Response) => {
     try {
         const { worksheetId, number } = req.params;
         const { explanation, doubtId } = req.body;
@@ -2056,7 +2070,7 @@ app.get('/api/dashboard/stats', authMiddleware, async (req: Request, res: Respon
 // ============================================================================
 
 // Get ASL tasks
-app.get('/api/asl/tasks', (req: Request, res: Response) => {
+app.get('/api/asl/tasks', authMiddleware, (req: Request, res: Response) => {
   const { class: classNum, mode } = req.query;
   
   const { ASL_TASKS, getTasksByClass, getTasksByMode } = require('./data/aslTasks');
@@ -2075,7 +2089,7 @@ app.get('/api/asl/tasks', (req: Request, res: Response) => {
 });
 
 // Score ASL response
-app.post('/api/asl/score', upload.single('audio'), async (req: Request, res: Response) => {
+app.post('/api/asl/score', authMiddleware, upload.single('audio'), async (req: Request, res: Response) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No audio file provided' });
@@ -2116,7 +2130,7 @@ app.post('/api/asl/score', upload.single('audio'), async (req: Request, res: Res
 });
 
 // ASL Follow-up Chat
-app.post('/api/asl/chat', async (req: Request, res: Response) => {
+app.post('/api/asl/chat', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { message, context, history } = req.body;
     

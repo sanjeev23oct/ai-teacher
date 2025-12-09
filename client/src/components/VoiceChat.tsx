@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Loader2, Send, BookOpen, Camera, X, Menu, ChevronRight } from 'lucide-react';
+import { Mic, MicOff, Loader2, Send, BookOpen, Camera, X, Menu, ChevronRight, LogIn } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Message {
     role: 'user' | 'model';
@@ -8,6 +9,7 @@ interface Message {
 }
 
 const VoiceChat: React.FC = () => {
+    const { user } = useAuth();
     const [selectedClass, setSelectedClass] = useState<string>('');
     const [selectedSubject, setSelectedSubject] = useState<string>('');
     const [isConfigured, setIsConfigured] = useState(false);
@@ -108,6 +110,13 @@ const VoiceChat: React.FC = () => {
 
     const handleSendMessage = async (text: string) => {
         if (!text.trim() && !uploadedImage) return;
+
+        // Check authentication
+        if (!user) {
+            alert('Please login or create an account to use Voice Tutor');
+            window.location.href = '/login?redirect=/voice-tutor';
+            return;
+        }
 
         // Add user message with image if present
         const userMessage: Message = {
@@ -344,6 +353,35 @@ const VoiceChat: React.FC = () => {
     if (!isConfigured) {
         return (
             <div className="max-w-2xl mx-auto">
+                {/* Authentication Required Message */}
+                {!user && (
+                    <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-6 mb-6">
+                        <div className="flex items-start gap-4">
+                            <LogIn className="w-6 h-6 text-yellow-500 flex-shrink-0 mt-1" />
+                            <div className="flex-1">
+                                <h3 className="text-lg font-semibold text-yellow-500 mb-2">Login Required</h3>
+                                <p className="text-gray-300 text-sm mb-4">
+                                    Please create an account or login to use Voice Tutor.
+                                </p>
+                                <div className="flex gap-3">
+                                    <a
+                                        href="/login?redirect=/voice-tutor"
+                                        className="px-4 py-2 bg-primary hover:bg-blue-700 rounded text-white text-sm transition-all"
+                                    >
+                                        Login
+                                    </a>
+                                    <a
+                                        href="/signup?redirect=/voice-tutor"
+                                        className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-white text-sm transition-all"
+                                    >
+                                        Create Account
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
                 <div className="bg-surface rounded-xl border border-gray-800 p-4 md:p-6">
                     <h2 className="text-lg font-semibold text-white mb-4">Choose Class & Subject</h2>
                     <div className="space-y-4">

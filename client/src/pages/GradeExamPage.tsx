@@ -5,6 +5,7 @@ import UploadModeSelector from '../components/UploadModeSelector';
 import DualUpload from '../components/DualUpload';
 import MultiPageUpload from '../components/MultiPageUpload';
 import { useAuth } from '../contexts/AuthContext';
+import { LogIn } from 'lucide-react';
 
 type UploadMode = 'single' | 'dual' | 'multi-page';
 
@@ -14,10 +15,18 @@ const GradeExamPage: React.FC = () => {
     const [result, setResult] = useState<any>(null);
     const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
     const [questionPaperId, setQuestionPaperId] = useState<string | null>(null);
-    const { token } = useAuth();
+    const { token, user } = useAuth();
 
     const handleUpload = async (file: File) => {
         console.log('handleUpload called with file:', file.name);
+        
+        // Check authentication
+        if (!user) {
+            alert('Please login or create an account to grade exams');
+            window.location.href = '/login?redirect=/grade-exam';
+            return;
+        }
+        
         setIsUploading(true);
         
         // Create object URL for the uploaded image
@@ -112,6 +121,35 @@ const GradeExamPage: React.FC = () => {
 
     return (
         <div className="space-y-8">
+            {/* Authentication Required Message */}
+            {!user && (
+                <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-6">
+                    <div className="flex items-start gap-4">
+                        <LogIn className="w-6 h-6 text-yellow-500 flex-shrink-0 mt-1" />
+                        <div className="flex-1">
+                            <h3 className="text-lg font-semibold text-yellow-500 mb-2">Login Required</h3>
+                            <p className="text-gray-300 text-sm mb-4">
+                                Please create an account or login to grade your exams.
+                            </p>
+                            <div className="flex gap-3">
+                                <a
+                                    href="/login?redirect=/grade-exam"
+                                    className="px-4 py-2 bg-primary hover:bg-blue-700 rounded text-white text-sm transition-all"
+                                >
+                                    Login
+                                </a>
+                                <a
+                                    href="/signup?redirect=/grade-exam"
+                                    className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-white text-sm transition-all"
+                                >
+                                    Create Account
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            
             {!result ? (
                 <>
                     {!uploadMode ? (
