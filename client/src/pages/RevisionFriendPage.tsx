@@ -376,7 +376,7 @@ const RevisionFriendPage: React.FC = () => {
         audioRef.current.pause();
       }
       
-      // Use streaming audio endpoint
+      // Use streaming audio endpoint with progressive playback
       const response = await fetch(getApiUrl('/api/revision-friend/audio/stream'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -388,8 +388,23 @@ const RevisionFriendPage: React.FC = () => {
         throw new Error('Failed to get audio stream');
       }
 
-      // Create blob from response and play
-      const audioBlob = await response.blob();
+      // Stream response as it arrives for faster playback
+      if (!response.body) {
+        throw new Error('Response body not available');
+      }
+
+      // Collect chunks progressively
+      const reader = response.body.getReader();
+      const chunks: Uint8Array[] = [];
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+      }
+      
+      // Create blob and play immediately
+      const audioBlob = new Blob(chunks, { type: 'audio/mpeg' });
       const audioBlobUrl = URL.createObjectURL(audioBlob);
       
       const audio = new Audio(audioBlobUrl);
