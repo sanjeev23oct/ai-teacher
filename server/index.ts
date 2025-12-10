@@ -2188,6 +2188,7 @@ Respond as their teacher:`
 });
 
 // ============================================================================
+// ============================================================================
 // Revision Friend Routes
 // ============================================================================
 
@@ -2401,6 +2402,170 @@ if (process.env.NODE_ENV === 'production') {
     }
   });
 }
+
+// ============================================================================
+// Group Study Simulator Routes
+// ============================================================================
+
+// Start group study session
+app.post('/api/group-study/start', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { topic, subject, classmate1Name, classmate2Name, question, languageCode } = req.body;
+    
+    if (!topic || !subject || !classmate1Name || !classmate2Name) {
+      return res.status(400).json({ error: 'Topic, subject, and both classmate names required' });
+    }
+
+    if (!req.user?.id) {
+      return res.status(401).json({ 
+        error: 'Authentication required',
+        message: 'Please create an account or login to use Group Study Simulator'
+      });
+    }
+
+    const { groupStudyService } = require('./services/groupStudyService');
+    const result = await groupStudyService.startSession({
+      topic,
+      subject,
+      userId: req.user.id,
+      classmate1Name,
+      classmate2Name,
+      question,
+      languageCode,
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error starting group study session:', error);
+    res.status(500).json({ error: 'Failed to start session' });
+  }
+});
+
+// Get first classmate's follow-up question
+app.post('/api/group-study/classmate1-question', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { sessionId, studentAnswer } = req.body;
+    
+    if (!sessionId || !studentAnswer) {
+      return res.status(400).json({ error: 'Session ID and student answer required' });
+    }
+
+    const { groupStudyService } = require('./services/groupStudyService');
+    const result = await groupStudyService.getClassmate1Question(sessionId, studentAnswer);
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error getting classmate1 question:', error);
+    res.status(500).json({ error: 'Failed to generate question' });
+  }
+});
+
+// Get second classmate's counter-argument
+app.post('/api/group-study/classmate2-counter', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { sessionId, classmate1Response } = req.body;
+    
+    if (!sessionId || !classmate1Response) {
+      return res.status(400).json({ error: 'Session ID and response required' });
+    }
+
+    const { groupStudyService } = require('./services/groupStudyService');
+    const result = await groupStudyService.getClassmate2Counter(sessionId, classmate1Response);
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error getting classmate2 counter:', error);
+    res.status(500).json({ error: 'Failed to generate counter-argument' });
+  }
+});
+
+// Evaluate handling skill
+app.post('/api/group-study/evaluate', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { sessionId, classmate2Response } = req.body;
+    
+    if (!sessionId || !classmate2Response) {
+      return res.status(400).json({ error: 'Session ID and response required' });
+    }
+
+    const { groupStudyService } = require('./services/groupStudyService');
+    const result = await groupStudyService.evaluateHandling(sessionId, classmate2Response);
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error evaluating handling:', error);
+    res.status(500).json({ error: 'Failed to evaluate' });
+  }
+});
+
+// Get group study history
+app.get('/api/group-study/history', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const { groupStudyService } = require('./services/groupStudyService');
+    const history = await groupStudyService.getHistory(req.user.id);
+
+    res.json({ sessions: history });
+  } catch (error) {
+    console.error('Error fetching history:', error);
+    res.status(500).json({ error: 'Failed to fetch history' });
+  }
+});
+
+// Get user's handling skill progress
+app.get('/api/group-study/progress', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const { groupStudyService } = require('./services/groupStudyService');
+    const progress = await groupStudyService.getUserProgress(req.user.id);
+
+    res.json(progress || { currentLevel: 'moderate', avgScore: 0, sessionsCount: 0, badges: [] });
+  } catch (error) {
+    console.error('Error fetching progress:', error);
+    res.status(500).json({ error: 'Failed to fetch progress' });
+  }
+});
+
+// Stream AI classmate audio
+app.post('/api/group-study/audio/stream', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { text, speakerRole } = req.body;
+    
+    if (!text) {
+      return res.status(400).json({ error: 'Text required' });
+    }
+
+    const { groupStudyService } = require('./services/groupStudyService');
+    const audioStream = await groupStudyService.getAudioStream(text, speakerRole || 'questioner');
+
+    if (!audioStream) {
+      return res.status(503).json({ 
+        error: 'TTS service not available',
+        message: 'Audio generation failed.'
+      });
+    }
+
+    res.set({
+      'Content-Type': 'audio/mpeg',
+      'Transfer-Encoding': 'chunked'
+    });
+
+    for await (const chunk of audioStream) {
+      res.write(chunk);
+    }
+    
+    res.end();
+  } catch (error) {
+    console.error('Error in group study audio streaming:', error);
+    res.status(500).json({ error: 'Failed to generate speech' });
+  }
+});
 
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
