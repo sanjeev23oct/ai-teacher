@@ -2786,6 +2786,59 @@ app.get('/api/ncert-explainer/cache/stats', authMiddleware, async (req: Request,
   }
 });
 
+// Stream audio for NCERT chapter explanation
+app.get('/api/ncert-explainer/chapter/:chapterId/audio', async (req: Request, res: Response) => {
+  try {
+    const { chapterId } = req.params;
+    const { languageCode = 'en' } = req.query;
+
+    // Get the chapter explanation from cache or database
+    const study = await prisma.nCERTChapterStudy.findFirst({
+      where: { 
+        chapterId: chapterId as string,
+        languageCode: languageCode as string
+      }
+    });
+
+    if (!study || !study.explanation) {
+      return res.status(404).json({ 
+        error: 'Chapter explanation not found. Generate explanation first.' 
+      });
+    }
+
+    const { textToSpeechStream } = await import('./services/ttsService');
+    const languageConfig = languageService.getLanguageConfig(languageCode as string);
+    
+    const audioStream = await textToSpeechStream(
+      study.explanation,
+      languageConfig?.elevenLabsVoiceId,
+      languageConfig?.elevenLabsModelId
+    );
+
+    if (!audioStream) {
+      return res.status(503).json({ 
+        error: 'TTS service not available',
+        message: 'ElevenLabs API key not configured.'
+      });
+    }
+
+    console.log(`[NCERT AUDIO] Chapter: ${chapterId}, Language: ${languageCode}`);
+
+    res.set({
+      'Content-Type': 'audio/mpeg',
+      'Transfer-Encoding': 'chunked'
+    });
+
+    for await (const chunk of audioStream) {
+      res.write(chunk);
+    }
+    res.end();
+  } catch (error: any) {
+    console.error('Error generating NCERT chapter audio:', error);
+    res.status(500).json({ error: 'Failed to generate speech' });
+  }
+});
+
 // ===========================
 // Smart Notes API Endpoints
 // ===========================
@@ -2794,8 +2847,11 @@ const smartNotesService = require('./services/smartNotesService').default;
 const socialNotesService = require('./services/socialNotesService').default;
 const notesUpload = multer({ dest: 'uploads/temp/' });
 
+console.log('[SMART NOTES] Services loaded, registering routes...');
+
 // Create note from text (with optional image attachment)
 app.post('/api/smart-notes/create-text', authMiddleware, notesUpload.single('image'), async (req: Request, res: Response) => {
+  console.log('[SMART NOTES] create-text route hit');
   try {
     const { text, subject, class: className, chapter, visibility } = req.body;
 
