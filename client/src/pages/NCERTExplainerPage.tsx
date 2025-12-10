@@ -3,7 +3,7 @@ import { BookOpen, LogIn, History, TrendingUp, Award } from 'lucide-react';
 import { getApiUrl } from '../config';
 import { useAuth } from '../contexts/AuthContext';
 import { authenticatedFetch } from '../utils/api';
-import { AudioPlayer } from '../components/AudioPlayer';
+import AudioPlayer from '../components/AudioPlayer';
 
 interface ChapterInfo {
   id: string;

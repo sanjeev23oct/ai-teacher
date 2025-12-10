@@ -1,105 +1,77 @@
-// ===========================
-// Audio Player Component
-// Reusable audio player with cache indicator
-// ===========================
-
-import React, { useRef, useState } from 'react';
-import { Volume2, VolumeX, Loader } from 'lucide-react';
-import AudioCacheBadge from './AudioCacheBadge';
-import { getImageUrl } from '../config';
+import React, { useState } from 'react';
+import { authenticatedFetch } from '../utils/api';
+import { getApiUrl } from '../config';
 
 interface AudioPlayerProps {
-  audioUrl: string;
-  audioSource: 'cache' | 'elevenlabs';
-  cacheKey?: string;
-  timestamp?: string;
-  autoPlay?: boolean;
+  audioEndpoint: string;
   className?: string;
+  size?: 'sm' | 'md' | 'lg';
 }
 
-export const AudioPlayer: React.FC<AudioPlayerProps> = ({
-  audioUrl,
-  audioSource,
-  cacheKey,
-  timestamp,
-  autoPlay = false,
-  className = '',
-}) => {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+export default function AudioPlayer({ audioEndpoint, className = '', size = 'md' }: AudioPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
 
-  const togglePlay = async () => {
-    if (!audioRef.current) {
-      // Create audio element if doesn't exist
-      // Ensure URL is properly formatted - handle both absolute and relative URLs
-      const fullAudioUrl = audioUrl.startsWith('http') ? audioUrl : getImageUrl(audioUrl);
-      console.log('[AudioPlayer] Loading audio from:', fullAudioUrl);
-      const audio = new Audio(fullAudioUrl);
-      audioRef.current = audio;
+  const sizeClasses = {
+    sm: 'p-1.5 text-sm',
+    md: 'p-2',
+    lg: 'p-3 text-lg'
+  };
 
-      audio.onended = () => setIsPlaying(false);
-      audio.onpause = () => setIsPlaying(false);
-      audio.onplay = () => setIsPlaying(true);
-      audio.onloadstart = () => setIsLoading(true);
-      audio.oncanplay = () => setIsLoading(false);
+  const playAudio = async () => {
+    // Stop if already playing
+    if (isPlaying) {
+      currentAudio?.pause();
+      setCurrentAudio(null);
+      setIsPlaying(false);
+      return;
     }
 
     try {
-      if (isPlaying) {
-        audioRef.current.pause();
+      setIsPlaying(true);
+      const response = await authenticatedFetch(
+        getApiUrl(audioEndpoint),
+        { method: 'POST' }
+      );
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const audioUrl = URL.createObjectURL(blob);
+        const audio = new Audio(audioUrl);
+        
+        audio.onended = () => {
+          setIsPlaying(false);
+          setCurrentAudio(null);
+          URL.revokeObjectURL(audioUrl);
+        };
+        
+        audio.onerror = () => {
+          setIsPlaying(false);
+          setCurrentAudio(null);
+          URL.revokeObjectURL(audioUrl);
+          console.error('Audio playback error');
+        };
+        
+        setCurrentAudio(audio);
+        await audio.play();
       } else {
-        setIsLoading(true);
-        await audioRef.current.play();
-        setIsLoading(false);
+        setIsPlaying(false);
       }
     } catch (error) {
-      console.error('Audio playback error:', error);
-      setIsLoading(false);
+      console.error('Failed to play audio:', error);
+      setIsPlaying(false);
     }
   };
 
-  // Auto-play if requested
-  React.useEffect(() => {
-    if (autoPlay && audioUrl) {
-      // Small delay to ensure component is ready
-      const timer = setTimeout(() => {
-        togglePlay();
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-    // Cleanup on unmount only
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
-    };
-  }, []); // Run only once on mount
-
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
-      <button
-        onClick={togglePlay}
-        disabled={isLoading}
-        className="p-2 rounded-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        aria-label={isPlaying ? 'Pause audio' : 'Play audio'}
-      >
-        {isLoading ? (
-          <Loader size={18} className="animate-spin" />
-        ) : isPlaying ? (
-          <VolumeX size={18} />
-        ) : (
-          <Volume2 size={18} />
-        )}
-      </button>
-
-      <AudioCacheBadge
-        source={audioSource}
-        cacheKey={cacheKey}
-        timestamp={timestamp}
-      />
-    </div>
+    <button
+      onClick={playAudio}
+      className={`${sizeClasses[size]} rounded-full transition-colors ${
+        isPlaying ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'
+      } ${className}`}
+      title={isPlaying ? 'Stop' : 'Listen'}
+    >
+      {isPlaying ? '⏸' : '🔊'}
+    </button>
   );
-};
-
-export default AudioPlayer;
+}

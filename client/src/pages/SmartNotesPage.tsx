@@ -6,11 +6,13 @@ import { authenticatedFetch } from '../utils/api';
 import { getApiUrl } from '../config';
 import CameraCapture from '../components/CameraCapture';
 import ShareNoteModal from '../components/ShareNoteModal';
+import AudioPlayer from '../components/AudioPlayer';
 
 interface SmartNote {
   id: string;
-  sourceType: 'text' | 'image';
+  sourceType: 'text' | 'image' | 'mixed';
   originalText?: string;
+  imageUrl?: string;
   extractedText?: string;
   enhancedNote: string;
   title: string;
@@ -56,9 +58,10 @@ export default function SmartNotesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [activeTab, setActiveTab] = useState<'notes' | 'community' | 'shared' | 'friends' | 'create' | 'revision'>('notes');
-  const [inputMode, setInputMode] = useState<'text' | 'image'>('text');
   const [showCamera, setShowCamera] = useState(false);
   const [noteText, setNoteText] = useState('');
+  const [attachedImage, setAttachedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>('');
   const [selectedChapter, setSelectedChapter] = useState('');
   const [selectedVisibility, setSelectedVisibility] = useState<'private' | 'friends' | 'class' | 'public'>('private');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -228,22 +231,27 @@ export default function SmartNotesPage() {
 
     setIsProcessing(true);
     try {
+      const formData = new FormData();
+      formData.append('text', noteText);
+      if (user?.preferredSubject) formData.append('subject', user.preferredSubject);
+      if (user?.grade) formData.append('class', user.grade);
+      if (selectedChapter) formData.append('chapter', selectedChapter);
+      formData.append('visibility', selectedVisibility);
+      if (attachedImage) {
+        formData.append('image', attachedImage);
+      }
+
       const response = await authenticatedFetch(getApiUrl('/api/smart-notes/create-text'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: noteText,
-          subject: user?.preferredSubject || undefined,
-          class: user?.grade,
-          chapter: selectedChapter || undefined,
-          visibility: selectedVisibility,
-        }),
+        body: formData,
       });
 
       if (response.ok) {
         const newNote = await response.json();
         setNotes([newNote, ...notes]);
         setNoteText('');
+        setAttachedImage(null);
+        setImagePreview('');
         setSelectedChapter('');
         setSelectedVisibility('private');
         setActiveTab('notes');
@@ -582,28 +590,6 @@ export default function SmartNotesPage() {
         {/* Create Tab */}
         {activeTab === 'create' && (
           <div className="bg-surface rounded-xl p-4 sm:p-6 border border-gray-700">
-            {/* Input Mode Toggle */}
-            <div className="flex gap-2 mb-4">
-              <button
-                onClick={() => setInputMode('text')}
-                className={`flex-1 py-2 sm:py-3 rounded-lg flex items-center justify-center gap-2 transition-colors ${
-                  inputMode === 'text' ? 'bg-primary text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                }`}
-              >
-                <FileText size={18} />
-                Type Text
-              </button>
-              <button
-                onClick={() => setInputMode('image')}
-                className={`flex-1 py-2 sm:py-3 rounded-lg flex items-center justify-center gap-2 transition-colors ${
-                  inputMode === 'image' ? 'bg-primary text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                }`}
-              >
-                <Camera size={18} />
-                Photo
-              </button>
-            </div>
-
             {/* Context Fields - Chapter and Visibility */}
             <div className="grid grid-cols-2 gap-3 mb-4">
               <input
@@ -625,15 +611,58 @@ export default function SmartNotesPage() {
               </select>
             </div>
 
-            {/* Text Input */}
-            {inputMode === 'text' && (
-              <div>
+            {/* Text Input with Optional Image */}
+            <div>
                 <textarea
                   value={noteText}
                   onChange={(e) => setNoteText(e.target.value)}
                   placeholder="Type or paste your messy notes here...&#10;&#10;AI will organize them into a clean, well-structured format!"
-                  className="w-full h-48 bg-gray-700 border border-gray-600 rounded-lg p-4 resize-none mb-4 text-sm text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="w-full h-48 bg-gray-700 border border-gray-600 rounded-lg p-4 resize-none mb-3 text-sm text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
+                
+                {/* Optional Image Attachment */}
+                <div className="mb-4">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setAttachedImage(file);
+                        const reader = new FileReader();
+                        reader.onload = () => setImagePreview(reader.result as string);
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    className="hidden"
+                  />
+                  
+                  {imagePreview ? (
+                    <div className="relative inline-block">
+                      <img src={imagePreview} alt="Attached" className="max-h-32 rounded border border-gray-600" />
+                      <button
+                        onClick={() => {
+                          setAttachedImage(null);
+                          setImagePreview('');
+                          if (fileInputRef.current) fileInputRef.current.value = '';
+                        }}
+                        className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 rounded-full p-1"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="text-sm text-gray-400 hover:text-white flex items-center gap-2"
+                    >
+                      <Camera size={16} />
+                      📎 Attach image (optional)
+                    </button>
+                  )}
+                </div>
+                
                 <button
                   onClick={handleTextSubmit}
                   disabled={!noteText.trim() || isProcessing}
@@ -642,37 +671,6 @@ export default function SmartNotesPage() {
                   {isProcessing ? '✨ Enhancing...' : '✨ Create Smart Note'}
                 </button>
               </div>
-            )}
-
-            {/* Image Input */}
-            {inputMode === 'image' && (
-              <div className="space-y-3">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-                <button
-                  onClick={() => setShowCamera(true)}
-                  disabled={isProcessing}
-                  className="w-full bg-primary hover:bg-primary-hover py-3 rounded-lg font-semibold flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
-                >
-                  <Camera size={20} />
-                  {isProcessing ? 'Processing...' : 'Take Photo'}
-                </button>
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isProcessing}
-                  className="w-full bg-gray-700 hover:bg-gray-600 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 border border-gray-600 disabled:opacity-50 transition-colors"
-                >
-                  <FileText size={20} />
-                  {isProcessing ? 'Processing...' : 'Upload Image'}
-                </button>
-                <p className="text-xs text-gray-400 text-center">AI will extract text and organize it automatically</p>
-              </div>
-            )}
           </div>
         )}
 
@@ -753,6 +751,11 @@ export default function SmartNotesPage() {
                       )}
                     </div>
                     <div className="flex gap-2 items-center">
+                      {/* Play audio button */}
+                      <AudioPlayer 
+                        audioEndpoint={`/api/smart-notes/${note.id}/audio`}
+                        size="sm"
+                      />
                       {/* Share button */}
                       <button
                         onClick={(e) => {
@@ -798,6 +801,10 @@ export default function SmartNotesPage() {
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
                   <h2 className="text-xl sm:text-2xl font-bold">{selectedNote.title}</h2>
+                  <AudioPlayer 
+                    audioEndpoint={`/api/smart-notes/${selectedNote.id}/audio`}
+                    size="md"
+                  />
                   {selectedNote.user?.id === user?.id && (
                     <select
                       value={selectedNote.visibility || 'private'}
@@ -832,11 +839,35 @@ export default function SmartNotesPage() {
               {selectedNote.enhancedNote}
             </div>
 
+            {/* Attached Image */}
+            {selectedNote.imageUrl && (
+              <div className="mt-4">
+                <h4 className="text-sm font-semibold text-gray-300 mb-2">📷 Attached Image</h4>
+                <img 
+                  src={`http://localhost:3001/${selectedNote.imageUrl}`} 
+                  alt="Attached" 
+                  className="max-w-full rounded-lg border border-gray-600"
+                />
+              </div>
+            )}
+
+            {/* User's Original Notes */}
+            {selectedNote.originalText && (
+              <details className="mt-4">
+                <summary className="cursor-pointer text-sm text-gray-400 hover:text-white">
+                  📝 View My Original Notes
+                </summary>
+                <div className="mt-2 bg-black/20 rounded-lg p-4 text-sm text-gray-300 whitespace-pre-wrap">
+                  {selectedNote.originalText}
+                </div>
+              </details>
+            )}
+
             {/* Original Content (if from image) */}
             {selectedNote.sourceType === 'image' && selectedNote.extractedText && (
               <details className="mt-4">
                 <summary className="cursor-pointer text-sm text-gray-400 hover:text-white">
-                  View Original Extracted Text
+                  🔍 View Extracted Text from Image
                 </summary>
                 <div className="mt-2 bg-black/20 rounded-lg p-4 text-sm text-gray-300 whitespace-pre-wrap">
                   {selectedNote.extractedText}

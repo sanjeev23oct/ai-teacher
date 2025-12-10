@@ -12,6 +12,7 @@ import * as gradingService from './services/gradingService';
 import * as authService from './services/authService';
 import * as aslScoringService from './services/aslScoringService';
 import { languageService } from './services/languageService';
+import * as audioCacheService from './services/audioCacheService';
 import { calculateImageHash } from './lib/imageHash';
 import { authMiddleware, optionalAuthMiddleware } from './middleware/auth';
 import prisma from './lib/prisma';
@@ -2793,8 +2794,8 @@ const smartNotesService = require('./services/smartNotesService').default;
 const socialNotesService = require('./services/socialNotesService').default;
 const notesUpload = multer({ dest: 'uploads/temp/' });
 
-// Create note from text
-app.post('/api/smart-notes/create-text', authMiddleware, async (req: Request, res: Response) => {
+// Create note from text (with optional image attachment)
+app.post('/api/smart-notes/create-text', authMiddleware, notesUpload.single('image'), async (req: Request, res: Response) => {
   try {
     const { text, subject, class: className, chapter, visibility } = req.body;
 
@@ -2802,8 +2803,28 @@ app.post('/api/smart-notes/create-text', authMiddleware, async (req: Request, re
       return res.status(400).json({ error: 'Text is required' });
     }
 
-    console.log(`[CREATE NOTE] User: ${req.user.id}, Subject: ${subject}, Class: ${className}, Chapter: ${chapter}, Visibility: ${visibility}`);
+    console.log(`[CREATE NOTE] User: ${req.user.id}, Subject: ${subject}, Class: ${className}, Chapter: ${chapter}, Visibility: ${visibility}, Has Image: ${!!req.file}`);
 
+    // If image attached, use mixed mode
+    if (req.file) {
+      const imageBuffer = fs.readFileSync(req.file.path);
+      const note = await smartNotesService.createSmartNote(req.user.id, {
+        sourceType: 'mixed',
+        originalText: text,
+        imageBuffer,
+        imageMimeType: req.file.mimetype,
+        imageUrl: req.file.path,
+        context: { subject, class: className, chapter, visibility },
+      });
+      
+      // Clean up temp file
+      try { fs.unlinkSync(req.file.path); } catch (e) {}
+      
+      console.log(`[CREATE NOTE] Created mixed note ${note.id} for user ${req.user.id}`);
+      return res.json(note);
+    }
+
+    // Text-only mode
     const note = await smartNotesService.createSmartNote(req.user.id, {
       sourceType: 'text',
       originalText: text,
@@ -2907,6 +2928,52 @@ app.delete('/api/smart-notes/:id', authMiddleware, async (req: Request, res: Res
   } catch (error: any) {
     console.error('Error deleting note:', error);
     res.status(500).json({ error: error.message || 'Failed to delete note' });
+  }
+});
+
+// Generate TTS audio for note with caching
+app.post('/api/smart-notes/:id/audio', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const note = await prisma.smartNote.findUnique({
+      where: { id: req.params.id },
+      select: { id: true, enhancedNote: true, title: true }
+    });
+
+    if (!note) {
+      return res.status(404).json({ error: 'Note not found' });
+    }
+
+    const languageCode = req.user.languagePreference || 'en';
+    const { textToSpeechStream } = require('./services/ttsService');
+    const languageConfig = languageService.getLanguageConfig(languageCode);
+    
+    const audioStream = await textToSpeechStream(
+      note.enhancedNote,
+      languageConfig.elevenLabsVoiceId,
+      languageConfig.elevenLabsModelId
+    );
+
+    if (!audioStream) {
+      return res.status(503).json({ 
+        error: 'TTS service not available',
+        message: 'ElevenLabs API key not configured.'
+      });
+    }
+
+    console.log(`[SMART NOTES AUDIO] Note: ${note.title}, Language: ${languageCode}`);
+
+    res.set({
+      'Content-Type': 'audio/mpeg',
+      'Transfer-Encoding': 'chunked'
+    });
+
+    for await (const chunk of audioStream) {
+      res.write(chunk);
+    }
+    res.end();
+  } catch (error: any) {
+    console.error('Error generating note audio:', error);
+    res.status(500).json({ error: error.message || 'Failed to generate audio' });
   }
 });
 

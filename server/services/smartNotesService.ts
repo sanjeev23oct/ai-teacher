@@ -120,41 +120,28 @@ Also provide:
 - TAGS (3-5 keywords like "formula", "important", "definition", "exam")
 - SUBJECT (Math/Science/English/SST/Other based on content)
 
-OUTPUT FORMAT (JSON):
-{
-  "title": "short descriptive title",
-  "summary": "brief 2-3 sentence summary",
-  "subject": "detected subject",
-  "tags": ["tag1", "tag2", "tag3"],
-  "enhancedNote": "your beautifully formatted note using markdown:
-  
-## Main Heading
-### Subheading
-- Bullet point 1
-- Bullet point 2
-  
-**Important term**: Definition
+IMPORTANT: You MUST return valid JSON only. Use \\n for line breaks within the enhancedNote string. Do NOT use actual newlines.
 
-Formula: E = mc²
+Example of correct JSON format:
+${JSON.stringify({
+  title: "Example Title",
+  summary: "Example summary text",
+  subject: "Math",
+  tags: ["example", "formula"],
+  enhancedNote: "# Main Heading\n\n## Subheading\n- Point 1\n- Point 2\n\n**Key term**: definition"
+}, null, 2)}
 
-> Tip: Helpful memory trick
-"
-}
-
-Generate the enhanced note now in JSON format:`;
+Now generate the enhanced note in this exact JSON format:`;
 
   const result = await aiService.generateContent({ prompt });
   
-  // Parse JSON response with better error handling
+  // Parse JSON response
   let jsonStr = result.text.trim();
   if (jsonStr.includes('```json')) {
-    jsonStr = jsonStr.split('```json')[1].split('```')[0];
+    jsonStr = jsonStr.split('```json')[1].split('```')[0].trim();
   } else if (jsonStr.includes('```')) {
-    jsonStr = jsonStr.split('```')[1].split('```')[0];
+    jsonStr = jsonStr.split('```')[1].split('```')[0].trim();
   }
-
-  // Clean up potential control characters that break JSON parsing
-  jsonStr = jsonStr.trim();
 
   let enhanced;
   try {
@@ -162,18 +149,7 @@ Generate the enhanced note now in JSON format:`;
   } catch (parseError: any) {
     console.error('JSON parse error:', parseError.message);
     console.error('Problematic JSON:', jsonStr.substring(0, 500));
-    
-    // Attempt to fix common JSON issues
-    try {
-      // Replace unescaped newlines in string values
-      const fixed = jsonStr.replace(/"([^"]*)"/g, (match) => {
-        return match.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t');
-      });
-      enhanced = JSON.parse(fixed);
-      console.log('Successfully recovered from JSON parse error');
-    } catch (retryError) {
-      throw new Error(`Failed to parse AI response as JSON: ${parseError.message}`);
-    }
+    throw new Error(`Failed to parse AI response as JSON: ${parseError.message}`);
   }
 
   const enhancementData = {
@@ -183,6 +159,12 @@ Generate the enhanced note now in JSON format:`;
     tags: enhanced.tags || [],
     subject: enhanced.subject,
   };
+
+  // Validate required fields
+  if (!enhancementData.enhancedNote || !enhancementData.title) {
+    console.error('Invalid enhancement data:', enhancementData);
+    throw new Error('AI response missing required fields (enhancedNote or title)');
+  }
 
   // Save to cache
   await noteCacheService.saveEnhancementToCache(textHash, enhancementData);
@@ -201,7 +183,7 @@ Generate the enhanced note now in JSON format:`;
 export async function createSmartNote(
   userId: string,
   data: {
-    sourceType: 'text' | 'image';
+    sourceType: 'text' | 'image' | 'mixed';
     originalText?: string;
     imageBuffer?: Buffer;
     imageMimeType?: string;
@@ -234,12 +216,19 @@ export async function createSmartNote(
   let imageHash: string | undefined;
   let cacheKey: string | undefined;
 
-  // If image source, extract text first
-  if (data.sourceType === 'image' && data.imageBuffer) {
+  // If image provided (image-only or mixed mode), extract text from image
+  if ((data.sourceType === 'image' || data.sourceType === 'mixed') && data.imageBuffer) {
     const ocrResult = await extractTextFromImage(data.imageBuffer, data.imageMimeType);
-    extractedText = ocrResult.text;
+    const imageText = ocrResult.text;
     imageHash = noteCacheService.generateImageHash(data.imageBuffer);
     cacheKey = ocrResult.cacheKey;
+    
+    // For mixed mode, combine user text + extracted text
+    if (data.sourceType === 'mixed') {
+      extractedText = `${data.originalText}\n\n--- Extracted from attached image ---\n${imageText}`;
+    } else {
+      extractedText = imageText;
+    }
   }
 
   // Enhance the extracted/provided text
