@@ -1,0 +1,617 @@
+{
+  "English": {
+    "6": [
+      {
+        "id": "honeysuckle_ch1",
+        "name": "Who Did Patrick's Homework?",
+        "bookName": "Honeysuckle",
+        "chapterNumber": 1,
+        "type": "prose"
+      },
+      {
+        "id": "honeysuckle_ch2",
+        "name": "How the Dog Found Himself a New Master",
+        "bookName": "Honeysuckle",
+        "chapterNumber": 2,
+        "type": "prose"
+      },
+      {
+        "id": "honeysuckle_ch3",
+        "name": "Taro's Reward",
+        "bookName": "Honeysuckle",
+        "chapterNumber": 3,
+        "type": "prose"
+      },
+      {
+        "id": "honeysuckle_ch4",
+        "name": "An Indian - American Woman in Space: Kalpana Chawla",
+        "bookName": "Honeysuckle",
+        "chapterNumber": 4,
+        "type": "prose"
+      },
+      {
+        "id": "honeysuckle_ch5",
+        "name": "A Different Kind of School",
+        "bookName": "Honeysuckle",
+        "chapterNumber": 5,
+        "type": "prose"
+      },
+      {
+        "id": "honeysuckle_ch6",
+        "name": "Who I Am",
+        "bookName": "Honeysuckle",
+        "chapterNumber": 6,
+        "type": "prose"
+      },
+      {
+        "id": "honeysuckle_ch7",
+        "name": "Fair Play",
+        "bookName": "Honeysuckle",
+        "chapterNumber": 7,
+        "type": "prose"
+      },
+      {
+        "id": "honeysuckle_ch8",
+        "name": "A Game of Chance",
+        "bookName": "Honeysuckle",
+        "chapterNumber": 8,
+        "type": "prose"
+      },
+      {
+        "id": "honeysuckle_ch9",
+        "name": "Desert Animals",
+        "bookName": "Honeysuckle",
+        "chapterNumber": 9,
+        "type": "prose"
+      },
+      {
+        "id": "honeysuckle_ch10",
+        "name": "The Banyan Tree",
+        "bookName": "Honeysuckle",
+        "chapterNumber": 10,
+        "type": "prose"
+      }
+    ],
+    "7": [
+      {
+        "id": "honeycomb_ch1",
+        "name": "Three Questions",
+        "bookName": "Honeycomb",
+        "chapterNumber": 1,
+        "type": "prose"
+      },
+      {
+        "id": "honeycomb_ch2",
+        "name": "A Gift of Chappals",
+        "bookName": "Honeycomb",
+        "chapterNumber": 2,
+        "type": "prose"
+      },
+      {
+        "id": "honeycomb_ch3",
+        "name": "Gopal and the Hilsa Fish",
+        "bookName": "Honeycomb",
+        "chapterNumber": 3,
+        "type": "prose"
+      },
+      {
+        "id": "honeycomb_ch4",
+        "name": "The Ashes That Made Trees Bloom",
+        "bookName": "Honeycomb",
+        "chapterNumber": 4,
+        "type": "prose"
+      },
+      {
+        "id": "honeycomb_ch5",
+        "name": "Quality",
+        "bookName": "Honeycomb",
+        "chapterNumber": 5,
+        "type": "prose"
+      },
+      {
+        "id": "honeycomb_ch6",
+        "name": "Expert Detectives",
+        "bookName": "Honeycomb",
+        "chapterNumber": 6,
+        "type": "prose"
+      },
+      {
+        "id": "honeycomb_ch7",
+        "name": "The Invention of Vita-Wonk",
+        "bookName": "Honeycomb",
+        "chapterNumber": 7,
+        "type": "prose"
+      },
+      {
+        "id": "honeycomb_ch8",
+        "name": "Fire: Friend and Foe",
+        "bookName": "Honeycomb",
+        "chapterNumber": 8,
+        "type": "prose"
+      },
+      {
+        "id": "honeycomb_ch9",
+        "name": "A Bicycle in Good Repair",
+        "bookName": "Honeycomb",
+        "chapterNumber": 9,
+        "type": "prose"
+      },
+      {
+        "id": "honeycomb_ch10",
+        "name": "The Story of Cricket",
+        "bookName": "Honeycomb",
+        "chapterNumber": 10,
+        "type": "prose"
+      }
+    ],
+    "8": [
+      {
+        "id": "honeydew_ch1",
+        "name": "The Best Christmas Present in the World",
+        "bookName": "Honeydew",
+        "chapterNumber": 1,
+        "type": "prose"
+      },
+      {
+        "id": "honeydew_ch2",
+        "name": "The Tsunami",
+        "bookName": "Honeydew",
+        "chapterNumber": 2,
+        "type": "prose"
+      },
+      {
+        "id": "honeydew_ch3",
+        "name": "Glimpses of the Past",
+        "bookName": "Honeydew",
+        "chapterNumber": 3,
+        "type": "prose"
+      },
+      {
+        "id": "honeydew_ch4",
+        "name": "Bepin Choudhury's Lapse of Memory",
+        "bookName": "Honeydew",
+        "chapterNumber": 4,
+        "type": "prose"
+      },
+      {
+        "id": "honeydew_ch5",
+        "name": "The Summit Within",
+        "bookName": "Honeydew",
+        "chapterNumber": 5,
+        "type": "prose"
+      },
+      {
+        "id": "honeydew_ch6",
+        "name": "This is Jody's Fawn",
+        "bookName": "Honeydew",
+        "chapterNumber": 6,
+        "type": "prose"
+      },
+      {
+        "id": "honeydew_ch7",
+        "name": "A Visit to Cambridge",
+        "bookName": "Honeydew",
+        "chapterNumber": 7,
+        "type": "prose"
+      },
+      {
+        "id": "honeydew_ch8",
+        "name": "A Short Monsoon Diary",
+        "bookName": "Honeydew",
+        "chapterNumber": 8,
+        "type": "prose"
+      },
+      {
+        "id": "honeydew_ch9",
+        "name": "The Great Stone Face – I",
+        "bookName": "Honeydew",
+        "chapterNumber": 9,
+        "type": "prose"
+      },
+      {
+        "id": "honeydew_ch10",
+        "name": "The Great Stone Face – II",
+        "bookName": "Honeydew",
+        "chapterNumber": 10,
+        "type": "prose"
+      }
+    ],
+    "9": [
+      {
+        "id": "beehive_ch1",
+        "name": "The Fun They Had",
+        "bookName": "Beehive",
+        "chapterNumber": 1,
+        "type": "prose"
+      },
+      {
+        "id": "beehive_ch2",
+        "name": "The Sound of Music",
+        "bookName": "Beehive",
+        "chapterNumber": 2,
+        "type": "prose"
+      },
+      {
+        "id": "beehive_ch3",
+        "name": "The Little Girl",
+        "bookName": "Beehive",
+        "chapterNumber": 3,
+        "type": "prose"
+      },
+      {
+        "id": "beehive_ch4",
+        "name": "A Truly Beautiful Mind",
+        "bookName": "Beehive",
+        "chapterNumber": 4,
+        "type": "prose"
+      },
+      {
+        "id": "beehive_ch5",
+        "name": "The Snake and the Mirror",
+        "bookName": "Beehive",
+        "chapterNumber": 5,
+        "type": "prose"
+      },
+      {
+        "id": "beehive_ch6",
+        "name": "My Childhood",
+        "bookName": "Beehive",
+        "chapterNumber": 6,
+        "type": "prose"
+      },
+      {
+        "id": "beehive_ch7",
+        "name": "Packing",
+        "bookName": "Beehive",
+        "chapterNumber": 7,
+        "type": "prose"
+      },
+      {
+        "id": "beehive_ch8",
+        "name": "Reach for the Top",
+        "bookName": "Beehive",
+        "chapterNumber": 8,
+        "type": "prose"
+      },
+      {
+        "id": "beehive_ch9",
+        "name": "The Bond of Love",
+        "bookName": "Beehive",
+        "chapterNumber": 9,
+        "type": "prose"
+      },
+      {
+        "id": "beehive_ch10",
+        "name": "Kathmandu",
+        "bookName": "Beehive",
+        "chapterNumber": 10,
+        "type": "prose"
+      },
+      {
+        "id": "beehive_ch11",
+        "name": "If I Were You",
+        "bookName": "Beehive",
+        "chapterNumber": 11,
+        "type": "prose"
+      }
+    ],
+    "10": [
+      {
+        "id": "firstflight_ch1",
+        "name": "A Letter to God",
+        "bookName": "First Flight",
+        "chapterNumber": 1,
+        "type": "prose"
+      },
+      {
+        "id": "firstflight_ch2",
+        "name": "Nelson Mandela: Long Walk to Freedom",
+        "bookName": "First Flight",
+        "chapterNumber": 2,
+        "type": "prose"
+      },
+      {
+        "id": "firstflight_ch3",
+        "name": "Two Stories about Flying",
+        "bookName": "First Flight",
+        "chapterNumber": 3,
+        "type": "prose"
+      },
+      {
+        "id": "firstflight_ch4",
+        "name": "From the Diary of Anne Frank",
+        "bookName": "First Flight",
+        "chapterNumber": 4,
+        "type": "prose"
+      },
+      {
+        "id": "firstflight_ch5",
+        "name": "The Hundred Dresses – I",
+        "bookName": "First Flight",
+        "chapterNumber": 5,
+        "type": "prose"
+      },
+      {
+        "id": "firstflight_ch6",
+        "name": "The Hundred Dresses – II",
+        "bookName": "First Flight",
+        "chapterNumber": 6,
+        "type": "prose"
+      },
+      {
+        "id": "firstflight_ch7",
+        "name": "Glimpses of India",
+        "bookName": "First Flight",
+        "chapterNumber": 7,
+        "type": "prose"
+      },
+      {
+        "id": "firstflight_ch8",
+        "name": "Mijbil the Otter",
+        "bookName": "First Flight",
+        "chapterNumber": 8,
+        "type": "prose"
+      },
+      {
+        "id": "firstflight_ch9",
+        "name": "Madam Rides the Bus",
+        "bookName": "First Flight",
+        "chapterNumber": 9,
+        "type": "prose"
+      },
+      {
+        "id": "firstflight_ch10",
+        "name": "The Sermon at Benares",
+        "bookName": "First Flight",
+        "chapterNumber": 10,
+        "type": "prose"
+      },
+      {
+        "id": "firstflight_ch11",
+        "name": "The Proposal",
+        "bookName": "First Flight",
+        "chapterNumber": 11,
+        "type": "prose"
+      }
+    ]
+  },
+  "Science": {
+    "6": [
+      {"id": "science_6_ch1", "name": "Food: Where Does It Come From?", "chapterNumber": 1},
+      {"id": "science_6_ch2", "name": "Components of Food", "chapterNumber": 2},
+      {"id": "science_6_ch3", "name": "Fibre to Fabric", "chapterNumber": 3},
+      {"id": "science_6_ch4", "name": "Sorting Materials Into Groups", "chapterNumber": 4},
+      {"id": "science_6_ch5", "name": "Separation of Substances", "chapterNumber": 5},
+      {"id": "science_6_ch6", "name": "Changes Around Us", "chapterNumber": 6},
+      {"id": "science_6_ch7", "name": "Getting to Know Plants", "chapterNumber": 7},
+      {"id": "science_6_ch8", "name": "Body Movements", "chapterNumber": 8},
+      {"id": "science_6_ch9", "name": "The Living Organisms — Characteristics and Habitats", "chapterNumber": 9},
+      {"id": "science_6_ch10", "name": "Motion and Measurement of Distances", "chapterNumber": 10},
+      {"id": "science_6_ch11", "name": "Light, Shadows and Reflections", "chapterNumber": 11},
+      {"id": "science_6_ch12", "name": "Electricity and Circuits", "chapterNumber": 12},
+      {"id": "science_6_ch13", "name": "Fun with Magnets", "chapterNumber": 13},
+      {"id": "science_6_ch14", "name": "Water", "chapterNumber": 14},
+      {"id": "science_6_ch15", "name": "Air Around Us", "chapterNumber": 15},
+      {"id": "science_6_ch16", "name": "Garbage In, Garbage Out", "chapterNumber": 16}
+    ],
+    "7": [
+      {"id": "science_7_ch1", "name": "Nutrition in Plants", "chapterNumber": 1},
+      {"id": "science_7_ch2", "name": "Nutrition in Animals", "chapterNumber": 2},
+      {"id": "science_7_ch3", "name": "Fibre to Fabric", "chapterNumber": 3},
+      {"id": "science_7_ch4", "name": "Heat", "chapterNumber": 4},
+      {"id": "science_7_ch5", "name": "Acids, Bases and Salts", "chapterNumber": 5},
+      {"id": "science_7_ch6", "name": "Physical and Chemical Changes", "chapterNumber": 6},
+      {"id": "science_7_ch7", "name": "Weather, Climate and Adaptations of Animals to Climate", "chapterNumber": 7},
+      {"id": "science_7_ch8", "name": "Winds, Storms and Cyclones", "chapterNumber": 8},
+      {"id": "science_7_ch9", "name": "Soil", "chapterNumber": 9},
+      {"id": "science_7_ch10", "name": "Respiration in Organisms", "chapterNumber": 10},
+      {"id": "science_7_ch11", "name": "Transportation in Animals and Plants", "chapterNumber": 11},
+      {"id": "science_7_ch12", "name": "Reproduction in Plants", "chapterNumber": 12},
+      {"id": "science_7_ch13", "name": "Motion and Time", "chapterNumber": 13},
+      {"id": "science_7_ch14", "name": "Electric Current and its Effects", "chapterNumber": 14},
+      {"id": "science_7_ch15", "name": "Light", "chapterNumber": 15},
+      {"id": "science_7_ch16", "name": "Water: A Precious Resource", "chapterNumber": 16},
+      {"id": "science_7_ch17", "name": "Forests: Our Lifeline", "chapterNumber": 17},
+      {"id": "science_7_ch18", "name": "Wastewater Story", "chapterNumber": 18}
+    ],
+    "8": [
+      {"id": "science_8_ch1", "name": "Crop Production and Management", "chapterNumber": 1},
+      {"id": "science_8_ch2", "name": "Microorganisms: Friend and Foe", "chapterNumber": 2},
+      {"id": "science_8_ch3", "name": "Synthetic Fibres and Plastics", "chapterNumber": 3},
+      {"id": "science_8_ch4", "name": "Materials: Metals and Non-Metals", "chapterNumber": 4},
+      {"id": "science_8_ch5", "name": "Coal and Petroleum", "chapterNumber": 5},
+      {"id": "science_8_ch6", "name": "Combustion and Flame", "chapterNumber": 6},
+      {"id": "science_8_ch7", "name": "Conservation of Plants and Animals", "chapterNumber": 7},
+      {"id": "science_8_ch8", "name": "Cell — Structure and Functions", "chapterNumber": 8},
+      {"id": "science_8_ch9", "name": "Reproduction in Animals", "chapterNumber": 9},
+      {"id": "science_8_ch10", "name": "Reaching the Age of Adolescence", "chapterNumber": 10},
+      {"id": "science_8_ch11", "name": "Force and Pressure", "chapterNumber": 11},
+      {"id": "science_8_ch12", "name": "Friction", "chapterNumber": 12},
+      {"id": "science_8_ch13", "name": "Sound", "chapterNumber": 13},
+      {"id": "science_8_ch14", "name": "Chemical Effects of Electric Current", "chapterNumber": 14},
+      {"id": "science_8_ch15", "name": "Some Natural Phenomena", "chapterNumber": 15},
+      {"id": "science_8_ch16", "name": "Light", "chapterNumber": 16},
+      {"id": "science_8_ch17", "name": "Stars and the Solar System", "chapterNumber": 17},
+      {"id": "science_8_ch18", "name": "Pollution of Air and Water", "chapterNumber": 18}
+    ],
+    "9": [
+      {"id": "science_9_ch1", "name": "Matter in Our Surroundings", "chapterNumber": 1},
+      {"id": "science_9_ch2", "name": "Is Matter Around Us Pure?", "chapterNumber": 2},
+      {"id": "science_9_ch3", "name": "Atoms and Molecules", "chapterNumber": 3},
+      {"id": "science_9_ch4", "name": "Structure of the Atom", "chapterNumber": 4},
+      {"id": "science_9_ch5", "name": "The Fundamental Unit of Life", "chapterNumber": 5},
+      {"id": "science_9_ch6", "name": "Tissues", "chapterNumber": 6},
+      {"id": "science_9_ch7", "name": "Diversity in Living Organisms", "chapterNumber": 7},
+      {"id": "science_9_ch8", "name": "Motion", "chapterNumber": 8},
+      {"id": "science_9_ch9", "name": "Force and Laws of Motion", "chapterNumber": 9},
+      {"id": "science_9_ch10", "name": "Gravitation", "chapterNumber": 10},
+      {"id": "science_9_ch11", "name": "Work and Energy", "chapterNumber": 11},
+      {"id": "science_9_ch12", "name": "Sound", "chapterNumber": 12},
+      {"id": "science_9_ch13", "name": "Why Do We Fall Ill?", "chapterNumber": 13},
+      {"id": "science_9_ch14", "name": "Natural Resources", "chapterNumber": 14},
+      {"id": "science_9_ch15", "name": "Improvement in Food Resources", "chapterNumber": 15}
+    ],
+    "10": [
+      {"id": "science_10_ch1", "name": "Chemical Reactions and Equations", "chapterNumber": 1},
+      {"id": "science_10_ch2", "name": "Acids, Bases and Salts", "chapterNumber": 2},
+      {"id": "science_10_ch3", "name": "Metals and Non-metals", "chapterNumber": 3},
+      {"id": "science_10_ch4", "name": "Carbon and its Compounds", "chapterNumber": 4},
+      {"id": "science_10_ch5", "name": "Periodic Classification of Elements", "chapterNumber": 5},
+      {"id": "science_10_ch6", "name": "Life Processes", "chapterNumber": 6},
+      {"id": "science_10_ch7", "name": "Control and Coordination", "chapterNumber": 7},
+      {"id": "science_10_ch8", "name": "How do Organisms Reproduce?", "chapterNumber": 8},
+      {"id": "science_10_ch9", "name": "Heredity and Evolution", "chapterNumber": 9},
+      {"id": "science_10_ch10", "name": "Light – Reflection and Refraction", "chapterNumber": 10},
+      {"id": "science_10_ch11", "name": "Human Eye and Colourful World", "chapterNumber": 11},
+      {"id": "science_10_ch12", "name": "Electricity", "chapterNumber": 12},
+      {"id": "science_10_ch13", "name": "Magnetic Effects of Electric Current", "chapterNumber": 13},
+      {"id": "science_10_ch14", "name": "Sources of Energy", "chapterNumber": 14},
+      {"id": "science_10_ch15", "name": "Our Environment", "chapterNumber": 15},
+      {"id": "science_10_ch16", "name": "Sustainable Management of Natural Resources", "chapterNumber": 16}
+    ]
+  },
+  "Math": {
+    "6": [
+      {"id": "math_6_ch1", "name": "Knowing Our Numbers", "chapterNumber": 1},
+      {"id": "math_6_ch2", "name": "Whole Numbers", "chapterNumber": 2},
+      {"id": "math_6_ch3", "name": "Playing with Numbers", "chapterNumber": 3},
+      {"id": "math_6_ch4", "name": "Basic Geometrical Ideas", "chapterNumber": 4},
+      {"id": "math_6_ch5", "name": "Understanding Elementary Shapes", "chapterNumber": 5},
+      {"id": "math_6_ch6", "name": "Integers", "chapterNumber": 6},
+      {"id": "math_6_ch7", "name": "Fractions", "chapterNumber": 7},
+      {"id": "math_6_ch8", "name": "Decimals", "chapterNumber": 8},
+      {"id": "math_6_ch9", "name": "Data Handling", "chapterNumber": 9},
+      {"id": "math_6_ch10", "name": "Mensuration", "chapterNumber": 10},
+      {"id": "math_6_ch11", "name": "Algebra", "chapterNumber": 11},
+      {"id": "math_6_ch12", "name": "Ratio and Proportion", "chapterNumber": 12},
+      {"id": "math_6_ch13", "name": "Symmetry", "chapterNumber": 13},
+      {"id": "math_6_ch14", "name": "Practical Geometry", "chapterNumber": 14}
+    ],
+    "7": [
+      {"id": "math_7_ch1", "name": "Integers", "chapterNumber": 1},
+      {"id": "math_7_ch2", "name": "Fractions and Decimals", "chapterNumber": 2},
+      {"id": "math_7_ch3", "name": "Data Handling", "chapterNumber": 3},
+      {"id": "math_7_ch4", "name": "Simple Equations", "chapterNumber": 4},
+      {"id": "math_7_ch5", "name": "Lines and Angles", "chapterNumber": 5},
+      {"id": "math_7_ch6", "name": "The Triangle and its Properties", "chapterNumber": 6},
+      {"id": "math_7_ch7", "name": "Congruence of Triangles", "chapterNumber": 7},
+      {"id": "math_7_ch8", "name": "Comparing Quantities", "chapterNumber": 8},
+      {"id": "math_7_ch9", "name": "Rational Numbers", "chapterNumber": 9},
+      {"id": "math_7_ch10", "name": "Practical Geometry", "chapterNumber": 10},
+      {"id": "math_7_ch11", "name": "Perimeter and Area", "chapterNumber": 11},
+      {"id": "math_7_ch12", "name": "Algebraic Expressions", "chapterNumber": 12},
+      {"id": "math_7_ch13", "name": "Exponents and Powers", "chapterNumber": 13},
+      {"id": "math_7_ch14", "name": "Symmetry", "chapterNumber": 14},
+      {"id": "math_7_ch15", "name": "Visualising Solid Shapes", "chapterNumber": 15}
+    ],
+    "8": [
+      {"id": "math_8_ch1", "name": "Rational Numbers", "chapterNumber": 1},
+      {"id": "math_8_ch2", "name": "Linear Equations in One Variable", "chapterNumber": 2},
+      {"id": "math_8_ch3", "name": "Understanding Quadrilaterals", "chapterNumber": 3},
+      {"id": "math_8_ch4", "name": "Practical Geometry", "chapterNumber": 4},
+      {"id": "math_8_ch5", "name": "Data Handling", "chapterNumber": 5},
+      {"id": "math_8_ch6", "name": "Squares and Square Roots", "chapterNumber": 6},
+      {"id": "math_8_ch7", "name": "Cubes and Cube Roots", "chapterNumber": 7},
+      {"id": "math_8_ch8", "name": "Comparing Quantities", "chapterNumber": 8},
+      {"id": "math_8_ch9", "name": "Algebraic Expressions and Identities", "chapterNumber": 9},
+      {"id": "math_8_ch10", "name": "Visualising Solid Shapes", "chapterNumber": 10},
+      {"id": "math_8_ch11", "name": "Mensuration", "chapterNumber": 11},
+      {"id": "math_8_ch12", "name": "Exponents and Powers", "chapterNumber": 12},
+      {"id": "math_8_ch13", "name": "Direct and Inverse Proportions", "chapterNumber": 13},
+      {"id": "math_8_ch14", "name": "Factorisation", "chapterNumber": 14},
+      {"id": "math_8_ch15", "name": "Introduction to Graphs", "chapterNumber": 15},
+      {"id": "math_8_ch16", "name": "Playing with Numbers", "chapterNumber": 16}
+    ],
+    "9": [
+      {"id": "math_9_ch1", "name": "Number Systems", "chapterNumber": 1},
+      {"id": "math_9_ch2", "name": "Polynomials", "chapterNumber": 2},
+      {"id": "math_9_ch3", "name": "Coordinate Geometry", "chapterNumber": 3},
+      {"id": "math_9_ch4", "name": "Linear Equations in Two Variables", "chapterNumber": 4},
+      {"id": "math_9_ch5", "name": "Introduction to Euclid's Geometry", "chapterNumber": 5},
+      {"id": "math_9_ch6", "name": "Lines and Angles", "chapterNumber": 6},
+      {"id": "math_9_ch7", "name": "Triangles", "chapterNumber": 7},
+      {"id": "math_9_ch8", "name": "Quadrilaterals", "chapterNumber": 8},
+      {"id": "math_9_ch9", "name": "Areas of Parallelograms and Triangles", "chapterNumber": 9},
+      {"id": "math_9_ch10", "name": "Circles", "chapterNumber": 10},
+      {"id": "math_9_ch11", "name": "Constructions", "chapterNumber": 11},
+      {"id": "math_9_ch12", "name": "Heron's Formula", "chapterNumber": 12},
+      {"id": "math_9_ch13", "name": "Surface Areas and Volumes", "chapterNumber": 13},
+      {"id": "math_9_ch14", "name": "Statistics", "chapterNumber": 14},
+      {"id": "math_9_ch15", "name": "Probability", "chapterNumber": 15}
+    ],
+    "10": [
+      {"id": "math_10_ch1", "name": "Real Numbers", "chapterNumber": 1},
+      {"id": "math_10_ch2", "name": "Polynomials", "chapterNumber": 2},
+      {"id": "math_10_ch3", "name": "Pair of Linear Equations in Two Variables", "chapterNumber": 3},
+      {"id": "math_10_ch4", "name": "Quadratic Equations", "chapterNumber": 4},
+      {"id": "math_10_ch5", "name": "Arithmetic Progressions", "chapterNumber": 5},
+      {"id": "math_10_ch6", "name": "Triangles", "chapterNumber": 6},
+      {"id": "math_10_ch7", "name": "Coordinate Geometry", "chapterNumber": 7},
+      {"id": "math_10_ch8", "name": "Introduction to Trigonometry", "chapterNumber": 8},
+      {"id": "math_10_ch9", "name": "Some Applications of Trigonometry", "chapterNumber": 9},
+      {"id": "math_10_ch10", "name": "Circles", "chapterNumber": 10},
+      {"id": "math_10_ch11", "name": "Constructions", "chapterNumber": 11},
+      {"id": "math_10_ch12", "name": "Areas Related to Circles", "chapterNumber": 12},
+      {"id": "math_10_ch13", "name": "Surface Areas and Volumes", "chapterNumber": 13},
+      {"id": "math_10_ch14", "name": "Statistics", "chapterNumber": 14},
+      {"id": "math_10_ch15", "name": "Probability", "chapterNumber": 15}
+    ]
+  },
+  "SST": {
+    "6": [
+      {"id": "history_6_ch1", "name": "What, Where, How and When?", "subSubject": "History", "chapterNumber": 1},
+      {"id": "history_6_ch2", "name": "From Hunting-Gathering to Growing Food", "subSubject": "History", "chapterNumber": 2},
+      {"id": "history_6_ch3", "name": "In the Earliest Cities", "subSubject": "History", "chapterNumber": 3},
+      {"id": "history_6_ch4", "name": "What Books and Burials Tell Us", "subSubject": "History", "chapterNumber": 4},
+      {"id": "geography_6_ch1", "name": "The Earth in the Solar System", "subSubject": "Geography", "chapterNumber": 1},
+      {"id": "geography_6_ch2", "name": "Globe: Latitudes and Longitudes", "subSubject": "Geography", "chapterNumber": 2},
+      {"id": "geography_6_ch3", "name": "Motions of the Earth", "subSubject": "Geography", "chapterNumber": 3},
+      {"id": "civics_6_ch1", "name": "Understanding Diversity", "subSubject": "Civics", "chapterNumber": 1},
+      {"id": "civics_6_ch2", "name": "Diversity and Discrimination", "subSubject": "Civics", "chapterNumber": 2}
+    ],
+    "7": [
+      {"id": "history_7_ch1", "name": "Tracing Changes Through a Thousand Years", "subSubject": "History", "chapterNumber": 1},
+      {"id": "history_7_ch2", "name": "New Kings and Kingdoms", "subSubject": "History", "chapterNumber": 2},
+      {"id": "history_7_ch3", "name": "The Delhi Sultans", "subSubject": "History", "chapterNumber": 3},
+      {"id": "history_7_ch4", "name": "The Mughal Empire", "subSubject": "History", "chapterNumber": 4},
+      {"id": "geography_7_ch1", "name": "Environment", "subSubject": "Geography", "chapterNumber": 1},
+      {"id": "geography_7_ch2", "name": "Inside Our Earth", "subSubject": "Geography", "chapterNumber": 2},
+      {"id": "geography_7_ch3", "name": "Our Changing Earth", "subSubject": "Geography", "chapterNumber": 3},
+      {"id": "civics_7_ch1", "name": "On Equality", "subSubject": "Civics", "chapterNumber": 1},
+      {"id": "civics_7_ch2", "name": "Role of the Government in Health", "subSubject": "Civics", "chapterNumber": 2}
+    ],
+    "8": [
+      {"id": "history_8_ch1", "name": "How, When and Where", "subSubject": "History", "chapterNumber": 1},
+      {"id": "history_8_ch2", "name": "From Trade to Territory", "subSubject": "History", "chapterNumber": 2},
+      {"id": "history_8_ch3", "name": "Ruling the Countryside", "subSubject": "History", "chapterNumber": 3},
+      {"id": "history_8_ch4", "name": "Tribals, Dikus and the Vision of a Golden Age", "subSubject": "History", "chapterNumber": 4},
+      {"id": "geography_8_ch1", "name": "Resources", "subSubject": "Geography", "chapterNumber": 1},
+      {"id": "geography_8_ch2", "name": "Land, Soil, Water, Natural Vegetation and Wildlife Resources", "subSubject": "Geography", "chapterNumber": 2},
+      {"id": "geography_8_ch3", "name": "Mineral and Power Resources", "subSubject": "Geography", "chapterNumber": 3},
+      {"id": "civics_8_ch1", "name": "The Indian Constitution", "subSubject": "Civics", "chapterNumber": 1},
+      {"id": "civics_8_ch2", "name": "Understanding Secularism", "subSubject": "Civics", "chapterNumber": 2}
+    ],
+    "9": [
+      {"id": "history_9_ch1", "name": "The French Revolution", "subSubject": "History", "chapterNumber": 1},
+      {"id": "history_9_ch2", "name": "Socialism in Europe and the Russian Revolution", "subSubject": "History", "chapterNumber": 2},
+      {"id": "history_9_ch3", "name": "Nazism and the Rise of Hitler", "subSubject": "History", "chapterNumber": 3},
+      {"id": "history_9_ch4", "name": "Forest Society and Colonialism", "subSubject": "History", "chapterNumber": 4},
+      {"id": "geography_9_ch1", "name": "India – Size and Location", "subSubject": "Geography", "chapterNumber": 1},
+      {"id": "geography_9_ch2", "name": "Physical Features of India", "subSubject": "Geography", "chapterNumber": 2},
+      {"id": "geography_9_ch3", "name": "Drainage", "subSubject": "Geography", "chapterNumber": 3},
+      {"id": "civics_9_ch1", "name": "What is Democracy? Why Democracy?", "subSubject": "Civics", "chapterNumber": 1},
+      {"id": "civics_9_ch2", "name": "Constitutional Design", "subSubject": "Civics", "chapterNumber": 2}
+    ],
+    "10": [
+      {"id": "history_10_ch1", "name": "The Rise of Nationalism in Europe", "subSubject": "History", "chapterNumber": 1},
+      {"id": "history_10_ch2", "name": "Nationalism in India", "subSubject": "History", "chapterNumber": 2},
+      {"id": "history_10_ch3", "name": "The Making of a Global World", "subSubject": "History", "chapterNumber": 3},
+      {"id": "history_10_ch4", "name": "The Age of Industrialisation", "subSubject": "History", "chapterNumber": 4},
+      {"id": "geography_10_ch1", "name": "Resources and Development", "subSubject": "Geography", "chapterNumber": 1},
+      {"id": "geography_10_ch2", "name": "Forest and Wildlife Resources", "subSubject": "Geography", "chapterNumber": 2},
+      {"id": "geography_10_ch3", "name": "Water Resources", "subSubject": "Geography", "chapterNumber": 3},
+      {"id": "civics_10_ch1", "name": "Power Sharing", "subSubject": "Civics", "chapterNumber": 1},
+      {"id": "civics_10_ch2", "name": "Federalism", "subSubject": "Civics", "chapterNumber": 2}
+    ]
+  }
+}

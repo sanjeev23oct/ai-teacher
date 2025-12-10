@@ -87,6 +87,8 @@ model User {
   weakTopics    WeakTopic[]
   groupStudySessions GroupStudySession[]
   handlingSkillProgress HandlingSkillProgress?
+  ncertChapterStudies NCERTChapterStudy[]
+  ncertProgress NCERTProgress?
   
   @@index([email])
 }
@@ -459,4 +461,83 @@ model HandlingSkillProgress {
   updatedAt      DateTime @updatedAt
   
   @@index([userId])
+}
+
+model NCERTChapterStudy {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id])
+  
+  // Chapter identification
+  class            String   // "6" to "10"
+  subject          String   // "English", "Science", "Math", "SST"
+  chapterId        String
+  chapterName      String
+  
+  // Study tracking
+  studiedAt        DateTime @default(now())
+  revised          Boolean  @default(false)
+  completedSummary Boolean  @default(false)
+  followUpCount    Int      @default(0)
+  
+  // Metadata
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  @@unique([userId, class, subject, chapterId])
+  @@index([userId, studiedAt])
+  @@index([class, subject])
+}
+
+model NCERTProgress {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id])
+  
+  totalChapters    Int      @default(0)
+  completionBadges String   @default("[]") @db.Text // JSON array
+  lastStudied      DateTime @default(now())
+  
+  // Subject-wise counts
+  englishCount     Int      @default(0)
+  scienceCount     Int      @default(0)
+  mathCount        Int      @default(0)
+  sstCount         Int      @default(0)
+  
+  // Metadata
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  @@index([userId])
+}
+
+model AudioCacheRegistry {
+  id             String   @id @default(uuid())
+  cacheKey       String   @unique
+  
+  // Cache key components
+  module         String   // "ncert", "revision", "doubts", "worksheets"
+  subject        String?
+  class          String?
+  identifier     String
+  language       String   @default("en")
+  version        String   @default("v1")
+  
+  // File info
+  filePath       String
+  fileSize       Int
+  characterCount Int
+  
+  // Usage tracking
+  generatedAt    DateTime @default(now())
+  lastAccessed   DateTime @default(now())
+  accessCount    Int      @default(0)
+  
+  // Metadata
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  @@index([module, subject, class])
+  @@index([lastAccessed])
+  @@index([cacheKey])
 }

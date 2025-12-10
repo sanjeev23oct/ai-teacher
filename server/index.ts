@@ -2567,6 +2567,193 @@ app.post('/api/group-study/audio/stream', authMiddleware, async (req: Request, r
   }
 });
 
+// ============================================================================
+// NCERT CHAPTER EXPLAINER ENDPOINTS
+// ============================================================================
+
+// Get chapter summary with AI explanation and cached audio
+app.post('/api/ncert-explainer/chapter-summary', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { class: className, subject, chapterId, languageCode } = req.body;
+    
+    if (!className || !subject || !chapterId) {
+      return res.status(400).json({ 
+        error: 'Class, subject, and chapterId are required' 
+      });
+    }
+
+    if (!req.user?.id) {
+      return res.status(401).json({ 
+        error: 'Authentication required',
+        message: 'Please create an account or login to use NCERT Explainer'
+      });
+    }
+
+    const { default: ncertExplainerService } = require('./services/ncertExplainerService');
+    const result = await ncertExplainerService.getChapterSummary({
+      class: className,
+      subject,
+      chapterId,
+      userId: req.user.id,
+      languageCode,
+    });
+
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error getting chapter summary:', error);
+    res.status(500).json({ 
+      error: error.message || 'Failed to get chapter summary' 
+    });
+  }
+});
+
+// Answer follow-up question about a chapter
+app.post('/api/ncert-explainer/followup', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { chapterId, question, languageCode } = req.body;
+    
+    if (!chapterId || !question) {
+      return res.status(400).json({ 
+        error: 'ChapterId and question are required' 
+      });
+    }
+
+    if (!req.user?.id) {
+      return res.status(401).json({ 
+        error: 'Authentication required'
+      });
+    }
+
+    const { default: ncertExplainerService } = require('./services/ncertExplainerService');
+    const result = await ncertExplainerService.answerFollowUp({
+      chapterId,
+      question,
+      userId: req.user.id,
+      languageCode,
+    });
+
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error answering follow-up:', error);
+    res.status(500).json({ 
+      error: error.message || 'Failed to answer follow-up question' 
+    });
+  }
+});
+
+// Get list of chapters for a class and subject
+app.get('/api/ncert-explainer/chapters', async (req: Request, res: Response) => {
+  try {
+    const { class: className, subject } = req.query;
+    
+    if (!className || !subject) {
+      return res.status(400).json({ 
+        error: 'Class and subject query parameters are required' 
+      });
+    }
+
+    const { default: chapterDataService } = require('./services/chapterDataService');
+    const chapters = await chapterDataService.getChapterList(
+      className as string,
+      subject as string
+    );
+
+    res.json({ chapters });
+  } catch (error: any) {
+    console.error('Error getting chapter list:', error);
+    res.status(500).json({ 
+      error: error.message || 'Failed to get chapter list' 
+    });
+  }
+});
+
+// Search chapters by name or number
+app.get('/api/ncert-explainer/search', async (req: Request, res: Response) => {
+  try {
+    const { q, class: className, subject } = req.query;
+    
+    if (!q) {
+      return res.status(400).json({ 
+        error: 'Search query (q) is required' 
+      });
+    }
+
+    const { default: chapterDataService } = require('./services/chapterDataService');
+    const results = await chapterDataService.searchChapters(
+      q as string,
+      className as string | undefined,
+      subject as string | undefined
+    );
+
+    res.json({ results });
+  } catch (error: any) {
+    console.error('Error searching chapters:', error);
+    res.status(500).json({ 
+      error: error.message || 'Failed to search chapters' 
+    });
+  }
+});
+
+// Get user's study history
+app.get('/api/ncert-explainer/history', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ 
+        error: 'Authentication required'
+      });
+    }
+
+    const { default: ncertExplainerService } = require('./services/ncertExplainerService');
+    const history = await ncertExplainerService.getStudyHistory(req.user.id);
+
+    res.json({ history });
+  } catch (error: any) {
+    console.error('Error getting study history:', error);
+    res.status(500).json({ 
+      error: error.message || 'Failed to get study history' 
+    });
+  }
+});
+
+// Get user's progress statistics
+app.get('/api/ncert-explainer/progress', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ 
+        error: 'Authentication required'
+      });
+    }
+
+    const { default: ncertExplainerService } = require('./services/ncertExplainerService');
+    const progress = await ncertExplainerService.getProgress(req.user.id);
+
+    res.json(progress);
+  } catch (error: any) {
+    console.error('Error getting progress:', error);
+    res.status(500).json({ 
+      error: error.message || 'Failed to get progress' 
+    });
+  }
+});
+
+// Get cache statistics (admin/debug)
+app.get('/api/ncert-explainer/cache/stats', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const audioCacheService = require('./services/audioCacheService').default;
+    const stats = await audioCacheService.getCacheStats();
+
+    res.json(stats);
+  } catch (error: any) {
+    console.error('Error getting cache stats:', error);
+    res.status(500).json({ 
+      error: error.message || 'Failed to get cache statistics' 
+    });
+  }
+});
+
+// Serve cached audio files
+app.use('/audio-cache', express.static(path.join(__dirname, 'audio-cache')));
+
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
     if (genAI) {

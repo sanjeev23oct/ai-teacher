@@ -18,6 +18,7 @@ import RevisionAreaPage from './pages/RevisionAreaPage';
 import WorksheetViewPage from './pages/WorksheetViewPage';
 import RevisionFriendPage from './pages/RevisionFriendPage';
 import GroupStudyPage from './pages/GroupStudyPage';
+import NCERTExplainerPage from './pages/NCERTExplainerPage';
 import DashboardDoubtCard from './components/DashboardDoubtCard';
 
 // Group Study Card (Now Available!)
@@ -291,6 +292,7 @@ function App() {
               <Route path="/revision" element={<Layout><RevisionAreaPage /></Layout>} />
               <Route path="/revision-friend" element={<Layout><RevisionFriendPage /></Layout>} />
               <Route path="/group-study" element={<Layout><GroupStudyPage /></Layout>} />
+              <Route path="/ncert-explainer" element={<Layout><NCERTExplainerPage /></Layout>} />
             </Routes>
         </LanguageProvider>
       </AuthProvider>
