@@ -4,6 +4,7 @@ import { Camera, FileText, Star, Trash2, Search, Filter, BookOpen, TrendingUp } 
 import { useAuth } from '../contexts/AuthContext';
 import { authenticatedFetch } from '../utils/api';
 import { getApiUrl } from '../config';
+import CameraCapture from '../components/CameraCapture';
 
 interface SmartNote {
   id: string;
@@ -38,10 +39,10 @@ export default function SmartNotesPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const [activeTab, setActiveTab] = useState<'create' | 'notes' | 'revision'>('create');
   const [inputMode, setInputMode] = useState<'text' | 'image'>('text');
+  const [showCamera, setShowCamera] = useState(false);
   const [noteText, setNoteText] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
   const [selectedClass, setSelectedClass] = useState('');
@@ -182,6 +183,14 @@ export default function SmartNotesPage() {
     }
   };
 
+  const handleCameraCapture = (imageBlob: Blob) => {
+    const file = new File([imageBlob], `note-${Date.now()}.jpg`, {
+      type: 'image/jpeg'
+    });
+    handleImageUpload(file);
+    setShowCamera(false);
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -233,6 +242,16 @@ export default function SmartNotesPage() {
 
   if (!user) {
     return null;
+  }
+
+  // Show camera capture if active
+  if (showCamera) {
+    return (
+      <CameraCapture
+        onCapture={handleCameraCapture}
+        onCancel={() => setShowCamera(false)}
+      />
+    );
   }
 
   return (
@@ -381,16 +400,8 @@ export default function SmartNotesPage() {
                   onChange={handleFileChange}
                   className="hidden"
                 />
-                <input
-                  ref={cameraInputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
                 <button
-                  onClick={() => cameraInputRef.current?.click()}
+                  onClick={() => setShowCamera(true)}
                   disabled={isProcessing}
                   className="w-full bg-gradient-to-r from-blue-600 to-purple-600 py-3 rounded-lg font-semibold flex items-center justify-center gap-2"
                 >
