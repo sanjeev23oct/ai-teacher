@@ -36,8 +36,31 @@ async function loadChapterData(): Promise<ChapterData> {
   }
 
   try {
-    const dataPath = path.join(__dirname, '../data/ncert-chapters.json');
-    const fileContent = await fs.readFile(dataPath, 'utf-8');
+    // Try multiple possible paths for the data file
+    const possiblePaths = [
+      path.join(__dirname, '../data/ncert-chapters.json'),
+      path.join(process.cwd(), 'data/ncert-chapters.json'),
+      path.join(process.cwd(), 'server/data/ncert-chapters.json'),
+    ];
+    
+    let fileContent: string;
+    let dataPath: string;
+    
+    for (const tryPath of possiblePaths) {
+      try {
+        fileContent = await fs.readFile(tryPath, 'utf-8');
+        dataPath = tryPath;
+        console.log(`[CHAPTER DATA] Found data file at: ${dataPath}`);
+        break;
+      } catch (err) {
+        console.log(`[CHAPTER DATA] File not found at: ${tryPath}`);
+        continue;
+      }
+    }
+    
+    if (!fileContent!) {
+      throw new Error('NCERT chapters data file not found in any expected location');
+    }
     chapterDataCache = JSON.parse(fileContent);
     console.log('[CHAPTER DATA] Loaded NCERT chapter data successfully');
     return chapterDataCache!;
