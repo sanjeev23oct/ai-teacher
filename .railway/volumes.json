@@ -1,0 +1,9 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "volumes": [
+    {
+      "name": "audio-cache",
+      "mountPath": "/app/server/audio-cache"
+    }
+  ]
+}
