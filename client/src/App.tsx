@@ -42,7 +42,7 @@ const GroupStudyCard = () => {
 
 // Home page component
 const Home = () => {
-  const { user, token } = useAuth();
+  const { user, token, isLoading } = useAuth();
   const [recentExams, setRecentExams] = React.useState<any[]>([]);
   const [stats, setStats] = React.useState<any>(null);
   const [recentDoubts, setRecentDoubts] = React.useState<any[]>([]);
@@ -83,6 +83,18 @@ const Home = () => {
         .catch(err => console.error('Failed to fetch doubt stats:', err));
     }
   }, [user, token]);
+  
+  // Show loading state while auth is loading
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="text-4xl mb-4">📚</div>
+          <div className="text-gray-400">Loading...</div>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="py-8 sm:py-12">

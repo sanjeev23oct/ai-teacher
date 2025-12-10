@@ -54,7 +54,7 @@ interface NoteProgress {
 export default function SmartNotesPage() {
   const navigate = useNavigate();
   const { id: sharedNoteId } = useParams();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [activeTab, setActiveTab] = useState<'notes' | 'community' | 'shared' | 'friends' | 'create' | 'revision'>('notes');
@@ -434,7 +434,21 @@ export default function SmartNotesPage() {
     setActiveTab('revision');
   };
 
-  if (!user) {
+  // Show loading state while auth is loading
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="text-4xl mb-4">📚</div>
+          <div className="text-gray-400">Loading Smart Notes...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect to login if not authenticated (but allow viewing shared notes)
+  if (!user && !sharedNoteId) {
+    navigate('/login');
     return null;
   }
 
