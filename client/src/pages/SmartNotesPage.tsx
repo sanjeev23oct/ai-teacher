@@ -485,7 +485,9 @@ export default function SmartNotesPage() {
             )}
           </div>
         </div>
-      )}
+      </div>
+
+      {loadingSharedNote       )      ) (}
 
       {loadingSharedNote && (
         <div className="text-center py-12">
