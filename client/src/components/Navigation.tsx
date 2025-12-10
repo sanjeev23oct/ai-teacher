@@ -34,7 +34,11 @@ const Navigation: React.FC = () => {
                     </div>
                     <div className="hidden md:block">
                         <div className="ml-10 flex items-baseline space-x-4">
-                            {/* Primary 3 links */}
+                            {/* Primary 4 links - moved NCERT first */}
+                            <Link to="/ncert-explainer" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1">
+                                <BookOpen className="h-4 w-4" />
+                                <span>NCERT Explainer</span>
+                            </Link>
                             <Link to="/revision-friend" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1">
                                 <BookmarkCheck className="h-4 w-4" />
                                 <span>Quick Revise</span>
@@ -73,14 +77,6 @@ const Navigation: React.FC = () => {
                                         >
                                             <Upload className="h-4 w-4" />
                                             <span>Grade Exam</span>
-                                        </Link>
-                                        <Link
-                                            to="/ncert-explainer"
-                                            onClick={() => setShowDesktopMenu(false)}
-                                            className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-300 hover:bg-background"
-                                        >
-                                            <BookOpen className="h-4 w-4" />
-                                            <span>NCERT Explainer</span>
                                         </Link>
                                         <Link
                                             to="/doubts"
@@ -191,13 +187,9 @@ const Navigation: React.FC = () => {
                             <Link to="/" onClick={closeMobileMenu} className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium">
                                 Home
                             </Link>
-                            <Link to="/grade" onClick={closeMobileMenu} className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2">
-                                <Upload className="h-4 w-4" />
-                                <span>Grade Exam</span>
-                            </Link>
-                            <Link to="/doubts" onClick={closeMobileMenu} className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2">
-                                <HelpCircle className="h-4 w-4" />
-                                <span>Ask Doubt</span>
+                            <Link to="/ncert-explainer" onClick={() => setShowMobileMenu(false)} className="text-gray-300 hover:text-white w-full text-left px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2">
+                                <BookOpen className="h-4 w-4" />
+                                <span>NCERT Explainer</span>
                             </Link>
                             <Link to="/revision-friend" onClick={closeMobileMenu} className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2">
                                 <BookmarkCheck className="h-4 w-4" />
@@ -211,9 +203,13 @@ const Navigation: React.FC = () => {
                                 <Users className="h-4 w-4" />
                                 <span>Group Study</span>
                             </Link>
-                            <Link to="/ncert-explainer" onClick={() => setShowMobileMenu(false)} className="text-gray-300 hover:text-white w-full text-left px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2">
-                                <BookOpen className="h-4 w-4" />
-                                <span>NCERT Explainer</span>
+                            <Link to="/doubts" onClick={closeMobileMenu} className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2">
+                                <HelpCircle className="h-4 w-4" />
+                                <span>Ask Doubt</span>
+                            </Link>
+                            <Link to="/grade" onClick={closeMobileMenu} className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2">
+                                <Upload className="h-4 w-4" />
+                                <span>Grade Exam</span>
                             </Link>
                             {user && (
                                 <>

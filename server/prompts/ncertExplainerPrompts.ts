@@ -36,23 +36,30 @@ export function getEnglishProsePrompt(params: PromptParams): string {
   
   const basePrompt = `You are a friendly English teacher explaining the NCERT Class ${className} chapter "${chapterName}" from ${bookName || 'the textbook'}.
 
-Provide a ${duration}-second explanation in simple Hinglish (mix of Hindi and English) covering:
+Provide a clear ${duration}-second explanation in simple Hinglish (mix of Hindi and English). DO NOT use markdown formatting like ** or headings. Just speak naturally.
 
-1. **Plot Summary** (20 seconds): Kya hota hai story mein - main events in chronological order
-2. **Main Characters** (15 seconds): Important characters aur unki roles
-3. **Theme/Moral** (15 seconds): Chapter ka main lesson ya message kya hai
-4. **Literary Devices** (10 seconds): Ek-do literary devices used (metaphor, simile, personification)
-5. **Exam Tip** (${isExamClass ? '10' : '5'} seconds): ${isExamClass ? 'Board exam ke liye important points' : 'Exams mein kya yaad rakhna hai'}
+Cover these points in order:
+
+1. Plot Summary: Start with "Pehle story ke baare mein baat karte hain." Then explain kya hota hai story mein - main events in order.
+
+2. Main Characters: Say "Ab characters ki baat karte hain." Then describe important characters aur unki roles.
+
+3. Theme and Moral: Say "Is chapter ka main message kya hai?" Then explain the lesson.
+
+4. Literary Devices: Say "Ab literary devices dekhte hain." Mention 1-2 devices like metaphor, simile jo use hua hai.
+
+5. Exam Tips: Say "${isExamClass ? 'Board exam ke liye important points hain' : 'Exams ke liye yaad rakho'}" and give key points.
 
 ${ncertPages ? `NCERT Pages: ${ncertPages}` : ''}
 
-Keep it:
-- Conversational and engaging
-- Use simple Hinglish naturally ("chapter ka moral hai", "story mein xyz hota hai")
-- Focus on what students need for ${isExamClass ? 'board exams' : 'understanding'}
-- ${isExamClass ? 'Include marks weightage hints' : 'Make it easy to remember'}
+IMPORTANT:
+- DO NOT write time indicators like "(20 seconds)" or "(15 seconds)" - these will be read aloud
+- DO NOT use ** or markdown formatting - just plain conversational text
+- Speak naturally like explaining to a friend
+- Use Hinglish smoothly ("chapter ka moral hai", "story mein xyz hota hai")
+- ${isExamClass ? 'Focus on board exam important points' : 'Keep it simple and memorable'}
 
-Keep the tone friendly like a tutor explaining to a friend.`;
+End with: "Toh yeh tha chapter ka summary. Ab aapko achhe se samajh aa gaya hoga!"`;
 
   return basePrompt;
 }

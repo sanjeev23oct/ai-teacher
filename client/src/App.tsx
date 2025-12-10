@@ -111,18 +111,31 @@ const Home = () => {
         )}
       </div>
 
-      {/* Main Features - Only 3 */}
+      {/* Main Features - 4 cards */}
       <div className="max-w-5xl mx-auto mt-12 mb-12 px-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <a href="/ncert-explainer" className="bg-gradient-to-br from-purple-900/40 to-purple-800/20 rounded-xl p-6 hover:scale-[1.02] transition-all cursor-pointer border border-purple-700/50">
+            <div className="text-center">
+              <div className="text-5xl mb-4">📖</div>
+              <h3 className="text-xl font-bold text-white mb-2">NCERT Explainer</h3>
+              <p className="text-gray-300 text-sm mb-3">Class 6-10 chapters explained in Hinglish!</p>
+              <ul className="text-gray-400 text-xs space-y-1 text-left">
+                <li>✓ AI-powered chapter summaries</li>
+                <li>✓ Audio explanations with caching</li>
+                <li>✓ Follow-up Q&A for clarity</li>
+              </ul>
+            </div>
+          </a>
+          
           <a href="/revision-friend" className="bg-gradient-to-br from-green-900/40 to-green-800/20 rounded-xl p-6 hover:scale-[1.02] transition-all cursor-pointer border border-green-700/50">
             <div className="text-center">
               <div className="text-5xl mb-4">📚</div>
               <h3 className="text-xl font-bold text-white mb-2">Quick Revise</h3>
-              <p className="text-gray-300 text-sm mb-3">3-minute revision sessions jaise dost ke saath padhai!</p>
+              <p className="text-gray-300 text-sm mb-3">3-minute revision sessions!</p>
               <ul className="text-gray-400 text-xs space-y-1 text-left">
-                <li>✓ AI explains topic in simple Hinglish</li>
-                <li>✓ Quick quiz to test understanding</li>
-                <li>✓ Audio explanations - just listen & learn</li>
+                <li>✓ AI explains in simple Hinglish</li>
+                <li>✓ Quick quiz to test knowledge</li>
+                <li>✓ Audio explanations included</li>
               </ul>
             </div>
           </a>

@@ -84,6 +84,7 @@ const NCERTExplainerPage: React.FC = () => {
   }, [selectedClass, selectedSubject]);
 
   const fetchChapters = async () => {
+    if (!selectedClass || !selectedSubject) return;
     try {
       const response = await fetch(getApiUrl(`/api/ncert-explainer/chapters?class=${selectedClass}&subject=${selectedSubject}`));
       if (response.ok) {
@@ -327,17 +328,51 @@ const NCERTExplainerPage: React.FC = () => {
           <h3 className="text-sm font-semibold text-white mb-3">Recent Chapters:</h3>
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {history.slice(0, 10).map((item, idx) => (
-              <div key={idx} className="flex items-center justify-between py-2 border-b border-gray-700 last:border-0">
+              <button
+                key={idx}
+                onClick={async () => {
+                  setSelectedClass(item.className);
+                  setSelectedSubject(item.subject);
+                  setSelectedChapter(item.chapterId);
+                  setShowHistory(false);
+                  // Trigger chapter summary directly with stored values
+                  setIsLoading(true);
+                  try {
+                    const response = await authenticatedFetch(getApiUrl('/api/ncert-explainer/chapter-summary'), {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        class: String(item.className),
+                        subject: item.subject,
+                        chapterId: item.chapterId,
+                        languageCode: 'en',
+                      }),
+                    });
+
+                    if (response.ok) {
+                      const data = await response.json();
+                      setChapterSummary(data);
+                      setFollowUps(null);
+                      setExpandedQuestion(null);
+                    }
+                  } catch (error) {
+                    console.error('Failed to replay chapter:', error);
+                  } finally {
+                    setIsLoading(false);
+                  }
+                }}
+                className="w-full flex items-center justify-between py-2 border-b border-gray-700 last:border-0 hover:bg-gray-800 rounded px-2 transition-colors text-left"
+              >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-white truncate">{item.chapterName}</p>
                   <p className="text-xs text-gray-400">
                     Class {item.className} • {item.subject} • {new Date(item.studiedAt).toLocaleDateString()}
                   </p>
                 </div>
-                <div className="text-xs text-gray-500 ml-2 flex-shrink-0">
-                  {item.followUpCount} Q&A
+                <div className="text-xs text-primary ml-2 flex-shrink-0">
+                  Replay →
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </div>
