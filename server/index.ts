@@ -2751,6 +2751,144 @@ app.get('/api/ncert-explainer/cache/stats', authMiddleware, async (req: Request,
   }
 });
 
+// ===========================
+// Smart Notes API Endpoints
+// ===========================
+
+const smartNotesService = require('./services/smartNotesService').default;
+const notesUpload = multer({ dest: 'uploads/temp/' });
+
+// Create note from text
+app.post('/api/smart-notes/create-text', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { text, subject, class: className, chapter } = req.body;
+
+    if (!text) {
+      return res.status(400).json({ error: 'Text is required' });
+    }
+
+    const note = await smartNotesService.createSmartNote(req.user.id, {
+      sourceType: 'text',
+      originalText: text,
+      context: { subject, class: className, chapter },
+    });
+
+    res.json(note);
+  } catch (error: any) {
+    console.error('Error creating text note:', error);
+    res.status(500).json({ error: error.message || 'Failed to create note' });
+  }
+});
+
+// Create note from image (camera/upload)
+app.post('/api/smart-notes/create-image', authMiddleware, notesUpload.single('image'), async (req: Request, res: Response) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Image is required' });
+    }
+
+    const imageBuffer = fs.readFileSync(req.file.path);
+    const { subject, class: className, chapter } = req.body;
+
+    const note = await smartNotesService.createSmartNote(req.user.id, {
+      sourceType: 'image',
+      imageBuffer,
+      imageMimeType: req.file.mimetype,
+      imageUrl: req.file.path,
+      context: { subject, class: className, chapter },
+    });
+
+    // Clean up temp file
+    fs.unlinkSync(req.file.path);
+
+    res.json(note);
+  } catch (error: any) {
+    console.error('Error creating image note:', error);
+    if (req.file) fs.unlinkSync(req.file.path);
+    res.status(500).json({ error: error.message || 'Failed to create note' });
+  }
+});
+
+// Get all notes with filters
+app.get('/api/smart-notes', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { subject, class: className, tags, search, isFavorite } = req.query;
+
+    const notes = await smartNotesService.getUserNotes(req.user.id, {
+      subject: subject as string,
+      class: className as string,
+      tags: tags ? (tags as string).split(',') : undefined,
+      search: search as string,
+      isFavorite: isFavorite === 'true',
+    });
+
+    res.json({ notes });
+  } catch (error: any) {
+    console.error('Error fetching notes:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch notes' });
+  }
+});
+
+// Get single note by ID
+app.get('/api/smart-notes/:id', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const note = await smartNotesService.getNoteById(req.params.id, req.user.id);
+
+    if (!note) {
+      return res.status(404).json({ error: 'Note not found' });
+    }
+
+    res.json(note);
+  } catch (error: any) {
+    console.error('Error fetching note:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch note' });
+  }
+});
+
+// Toggle favorite
+app.patch('/api/smart-notes/:id/favorite', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const note = await smartNotesService.toggleFavorite(req.params.id, req.user.id);
+    res.json(note);
+  } catch (error: any) {
+    console.error('Error toggling favorite:', error);
+    res.status(500).json({ error: error.message || 'Failed to update note' });
+  }
+});
+
+// Delete note
+app.delete('/api/smart-notes/:id', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    await smartNotesService.deleteNote(req.params.id, req.user.id);
+    res.json({ message: 'Note deleted successfully' });
+  } catch (error: any) {
+    console.error('Error deleting note:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete note' });
+  }
+});
+
+// Get note progress
+app.get('/api/smart-notes/progress/stats', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const progress = await smartNotesService.getNoteProgress(req.user.id);
+    res.json(progress);
+  } catch (error: any) {
+    console.error('Error fetching progress:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch progress' });
+  }
+});
+
+// Get cache statistics
+app.get('/api/smart-notes/cache/stats', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const stats = await noteCacheService.getCacheStats();
+    res.json(stats);
+  } catch (error: any) {
+    console.error('Error fetching cache stats:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch cache statistics' });
+  }
+});
+
 // Serve cached audio files
 app.use('/audio-cache', express.static(path.join(__dirname, 'audio-cache')));
 
