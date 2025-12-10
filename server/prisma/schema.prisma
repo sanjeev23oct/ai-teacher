@@ -69,6 +69,7 @@ model User {
   // Profile
   grade         String?  // "Grade 9", "Grade 10", etc.
   school        String?
+  preferredSubject String?  // "Math", "Science", "English", "SST", "Hindi"
   
   // Language preference
   languagePreference String @default("en") // Language code: en, hi, ta, te, kn, ml, bn, pa

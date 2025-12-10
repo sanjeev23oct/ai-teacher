@@ -227,6 +227,38 @@ app.get('/api/auth/me', authMiddleware, async (req: Request, res: Response) => {
     }
 });
 
+// Update user preferences (class and subject)
+app.patch('/api/auth/update-preferences', authMiddleware, async (req: Request, res: Response) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+        
+        const { grade, preferredSubject } = req.body;
+        
+        const updatedUser = await prisma.user.update({
+            where: { id: req.user.id },
+            data: {
+                ...(grade !== undefined && { grade }),
+                ...(preferredSubject !== undefined && { preferredSubject })
+            },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                grade: true,
+                school: true,
+                preferredSubject: true
+            }
+        });
+
+        res.json({ user: updatedUser });
+    } catch (error) {
+        console.error('Update preferences error:', error);
+        res.status(500).json({ error: 'Failed to update preferences' });
+    }
+});
+
 // Logout (client-side token removal, but we can track it)
 app.post('/api/auth/logout', authMiddleware, async (req: Request, res: Response) => {
     try {
@@ -2571,6 +2603,8 @@ app.post('/api/group-study/audio/stream', authMiddleware, async (req: Request, r
 // NCERT CHAPTER EXPLAINER ENDPOINTS
 // ============================================================================
 
+console.log('🔍 REGISTERING NCERT EXPLAINER ROUTES');
+
 // Get chapter summary with AI explanation and cached audio
 app.post('/api/ncert-explainer/chapter-summary', authMiddleware, async (req: Request, res: Response) => {
   try {
@@ -2893,7 +2927,7 @@ app.get('/api/smart-notes/cache/stats', authMiddleware, async (req: Request, res
 app.use('/audio-cache', express.static(path.join(__dirname, 'audio-cache')));
 
 app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
+    console.log(`🚀 Server running on port ${port}`);
     if (genAI) {
         console.log(`Using Gemini Vision API for exam grading`);
     } else {
@@ -2901,4 +2935,5 @@ app.listen(port, () => {
         console.log(`Tip: Add GEMINI_API_KEY to .env for better OCR results`);
     }
     console.log(`Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
+    console.log('✅ Server is ready and listening for requests');
 });

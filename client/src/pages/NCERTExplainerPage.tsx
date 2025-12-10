@@ -60,8 +60,7 @@ interface Progress {
 
 const NCERTExplainerPage: React.FC = () => {
   const { user, isLoading: authLoading } = useAuth();
-  const [selectedClass, setSelectedClass] = useState('6');
-  const [selectedSubject, setSelectedSubject] = useState('English');
+  const [selectedSubject, setSelectedSubject] = useState(user?.preferredSubject || 'English');
   const [chapters, setChapters] = useState<ChapterInfo[]>([]);
   const [selectedChapter, setSelectedChapter] = useState<string>('');
   const [chapterSummary, setChapterSummary] = useState<ChapterResponse | null>(null);
@@ -81,12 +80,12 @@ const NCERTExplainerPage: React.FC = () => {
 
   useEffect(() => {
     fetchChapters();
-  }, [selectedClass, selectedSubject]);
+  }, [user?.grade, selectedSubject]);
 
   const fetchChapters = async () => {
-    if (!selectedClass || !selectedSubject) return;
+    if (!user?.grade || !selectedSubject) return;
     try {
-      const response = await fetch(getApiUrl(`/api/ncert-explainer/chapters?class=${selectedClass}&subject=${selectedSubject}`));
+      const response = await fetch(getApiUrl(`/api/ncert-explainer/chapters?class=${user.grade}&subject=${selectedSubject}`));
       if (response.ok) {
         const data = await response.json();
         setChapters(data.chapters || []);
@@ -138,7 +137,7 @@ const NCERTExplainerPage: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          class: selectedClass,
+          class: user?.grade,
           subject: selectedSubject,
           chapterId: selectedChapter,
           languageCode: 'en',
@@ -179,7 +178,7 @@ const NCERTExplainerPage: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          class: selectedClass,
+          class: user?.grade,
           subject: selectedSubject,
           chapterId: chapterSummary.chapterId,
           languageCode: 'en',
@@ -228,8 +227,8 @@ const NCERTExplainerPage: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto p-3 sm:p-4">
       <div className="text-center mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2 flex items-center justify-center gap-2">
-          <BookOpen className="w-8 h-8 text-primary" />
+        <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center justify-center gap-2 bg-gradient-to-r from-purple-400 via-pink-500 to-purple-600 bg-clip-text text-transparent">
+          <BookOpen className="w-8 h-8 text-purple-500" />
           NCERT Chapter Explainer
         </h1>
         <p className="text-gray-400 text-sm sm:text-base">
@@ -331,7 +330,7 @@ const NCERTExplainerPage: React.FC = () => {
               <button
                 key={idx}
                 onClick={async () => {
-                  setSelectedClass(item.className);
+                  // Just load the chapter from history
                   setSelectedSubject(item.subject);
                   setSelectedChapter(item.chapterId);
                   setShowHistory(false);
@@ -384,49 +383,11 @@ const NCERTExplainerPage: React.FC = () => {
           <h2 className="text-lg font-semibold text-white mb-4">Select Chapter</h2>
           
           <div className="space-y-3">
-            {/* Class Selector */}
-            <div>
-              <label className="block text-xs font-medium text-gray-400 mb-2">Class</label>
-              <div className="grid grid-cols-5 gap-2">
-                {['6', '7', '8', '9', '10'].map((classNum) => (
-                  <button
-                    key={classNum}
-                    onClick={() => setSelectedClass(classNum)}
-                    className={`px-3 py-2 rounded text-sm font-medium transition-all ${
-                      selectedClass === classNum
-                        ? 'bg-primary text-white'
-                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                    }`}
-                  >
-                    {classNum}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Subject Selector */}
-            <div>
-              <label className="block text-xs font-medium text-gray-400 mb-2">Subject</label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {['English', 'Science', 'Math', 'SST'].map((subject) => (
-                  <button
-                    key={subject}
-                    onClick={() => setSelectedSubject(subject)}
-                    className={`px-3 py-2 rounded text-sm font-medium transition-all ${
-                      selectedSubject === subject
-                        ? 'bg-primary text-white'
-                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                    }`}
-                  >
-                    {subject}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Chapter Dropdown */}
             <div>
-              <label className="block text-xs font-medium text-gray-400 mb-2">Chapter</label>
+              <label className="block text-xs font-medium text-gray-400 mb-2">
+                Chapter (Class {user?.grade} • {selectedSubject})
+              </label>
               <select
                 value={selectedChapter}
                 onChange={(e) => setSelectedChapter(e.target.value)}
@@ -461,7 +422,7 @@ const NCERTExplainerPage: React.FC = () => {
               <div className="flex-1">
                 <h2 className="text-lg font-semibold text-white mb-1">{chapterSummary.chapterName}</h2>
                 <p className="text-xs text-gray-400">
-                  Class {selectedClass} • {selectedSubject}
+                  Class {user?.grade} • {selectedSubject}
                 </p>
               </div>
               <button

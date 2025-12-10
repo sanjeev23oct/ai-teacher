@@ -44,8 +44,7 @@ export default function SmartNotesPage() {
   const [inputMode, setInputMode] = useState<'text' | 'image'>('text');
   const [showCamera, setShowCamera] = useState(false);
   const [noteText, setNoteText] = useState('');
-  const [selectedSubject, setSelectedSubject] = useState('');
-  const [selectedClass, setSelectedClass] = useState('');
+  const [selectedSubject, setSelectedSubject] = useState(user?.preferredSubject || '');
   const [selectedChapter, setSelectedChapter] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [notes, setNotes] = useState<SmartNote[]>([]);
@@ -125,7 +124,7 @@ export default function SmartNotesPage() {
         body: JSON.stringify({
           text: noteText,
           subject: selectedSubject || undefined,
-          class: selectedClass || undefined,
+          class: user?.grade,
           chapter: selectedChapter || undefined,
         }),
       });
@@ -156,7 +155,7 @@ export default function SmartNotesPage() {
       const formData = new FormData();
       formData.append('image', file);
       if (selectedSubject) formData.append('subject', selectedSubject);
-      if (selectedClass) formData.append('class', selectedClass);
+      if (user?.grade) formData.append('class', user.grade);
       if (selectedChapter) formData.append('chapter', selectedChapter);
 
       const response = await authenticatedFetch(getApiUrl('/api/smart-notes/create-image'), {
@@ -255,32 +254,34 @@ export default function SmartNotesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white p-3 sm:p-4">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold mb-2">📝 Smart Notes</h1>
-          <p className="text-gray-300 text-sm sm:text-base">Transform messy notes into organized study material</p>
-        </div>
+    <div className="max-w-6xl mx-auto">
+      <div className="text-center mb-6 sm:mb-8">
+        <h1 className="text-3xl sm:text-4xl font-bold mb-2 flex items-center justify-center gap-2 sm:gap-3 bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+          <FileText className="text-purple-500" size={32} />
+          Smart Notes
+        </h1>
+        <p className="text-gray-300 text-sm sm:text-base">Transform messy notes into organized study material</p>
+      </div>
 
+      <div>
         {/* Progress Stats */}
         {progress && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3">
-              <div className="text-2xl font-bold">{progress.totalNotes}</div>
-              <div className="text-xs text-gray-300">Total Notes</div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
+            <div className="bg-surface rounded-xl p-4 border border-gray-700">
+              <div className="text-2xl sm:text-3xl font-bold text-white">{progress.totalNotes}</div>
+              <div className="text-xs sm:text-sm text-gray-400">Total Notes</div>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3">
-              <div className="text-2xl font-bold text-orange-400">{progress.currentStreak} 🔥</div>
-              <div className="text-xs text-gray-300">Day Streak</div>
+            <div className="bg-surface rounded-xl p-4 border border-gray-700">
+              <div className="text-2xl sm:text-3xl font-bold text-orange-400">{progress.currentStreak} 🔥</div>
+              <div className="text-xs sm:text-sm text-gray-400">Day Streak</div>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3">
-              <div className="text-2xl font-bold text-blue-400">{progress.mathNotes}</div>
-              <div className="text-xs text-gray-300">Math</div>
+            <div className="bg-surface rounded-xl p-4 border border-gray-700">
+              <div className="text-2xl sm:text-3xl font-bold text-blue-400">{progress.mathNotes}</div>
+              <div className="text-xs sm:text-sm text-gray-400">Math</div>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3">
-              <div className="text-2xl font-bold text-green-400">{progress.scienceNotes}</div>
-              <div className="text-xs text-gray-300">Science</div>
+            <div className="bg-surface rounded-xl p-4 border border-gray-700">
+              <div className="text-2xl sm:text-3xl font-bold text-green-400">{progress.scienceNotes}</div>
+              <div className="text-xs sm:text-sm text-gray-400">Science</div>
             </div>
           </div>
         )}
@@ -289,24 +290,24 @@ export default function SmartNotesPage() {
         <div className="flex gap-2 mb-6 overflow-x-auto">
           <button
             onClick={() => setActiveTab('create')}
-            className={`px-4 py-2 rounded-lg whitespace-nowrap ${
-              activeTab === 'create' ? 'bg-purple-600' : 'bg-white/10'
+            className={`px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
+              activeTab === 'create' ? 'bg-primary text-white' : 'bg-surface text-gray-300 hover:bg-gray-700 border border-gray-700'
             }`}
           >
             ✍️ Create
           </button>
           <button
             onClick={() => setActiveTab('notes')}
-            className={`px-4 py-2 rounded-lg whitespace-nowrap ${
-              activeTab === 'notes' ? 'bg-purple-600' : 'bg-white/10'
+            className={`px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
+              activeTab === 'notes' ? 'bg-primary text-white' : 'bg-surface text-gray-300 hover:bg-gray-700 border border-gray-700'
             }`}
           >
             📚 My Notes ({notes.length})
           </button>
           <button
             onClick={() => setActiveTab('revision')}
-            className={`px-4 py-2 rounded-lg whitespace-nowrap ${
-              activeTab === 'revision' ? 'bg-purple-600' : 'bg-white/10'
+            className={`px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
+              activeTab === 'revision' ? 'bg-primary text-white' : 'bg-surface text-gray-300 hover:bg-gray-700 border border-gray-700'
             }`}
           >
             📖 Revision
@@ -315,13 +316,13 @@ export default function SmartNotesPage() {
 
         {/* Create Tab */}
         {activeTab === 'create' && (
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 sm:p-6">
+          <div className="bg-surface rounded-xl p-4 sm:p-6 border border-gray-700">
             {/* Input Mode Toggle */}
             <div className="flex gap-2 mb-4">
               <button
                 onClick={() => setInputMode('text')}
-                className={`flex-1 py-2 rounded-lg flex items-center justify-center gap-2 ${
-                  inputMode === 'text' ? 'bg-purple-600' : 'bg-white/10'
+                className={`flex-1 py-2 sm:py-3 rounded-lg flex items-center justify-center gap-2 transition-colors ${
+                  inputMode === 'text' ? 'bg-primary text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
               >
                 <FileText size={18} />
@@ -329,8 +330,8 @@ export default function SmartNotesPage() {
               </button>
               <button
                 onClick={() => setInputMode('image')}
-                className={`flex-1 py-2 rounded-lg flex items-center justify-center gap-2 ${
-                  inputMode === 'image' ? 'bg-purple-600' : 'bg-white/10'
+                className={`flex-1 py-2 sm:py-3 rounded-lg flex items-center justify-center gap-2 transition-colors ${
+                  inputMode === 'image' ? 'bg-primary text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
               >
                 <Camera size={18} />
@@ -338,12 +339,12 @@ export default function SmartNotesPage() {
               </button>
             </div>
 
-            {/* Context Fields */}
-            <div className="grid grid-cols-3 gap-2 mb-4">
+            {/* Context Fields - Subject and Chapter only */}
+            <div className="grid grid-cols-2 gap-2 mb-4">
               <select
                 value={selectedSubject}
                 onChange={(e) => setSelectedSubject(e.target.value)}
-                className="bg-white/10 rounded px-3 py-2 text-sm"
+                className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-primary focus:border-transparent"
               >
                 <option value="">Subject</option>
                 <option value="Math">Math</option>
@@ -352,22 +353,12 @@ export default function SmartNotesPage() {
                 <option value="SST">SST</option>
                 <option value="Other">Other</option>
               </select>
-              <select
-                value={selectedClass}
-                onChange={(e) => setSelectedClass(e.target.value)}
-                className="bg-white/10 rounded px-3 py-2 text-sm"
-              >
-                <option value="">Class</option>
-                {[6, 7, 8, 9, 10].map(c => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
               <input
                 type="text"
                 placeholder="Chapter"
                 value={selectedChapter}
                 onChange={(e) => setSelectedChapter(e.target.value)}
-                className="bg-white/10 rounded px-3 py-2 text-sm"
+                className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent"
               />
             </div>
 
@@ -378,12 +369,12 @@ export default function SmartNotesPage() {
                   value={noteText}
                   onChange={(e) => setNoteText(e.target.value)}
                   placeholder="Type or paste your messy notes here...&#10;&#10;AI will organize them into a clean, well-structured format!"
-                  className="w-full h-48 bg-white/10 rounded-lg p-4 resize-none mb-4 text-sm"
+                  className="w-full h-48 bg-gray-700 border border-gray-600 rounded-lg p-4 resize-none mb-4 text-sm text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
                 <button
                   onClick={handleTextSubmit}
                   disabled={!noteText.trim() || isProcessing}
-                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 py-3 rounded-lg font-semibold disabled:opacity-50"
+                  className="w-full bg-primary hover:bg-primary-hover py-3 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {isProcessing ? '✨ Enhancing...' : '✨ Create Smart Note'}
                 </button>
@@ -403,7 +394,7 @@ export default function SmartNotesPage() {
                 <button
                   onClick={() => setShowCamera(true)}
                   disabled={isProcessing}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 py-3 rounded-lg font-semibold flex items-center justify-center gap-2"
+                  className="w-full bg-primary hover:bg-primary-hover py-3 rounded-lg font-semibold flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
                 >
                   <Camera size={20} />
                   {isProcessing ? 'Processing...' : 'Take Photo'}
@@ -411,7 +402,7 @@ export default function SmartNotesPage() {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isProcessing}
-                  className="w-full bg-white/10 py-3 rounded-lg font-semibold flex items-center justify-center gap-2"
+                  className="w-full bg-gray-700 hover:bg-gray-600 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 border border-gray-600 disabled:opacity-50 transition-colors"
                 >
                   <FileText size={20} />
                   {isProcessing ? 'Processing...' : 'Upload Image'}
@@ -426,7 +417,7 @@ export default function SmartNotesPage() {
         {activeTab === 'notes' && (
           <div>
             {/* Search & Filters */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 mb-4">
+            <div className="bg-surface rounded-xl p-4 mb-4 border border-gray-700">
               <div className="flex gap-2 mb-3">
                 <div className="flex-1 relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
@@ -435,13 +426,13 @@ export default function SmartNotesPage() {
                     placeholder="Search notes..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-white/10 rounded-lg pl-10 pr-4 py-2 text-sm"
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg pl-10 pr-4 py-2 text-sm text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent"
                   />
                 </div>
                 <select
                   value={filterSubject}
                   onChange={(e) => setFilterSubject(e.target.value)}
-                  className="bg-white/10 rounded-lg px-3 py-2 text-sm"
+                  className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-primary focus:border-transparent"
                 >
                   <option value="all">All Subjects</option>
                   <option value="math">Math</option>
@@ -467,7 +458,7 @@ export default function SmartNotesPage() {
               {filteredNotes.map(note => (
                 <div
                   key={note.id}
-                  className="bg-white/10 backdrop-blur-sm rounded-lg p-4 hover:bg-white/20 transition-colors cursor-pointer"
+                  className="bg-surface rounded-xl p-4 hover:bg-gray-700 transition-colors cursor-pointer border border-gray-700"
                   onClick={() => viewNote(note)}
                 >
                   <div className="flex items-start justify-between mb-2">
@@ -517,7 +508,7 @@ export default function SmartNotesPage() {
 
         {/* Revision Tab */}
         {activeTab === 'revision' && selectedNote && (
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 sm:p-6">
+          <div className="bg-surface rounded-xl p-4 sm:p-6 border border-gray-700">
             <div className="flex items-start justify-between mb-4">
               <div className="flex-1">
                 <h2 className="text-xl sm:text-2xl font-bold mb-2">{selectedNote.title}</h2>
@@ -537,7 +528,7 @@ export default function SmartNotesPage() {
             </div>
 
             {/* Enhanced Note Content */}
-            <div className="bg-black/20 rounded-lg p-4 text-sm whitespace-pre-wrap">
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 text-sm text-gray-200 whitespace-pre-wrap">
               {selectedNote.enhancedNote}
             </div>
 

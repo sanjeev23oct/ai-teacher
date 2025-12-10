@@ -7,6 +7,7 @@ interface User {
   email: string;
   grade?: string | null;
   school?: string | null;
+  preferredSubject?: string | null;
 }
 
 interface AuthContextType {
@@ -16,6 +17,7 @@ interface AuthContextType {
   signup: (name: string, email: string, password: string, grade?: string, school?: string) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
+  updateUserPreferences: (grade?: string, preferredSubject?: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -132,8 +134,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('auth_token');
   };
 
+  const updateUserPreferences = async (grade?: string, preferredSubject?: string) => {
+    if (!token) return;
+    
+    const response = await fetch('/api/auth/update-preferences', {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ grade, preferredSubject })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      setUser(data.user);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, login, signup, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, token, login, signup, logout, isLoading, updateUserPreferences }}>
       {children}
     </AuthContext.Provider>
   );

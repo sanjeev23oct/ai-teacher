@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mic, Upload, History, User, LogOut, HelpCircle, BookmarkCheck, Menu, X, Users, BookOpen, FileText } from 'lucide-react';
+import { Mic, Upload, History, User, LogOut, HelpCircle, BookmarkCheck, Menu, X, Users, BookOpen, FileText, GraduationCap, Book } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import LanguagePreferenceSelector from './LanguagePreferenceSelector';
 
 const Navigation: React.FC = () => {
-    const { user, logout } = useAuth();
+    const { user, logout, updateUserPreferences } = useAuth();
     const [showDropdown, setShowDropdown] = useState(false);
     const [showDesktopMenu, setShowDesktopMenu] = useState(false);
     const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -137,9 +137,52 @@ const Navigation: React.FC = () => {
                                     >
                                         <User className="h-4 w-4" />
                                         <span>{user.name}</span>
+                                        {user.grade && (
+                                            <span className="bg-primary text-white text-xs px-2 py-0.5 rounded-full">
+                                                Class {user.grade}
+                                            </span>
+                                        )}
                                     </button>
                                 {showDropdown && (
-                                    <div className="absolute right-0 mt-2 w-48 bg-surface border border-gray-700 rounded-lg shadow-lg py-1">
+                                    <div className="absolute right-0 mt-2 w-64 bg-surface border border-gray-700 rounded-lg shadow-lg py-1">
+                                        {/* Class Selection */}
+                                        <div className="px-4 py-2 border-b border-gray-700">
+                                            <label className="text-xs text-gray-400 flex items-center gap-1 mb-1">
+                                                <GraduationCap className="h-3 w-3" />
+                                                Class
+                                            </label>
+                                            <select
+                                                value={user.grade || ''}
+                                                onChange={(e) => updateUserPreferences(e.target.value, user.preferredSubject || undefined)}
+                                                className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white"
+                                            >
+                                                <option value="">Select Class</option>
+                                                {[6, 7, 8, 9, 10, 11, 12].map(c => (
+                                                    <option key={c} value={c.toString()}>{c}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {/* Subject Preference */}
+                                        <div className="px-4 py-2 border-b border-gray-700">
+                                            <label className="text-xs text-gray-400 flex items-center gap-1 mb-1">
+                                                <Book className="h-3 w-3" />
+                                                Preferred Subject
+                                            </label>
+                                            <select
+                                                value={user.preferredSubject || ''}
+                                                onChange={(e) => updateUserPreferences(user.grade || undefined, e.target.value)}
+                                                className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white"
+                                            >
+                                                <option value="">Select Subject</option>
+                                                <option value="Math">Math</option>
+                                                <option value="Science">Science</option>
+                                                <option value="English">English</option>
+                                                <option value="SST">SST</option>
+                                                <option value="Hindi">Hindi</option>
+                                            </select>
+                                        </div>
+
                                         <Link
                                             to="/history"
                                             onClick={() => setShowDropdown(false)}
@@ -184,6 +227,59 @@ const Navigation: React.FC = () => {
                 {showMobileMenu && (
                     <div className="md:hidden border-t border-gray-800">
                         <div className="px-2 pt-2 pb-3 space-y-1">
+                            {/* User info with class badge (mobile) */}
+                            {user && user.grade && (
+                                <div className="px-3 py-2 border-b border-gray-700 mb-2">
+                                    <div className="flex items-center gap-2 text-sm text-gray-300">
+                                        <User className="h-4 w-4" />
+                                        <span>{user.name}</span>
+                                        <span className="bg-primary text-white text-xs px-2 py-0.5 rounded-full">
+                                            Class {user.grade}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Class & Subject Selection (mobile) */}
+                            {user && (
+                                <div className="px-3 py-2 border-b border-gray-700 mb-2 space-y-2">
+                                    <div>
+                                        <label className="text-xs text-gray-400 flex items-center gap-1 mb-1">
+                                            <GraduationCap className="h-3 w-3" />
+                                            Class
+                                        </label>
+                                        <select
+                                            value={user.grade || ''}
+                                            onChange={(e) => updateUserPreferences(e.target.value, user.preferredSubject || undefined)}
+                                            className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white"
+                                        >
+                                            <option value="">Select Class</option>
+                                            {[6, 7, 8, 9, 10, 11, 12].map(c => (
+                                                <option key={c} value={c.toString()}>{c}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-gray-400 flex items-center gap-1 mb-1">
+                                            <Book className="h-3 w-3" />
+                                            Preferred Subject
+                                        </label>
+                                        <select
+                                            value={user.preferredSubject || ''}
+                                            onChange={(e) => updateUserPreferences(user.grade || undefined, e.target.value)}
+                                            className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white"
+                                        >
+                                            <option value="">Select Subject</option>
+                                            <option value="Math">Math</option>
+                                            <option value="Science">Science</option>
+                                            <option value="English">English</option>
+                                            <option value="SST">SST</option>
+                                            <option value="Hindi">Hindi</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Language preference selector for mobile */}
                             <div className="px-3 py-2 border-b border-gray-700 mb-2">
                                 <LanguagePreferenceSelector />

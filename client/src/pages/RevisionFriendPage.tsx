@@ -486,8 +486,8 @@ const RevisionFriendPage: React.FC = () => {
   return (
     <div className="max-w-3xl mx-auto p-3 sm:p-4">
       <div className="text-center mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2 flex items-center justify-center gap-2">
-          <BookmarkCheck className="w-8 h-8" />
+        <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center justify-center gap-2 bg-gradient-to-r from-green-400 via-teal-500 to-green-600 bg-clip-text text-transparent">
+          <BookmarkCheck className="w-8 h-8 text-green-500" />
           Revision Friend
         </h1>
         <p className="text-gray-400 text-sm sm:text-base">

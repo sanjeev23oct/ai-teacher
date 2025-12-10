@@ -39,7 +39,7 @@ interface HandlingHistory {
 const GroupStudyPage: React.FC = () => {
   const { user, isLoading: authLoading } = useAuth();
   const [topic, setTopic] = useState('');
-  const [subject, setSubject] = useState('English');
+  const [subject, setSubject] = useState(user?.preferredSubject || 'English');
   const [classmate1Name, setClassmate1Name] = useState('');
   const [classmate2Name, setClassmate2Name] = useState('');
   const [session, setSession] = useState<GroupStudySession | null>(null);
@@ -259,7 +259,7 @@ const GroupStudyPage: React.FC = () => {
 
   if (!authLoading && !user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 p-6 flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="bg-surface rounded-xl shadow-lg p-8 max-w-md w-full text-center border border-gray-700">
           <LogIn className="mx-auto mb-4 text-primary" size={48} />
           <h2 className="text-2xl font-bold mb-4 text-white">Login Required</h2>
@@ -268,7 +268,7 @@ const GroupStudyPage: React.FC = () => {
           </p>
           <a
             href="/login"
-            className="inline-block bg-primary text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
+            className="inline-block bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-hover transition"
           >
             Go to Login
           </a>
@@ -278,11 +278,11 @@ const GroupStudyPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 p-4 sm:p-6">
-      <div className="max-w-5xl mx-auto">
+    <div className="max-w-5xl mx-auto">
+      <div>
         <div className="text-center mb-6 sm:mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2 flex items-center justify-center gap-2 sm:gap-3">
-            <Users className="text-primary" size={32} />
+          <h1 className="text-3xl sm:text-4xl font-bold mb-2 flex items-center justify-center gap-2 sm:gap-3 bg-gradient-to-r from-orange-400 via-red-500 to-pink-500 bg-clip-text text-transparent">
+            <Users className="text-orange-500" size={32} />
             <span className="hidden sm:inline">Group Study Simulator</span>
             <span className="sm:hidden">Group Study</span>
           </h1>
@@ -301,7 +301,7 @@ const GroupStudyPage: React.FC = () => {
                 <p className="text-xs sm:text-sm text-gray-400">Sessions</p>
               </div>
               <div className="text-center">
-                <p className="text-xl sm:text-2xl font-bold text-green-500">{progress.avgScore.toFixed(1)}/5</p>
+                <p className="text-xl sm:text-2xl font-bold text-green-500">{progress.avgScore?.toFixed(1) || '0.0'}/5</p>
                 <p className="text-xs sm:text-sm text-gray-400">Avg Score</p>
               </div>
               <div className="text-center">
@@ -372,7 +372,7 @@ const GroupStudyPage: React.FC = () => {
               <button
                 onClick={startSession}
                 disabled={isLoading || !topic || !classmate1Name || !classmate2Name}
-                className="w-full bg-primary text-white py-2.5 sm:py-3 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2 text-sm sm:text-base font-medium"
+                className="w-full bg-primary text-white py-2.5 sm:py-3 rounded-lg hover:bg-primary-hover transition disabled:opacity-50 flex items-center justify-center gap-2 text-sm sm:text-base font-medium"
               >
                 <Play size={18} />
                 {isLoading ? 'Starting...' : 'Start Discussion'}
@@ -433,7 +433,7 @@ const GroupStudyPage: React.FC = () => {
 
             <button
               onClick={resetSession}
-              className="w-full bg-primary text-white py-2.5 sm:py-3 rounded-lg hover:bg-blue-700 transition text-sm sm:text-base font-medium"
+              className="w-full bg-primary text-white py-2.5 sm:py-3 rounded-lg hover:bg-primary-hover transition text-sm sm:text-base font-medium"
             >
               Start New Session
             </button>
@@ -460,7 +460,7 @@ const GroupStudyPage: React.FC = () => {
                   <button
                     onClick={submitAnswer}
                     disabled={isLoading || !studentAnswer}
-                    className="mt-3 sm:mt-4 w-full bg-primary text-white py-2.5 sm:py-3 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 text-sm sm:text-base font-medium"
+                    className="mt-3 sm:mt-4 w-full bg-primary text-white py-2.5 sm:py-3 rounded-lg hover:bg-primary-hover transition disabled:opacity-50 text-sm sm:text-base font-medium"
                   >
                     {isLoading ? 'Submitting...' : 'Submit Answer'}
                   </button>
@@ -503,7 +503,7 @@ const GroupStudyPage: React.FC = () => {
                   <button
                     onClick={submitClassmate1Response}
                     disabled={isLoading || !classmate1Response}
-                    className="mt-3 sm:mt-4 w-full bg-primary text-white py-2.5 sm:py-3 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 text-sm sm:text-base font-medium"
+                    className="mt-3 sm:mt-4 w-full bg-primary text-white py-2.5 sm:py-3 rounded-lg hover:bg-primary-hover transition disabled:opacity-50 text-sm sm:text-base font-medium"
                   >
                     {isLoading ? 'Submitting...' : 'Submit Response'}
                   </button>
@@ -546,7 +546,7 @@ const GroupStudyPage: React.FC = () => {
                   <button
                     onClick={submitClassmate2Response}
                     disabled={isLoading || !classmate2Response}
-                    className="mt-3 sm:mt-4 w-full bg-primary text-white py-2.5 sm:py-3 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 text-sm sm:text-base font-medium"
+                    className="mt-3 sm:mt-4 w-full bg-primary text-white py-2.5 sm:py-3 rounded-lg hover:bg-primary-hover transition disabled:opacity-50 text-sm sm:text-base font-medium"
                   >
                     {isLoading ? 'Submitting...' : 'Submit Response'}
                   </button>
