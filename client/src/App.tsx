@@ -19,6 +19,7 @@ import WorksheetViewPage from './pages/WorksheetViewPage';
 import RevisionFriendPage from './pages/RevisionFriendPage';
 import GroupStudyPage from './pages/GroupStudyPage';
 import NCERTExplainerPage from './pages/NCERTExplainerPage';
+import SmartNotesPage from './pages/SmartNotesPage';
 import DashboardDoubtCard from './components/DashboardDoubtCard';
 
 // Group Study Card (Now Available!)
@@ -306,6 +307,7 @@ function App() {
               <Route path="/revision-friend" element={<Layout><RevisionFriendPage /></Layout>} />
               <Route path="/group-study" element={<Layout><GroupStudyPage /></Layout>} />
               <Route path="/ncert-explainer" element={<Layout><NCERTExplainerPage /></Layout>} />
+              <Route path="/smart-notes" element={<Layout><SmartNotesPage /></Layout>} />
             </Routes>
         </LanguageProvider>
       </AuthProvider>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mic, Upload, History, User, LogOut, HelpCircle, BookmarkCheck, Menu, X, Users, BookOpen } from 'lucide-react';
+import { Mic, Upload, History, User, LogOut, HelpCircle, BookmarkCheck, Menu, X, Users, BookOpen, FileText } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import LanguagePreferenceSelector from './LanguagePreferenceSelector';
 
@@ -34,10 +34,14 @@ const Navigation: React.FC = () => {
                     </div>
                     <div className="hidden md:block">
                         <div className="ml-10 flex items-baseline space-x-4">
-                            {/* Primary 4 links - moved NCERT first */}
+                            {/* Primary links - NCERT first, then Smart Notes */}
                             <Link to="/ncert-explainer" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1">
                                 <BookOpen className="h-4 w-4" />
                                 <span>NCERT Explainer</span>
+                            </Link>
+                            <Link to="/smart-notes" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1">
+                                <FileText className="h-4 w-4" />
+                                <span>Smart Notes</span>
                             </Link>
                             <Link to="/revision-friend" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1">
                                 <BookmarkCheck className="h-4 w-4" />
@@ -190,6 +194,10 @@ const Navigation: React.FC = () => {
                             <Link to="/ncert-explainer" onClick={() => setShowMobileMenu(false)} className="text-gray-300 hover:text-white w-full text-left px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2">
                                 <BookOpen className="h-4 w-4" />
                                 <span>NCERT Explainer</span>
+                            </Link>
+                            <Link to="/smart-notes" onClick={() => setShowMobileMenu(false)} className="text-gray-300 hover:text-white w-full text-left px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2">
+                                <FileText className="h-4 w-4" />
+                                <span>Smart Notes</span>
                             </Link>
                             <Link to="/revision-friend" onClick={closeMobileMenu} className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2">
                                 <BookmarkCheck className="h-4 w-4" />
