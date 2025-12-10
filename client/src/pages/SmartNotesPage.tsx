@@ -44,7 +44,6 @@ export default function SmartNotesPage() {
   const [inputMode, setInputMode] = useState<'text' | 'image'>('text');
   const [showCamera, setShowCamera] = useState(false);
   const [noteText, setNoteText] = useState('');
-  const [selectedSubject, setSelectedSubject] = useState(user?.preferredSubject || '');
   const [selectedChapter, setSelectedChapter] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [notes, setNotes] = useState<SmartNote[]>([]);
@@ -70,10 +69,14 @@ export default function SmartNotesPage() {
 
   const fetchNotes = async () => {
     try {
+      console.log('[SMART NOTES] Fetching notes...');
       const response = await authenticatedFetch(getApiUrl('/api/smart-notes'));
       if (response.ok) {
         const data = await response.json();
+        console.log('[SMART NOTES] Received notes:', data.notes?.length || 0, 'notes');
         setNotes(data.notes || []);
+      } else {
+        console.error('[SMART NOTES] Fetch failed:', response.status, response.statusText);
       }
     } catch (error) {
       console.error('Failed to fetch notes:', error);
@@ -123,7 +126,7 @@ export default function SmartNotesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: noteText,
-          subject: selectedSubject || undefined,
+          subject: user?.preferredSubject || undefined,
           class: user?.grade,
           chapter: selectedChapter || undefined,
         }),
@@ -154,7 +157,7 @@ export default function SmartNotesPage() {
     try {
       const formData = new FormData();
       formData.append('image', file);
-      if (selectedSubject) formData.append('subject', selectedSubject);
+      if (user?.preferredSubject) formData.append('subject', user.preferredSubject);
       if (user?.grade) formData.append('class', user.grade);
       if (selectedChapter) formData.append('chapter', selectedChapter);
 
@@ -339,26 +342,14 @@ export default function SmartNotesPage() {
               </button>
             </div>
 
-            {/* Context Fields - Subject and Chapter only */}
-            <div className="grid grid-cols-2 gap-2 mb-4">
-              <select
-                value={selectedSubject}
-                onChange={(e) => setSelectedSubject(e.target.value)}
-                className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-primary focus:border-transparent"
-              >
-                <option value="">Subject</option>
-                <option value="Math">Math</option>
-                <option value="Science">Science</option>
-                <option value="English">English</option>
-                <option value="SST">SST</option>
-                <option value="Other">Other</option>
-              </select>
+            {/* Context Fields - Chapter only (subject from profile) */}
+            <div className="mb-4">
               <input
                 type="text"
-                placeholder="Chapter"
+                placeholder="Chapter (optional)"
                 value={selectedChapter}
                 onChange={(e) => setSelectedChapter(e.target.value)}
-                className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent"
               />
             </div>
 

@@ -145,7 +145,7 @@ Generate the enhanced note now in JSON format:`;
 
   const result = await aiService.generateContent({ prompt });
   
-  // Parse JSON response
+  // Parse JSON response with better error handling
   let jsonStr = result.text.trim();
   if (jsonStr.includes('```json')) {
     jsonStr = jsonStr.split('```json')[1].split('```')[0];
@@ -153,7 +153,28 @@ Generate the enhanced note now in JSON format:`;
     jsonStr = jsonStr.split('```')[1].split('```')[0];
   }
 
-  const enhanced = JSON.parse(jsonStr);
+  // Clean up potential control characters that break JSON parsing
+  jsonStr = jsonStr.trim();
+
+  let enhanced;
+  try {
+    enhanced = JSON.parse(jsonStr);
+  } catch (parseError: any) {
+    console.error('JSON parse error:', parseError.message);
+    console.error('Problematic JSON:', jsonStr.substring(0, 500));
+    
+    // Attempt to fix common JSON issues
+    try {
+      // Replace unescaped newlines in string values
+      const fixed = jsonStr.replace(/"([^"]*)"/g, (match) => {
+        return match.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t');
+      });
+      enhanced = JSON.parse(fixed);
+      console.log('Successfully recovered from JSON parse error');
+    } catch (retryError) {
+      throw new Error(`Failed to parse AI response as JSON: ${parseError.message}`);
+    }
+  }
 
   const enhancementData = {
     enhancedNote: enhanced.enhancedNote,
@@ -298,6 +319,8 @@ export async function getUserNotes(
 ) {
   const where: any = { userId };
 
+  console.log('[getUserNotes] Building query for userId:', userId);
+
   if (filters?.subject) where.subject = filters.subject;
   if (filters?.class) where.class = filters.class;
   if (filters?.isFavorite !== undefined) where.isFavorite = filters.isFavorite;
@@ -311,10 +334,14 @@ export async function getUserNotes(
     ];
   }
 
+  console.log('[getUserNotes] Query where clause:', JSON.stringify(where, null, 2));
+
   const notes = await prisma.smartNote.findMany({
     where,
     orderBy: { createdAt: 'desc' },
   });
+
+  console.log(`[getUserNotes] Found ${notes.length} notes`);
 
   return notes;
 }

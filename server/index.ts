@@ -2801,11 +2801,15 @@ app.post('/api/smart-notes/create-text', authMiddleware, async (req: Request, re
       return res.status(400).json({ error: 'Text is required' });
     }
 
+    console.log(`[CREATE NOTE] User: ${req.user.id}, Subject: ${subject}, Class: ${className}, Chapter: ${chapter}`);
+
     const note = await smartNotesService.createSmartNote(req.user.id, {
       sourceType: 'text',
       originalText: text,
       context: { subject, class: className, chapter },
     });
+
+    console.log(`[CREATE NOTE] Created note ${note.id} for user ${req.user.id}`);
 
     res.json(note);
   } catch (error: any) {
@@ -2848,13 +2852,17 @@ app.get('/api/smart-notes', authMiddleware, async (req: Request, res: Response) 
   try {
     const { subject, class: className, tags, search, isFavorite } = req.query;
 
+    console.log(`[FETCH NOTES] User: ${req.user.id}, Filters:`, { subject, className, tags, search, isFavorite });
+
     const notes = await smartNotesService.getUserNotes(req.user.id, {
       subject: subject as string,
       class: className as string,
       tags: tags ? (tags as string).split(',') : undefined,
       search: search as string,
-      isFavorite: isFavorite === 'true',
+      isFavorite: isFavorite ? isFavorite === 'true' : undefined,
     });
+
+    console.log(`[FETCH NOTES] Found ${notes.length} notes for user ${req.user.id}`);
 
     res.json({ notes });
   } catch (error: any) {
