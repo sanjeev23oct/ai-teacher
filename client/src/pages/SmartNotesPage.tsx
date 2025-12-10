@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Camera, FileText, Star, Trash2, Search, BookOpen, Users, Heart, Bookmark, Share2, UserPlus, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
