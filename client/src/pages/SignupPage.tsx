@@ -32,7 +32,7 @@ export default function SignupPage() {
 
     try {
       await signup(name, email, password, grade || undefined, school || undefined);
-      navigate('/grade'); // Go directly to grade page after signup
+      navigate('/'); // Go to home page after signup
     } catch (err: any) {
       setError(err.message || 'Failed to create account');
     } finally {
