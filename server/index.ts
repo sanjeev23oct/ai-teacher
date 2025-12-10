@@ -2790,23 +2790,24 @@ app.get('/api/ncert-explainer/cache/stats', authMiddleware, async (req: Request,
 // ===========================
 
 const smartNotesService = require('./services/smartNotesService').default;
+const socialNotesService = require('./services/socialNotesService').default;
 const notesUpload = multer({ dest: 'uploads/temp/' });
 
 // Create note from text
 app.post('/api/smart-notes/create-text', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const { text, subject, class: className, chapter } = req.body;
+    const { text, subject, class: className, chapter, visibility } = req.body;
 
     if (!text) {
       return res.status(400).json({ error: 'Text is required' });
     }
 
-    console.log(`[CREATE NOTE] User: ${req.user.id}, Subject: ${subject}, Class: ${className}, Chapter: ${chapter}`);
+    console.log(`[CREATE NOTE] User: ${req.user.id}, Subject: ${subject}, Class: ${className}, Chapter: ${chapter}, Visibility: ${visibility}`);
 
     const note = await smartNotesService.createSmartNote(req.user.id, {
       sourceType: 'text',
       originalText: text,
-      context: { subject, class: className, chapter },
+      context: { subject, class: className, chapter, visibility },
     });
 
     console.log(`[CREATE NOTE] Created note ${note.id} for user ${req.user.id}`);
@@ -2826,14 +2827,14 @@ app.post('/api/smart-notes/create-image', authMiddleware, notesUpload.single('im
     }
 
     const imageBuffer = fs.readFileSync(req.file.path);
-    const { subject, class: className, chapter } = req.body;
+    const { subject, class: className, chapter, visibility } = req.body;
 
     const note = await smartNotesService.createSmartNote(req.user.id, {
       sourceType: 'image',
       imageBuffer,
       imageMimeType: req.file.mimetype,
       imageUrl: req.file.path,
-      context: { subject, class: className, chapter },
+      context: { subject, class: className, chapter, visibility },
     });
 
     // Clean up temp file
@@ -2933,6 +2934,356 @@ app.get('/api/smart-notes/cache/stats', authMiddleware, async (req: Request, res
 
 // Serve cached audio files
 app.use('/audio-cache', express.static(path.join(__dirname, 'audio-cache')));
+
+// ===========================
+// SOCIAL FEATURES (Phase 1)
+// ===========================
+
+// Change note visibility
+app.patch('/api/smart-notes/:id/visibility', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { visibility } = req.body;
+    const note = await prisma.smartNote.findUnique({ where: { id: req.params.id } });
+    
+    if (!note) {
+      return res.status(404).json({ error: 'Note not found' });
+    }
+    
+    if (note.userId !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+    
+    const updated = await prisma.smartNote.update({
+      where: { id: req.params.id },
+      data: { visibility },
+    });
+    
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Share note (generate link and update share count)
+app.post('/api/smart-notes/:id/share', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { visibility, friendIds } = req.body;
+    const note = await prisma.smartNote.findUnique({ where: { id: req.params.id } });
+    
+    if (!note) {
+      return res.status(404).json({ error: 'Note not found' });
+    }
+    
+    if (note.userId !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+    
+    // Update visibility
+    const updated = await prisma.smartNote.update({
+      where: { id: req.params.id },
+      data: { visibility },
+    });
+    
+    // Create share records if friendIds provided
+    if (friendIds && friendIds.length > 0) {
+      await Promise.all(
+        friendIds.map((friendId: string) =>
+          prisma.noteShare.upsert({
+            where: {
+              noteId_sharedWith: {
+                noteId: req.params.id,
+                sharedWith: friendId,
+              },
+            },
+            create: {
+              noteId: req.params.id,
+              sharedBy: req.user.id,
+              sharedWith: friendId,
+            },
+            update: {}, // Just update timestamp
+          })
+        )
+      );
+      
+      // Increment share count by number of friends shared with
+      await prisma.smartNote.update({
+        where: { id: req.params.id },
+        data: { shareCount: { increment: friendIds.length } },
+      });
+    }
+    
+    const shareLink = `${req.protocol}://${req.get('host')}/smart-notes/shared/${req.params.id}`;
+    
+    const finalNote = await prisma.smartNote.findUnique({ where: { id: req.params.id } });
+    res.json({ shareLink, shareCount: finalNote?.shareCount || 0 });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get shared notes (notes shared with current user)
+app.get('/api/smart-notes/shared-with-me', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    // Find all shares where current user is the recipient
+    const shares = await prisma.noteShare.findMany({
+      where: { sharedWith: req.user.id },
+      include: {
+        note: {
+          include: {
+            user: {
+              select: { id: true, name: true, grade: true, school: true }
+            }
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    
+    const notes = shares.map(share => ({
+      ...share.note,
+      sharedAt: share.createdAt,
+    }));
+    
+    res.json({ notes });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get a specific shared note by ID (public access)
+app.get('/api/smart-notes/shared/:id', async (req: Request, res: Response) => {
+  try {
+    const note = await prisma.smartNote.findUnique({
+      where: { id: req.params.id },
+      include: {
+        user: {
+          select: { id: true, name: true, grade: true, school: true }
+        }
+      }
+    });
+    
+    if (!note) {
+      return res.status(404).json({ error: 'Note not found' });
+    }
+    
+    // Only allow access if visibility is public or friends
+    if (note.visibility === 'private') {
+      return res.status(403).json({ error: 'This note is private' });
+    }
+    
+    res.json({ note });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Friend system
+// Search users for adding as friends
+app.get('/api/users/search', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { query } = req.query;
+    
+    const users = await prisma.user.findMany({
+      where: {
+        AND: [
+          { id: { not: req.user.id } }, // Exclude current user
+          query ? {
+            OR: [
+              { name: { contains: query as string, mode: 'insensitive' } },
+              { email: { contains: query as string, mode: 'insensitive' } },
+            ]
+          } : {}
+        ]
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        grade: true,
+        school: true,
+      },
+      take: 10,
+    });
+    
+    res.json({ users });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/friends/create', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email || !email.trim()) {
+      return res.status(400).json({ error: 'Friend email is required' });
+    }
+    
+    // Find existing user by email
+    const friend = await prisma.user.findUnique({
+      where: { email: email.trim().toLowerCase() },
+      select: { id: true, name: true, email: true, grade: true, school: true }
+    });
+    
+    if (!friend) {
+      return res.status(404).json({ error: 'User not found. They need to sign up first.' });
+    }
+    
+    if (friend.id === req.user.id) {
+      return res.status(400).json({ error: 'Cannot add yourself as a friend' });
+    }
+    
+    // Check if already friends
+    const existing = await prisma.userConnection.findUnique({
+      where: {
+        userId_friendId: {
+          userId: req.user.id,
+          friendId: friend.id
+        }
+      }
+    });
+    
+    if (existing) {
+      return res.status(400).json({ error: 'Already friends with this user' });
+    }
+    
+    // Create friendship (auto-accept for simplicity)
+    await prisma.userConnection.create({
+      data: {
+        userId: req.user.id,
+        friendId: friend.id,
+        status: 'accepted',
+      },
+    });
+    
+    res.json({ friend });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/friends/request', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { friendEmail } = req.body;
+    const result = await socialNotesService.sendFriendRequest(req.user.id, friendEmail);
+    res.json(result);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.post('/api/friends/accept/:id', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const connection = await socialNotesService.acceptFriendRequest(req.user.id, req.params.id);
+    res.json(connection);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.delete('/api/friends/reject/:id', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    await socialNotesService.rejectFriendRequest(req.user.id, req.params.id);
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.delete('/api/friends/:friendId', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    await socialNotesService.removeFriend(req.user.id, req.params.friendId);
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.get('/api/friends', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const friends = await socialNotesService.getFriendsList(req.user.id);
+    res.json({ friends });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/friends/requests', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const requests = await socialNotesService.getPendingRequests(req.user.id);
+    res.json({ requests });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Like system
+app.post('/api/smart-notes/:id/like', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const like = await socialNotesService.likeNote(req.user.id, req.params.id);
+    res.json(like);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.delete('/api/smart-notes/:id/like', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    await socialNotesService.unlikeNote(req.user.id, req.params.id);
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Bookmark system
+app.post('/api/smart-notes/:id/bookmark', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { collection } = req.body;
+    const bookmark = await socialNotesService.bookmarkNote(req.user.id, req.params.id, collection);
+    res.json(bookmark);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.delete('/api/smart-notes/:id/bookmark', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    await socialNotesService.removeBookmark(req.user.id, req.params.id);
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.get('/api/smart-notes/bookmarks', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { collection } = req.query;
+    const notes = await socialNotesService.getBookmarkedNotes(req.user.id, collection as string);
+    res.json({ notes });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Community feed
+app.get('/api/smart-notes/community', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { visibility, class: className, subject, school, sortBy, limit, offset } = req.query;
+    const notes = await socialNotesService.getCommunityNotes(req.user.id, {
+      visibility: visibility as string,
+      class: className as string,
+      subject: subject as string,
+      school: school as string,
+      sortBy: (sortBy as any) || 'recent',
+      limit: limit ? parseInt(limit as string) : 20,
+      offset: offset ? parseInt(offset as string) : 0,
+    });
+    res.json({ notes });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 app.listen(port, () => {
     console.log(`🚀 Server running on port ${port}`);

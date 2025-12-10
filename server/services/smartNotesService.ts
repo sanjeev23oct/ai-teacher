@@ -210,9 +210,26 @@ export async function createSmartNote(
       subject?: string;
       class?: string;
       chapter?: string;
+      visibility?: string; // 'private', 'friends', 'class', 'public'
     };
   }
 ): Promise<any> {
+  // Get user to fetch school and defaults
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { school: true, grade: true, preferredSubject: true }
+  });
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  // Subject and class are required for social features
+  const subject = data.context?.subject || user.preferredSubject || 'Other';
+  const classGrade = data.context?.class || user.grade || '10';
+  const school = user.school;
+  const visibility = data.context?.visibility || 'private';
+
   let extractedText = data.originalText || '';
   let imageHash: string | undefined;
   let cacheKey: string | undefined;
@@ -240,10 +257,12 @@ export async function createSmartNote(
       enhancedNote: enhancement.enhancedNote,
       title: enhancement.title,
       summary: enhancement.summary,
-      subject: enhancement.subject || data.context?.subject,
-      class: data.context?.class,
+      subject,
+      class: classGrade,
+      school,
       chapter: data.context?.chapter,
       tags: enhancement.tags,
+      visibility,
       cacheKey,
     },
   });

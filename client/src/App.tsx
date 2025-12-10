@@ -98,7 +98,10 @@ const Home = () => {
         </p>
         
         <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
-          <a href="/revision-friend" className="btn-primary text-base sm:text-lg px-6 sm:px-8 py-2.5 sm:py-3">
+          <a href="/smart-notes" className="btn-primary text-base sm:text-lg px-6 sm:px-8 py-2.5 sm:py-3">
+            📝 Smart Notes
+          </a>
+          <a href="/revision-friend" className="px-6 sm:px-8 py-2.5 sm:py-3 bg-green-600 hover:bg-green-700 rounded-md text-white transition-colors font-medium text-base sm:text-lg">
             📚 Quick Revise
           </a>
           <a href="/asl" className="px-6 sm:px-8 py-2.5 sm:py-3 bg-purple-600 hover:bg-purple-700 rounded-md text-white transition-colors font-medium text-base sm:text-lg">
@@ -112,9 +115,22 @@ const Home = () => {
         )}
       </div>
 
-      {/* Main Features - 4 cards */}
-      <div className="max-w-5xl mx-auto mt-12 mb-12 px-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Main Features - 5 cards */}
+      <div className="max-w-6xl mx-auto mt-12 mb-12 px-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+          <a href="/smart-notes" className="bg-gradient-to-br from-blue-900/40 to-blue-800/20 rounded-xl p-6 hover:scale-[1.02] transition-all cursor-pointer border border-blue-700/50">
+            <div className="text-center">
+              <div className="text-5xl mb-4">📝</div>
+              <h3 className="text-xl font-bold text-white mb-2">Smart Notes</h3>
+              <p className="text-gray-300 text-sm mb-3">AI-powered note-taking & sharing!</p>
+              <ul className="text-gray-400 text-xs space-y-1 text-left">
+                <li>✓ Auto-enhance handwritten notes</li>
+                <li>✓ Share with friends & class</li>
+                <li>✓ Community learning platform</li>
+              </ul>
+            </div>
+          </a>
+          
           <a href="/ncert-explainer" className="bg-gradient-to-br from-purple-900/40 to-purple-800/20 rounded-xl p-6 hover:scale-[1.02] transition-all cursor-pointer border border-purple-700/50">
             <div className="text-center">
               <div className="text-5xl mb-4">📖</div>
@@ -308,6 +324,7 @@ function App() {
               <Route path="/group-study" element={<Layout><GroupStudyPage /></Layout>} />
               <Route path="/ncert-explainer" element={<Layout><NCERTExplainerPage /></Layout>} />
               <Route path="/smart-notes" element={<Layout><SmartNotesPage /></Layout>} />
+              <Route path="/smart-notes/shared/:id" element={<Layout><SmartNotesPage /></Layout>} />
             </Routes>
         </LanguageProvider>
       </AuthProvider>

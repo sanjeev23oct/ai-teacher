@@ -68,7 +68,7 @@ model User {
   
   // Profile
   grade         String?  // "Grade 9", "Grade 10", etc.
-  school        String?
+  school        String   // School name - MANDATORY for social features
   preferredSubject String?  // "Math", "Science", "English", "SST", "Hindi"
   
   // Language preference
@@ -92,6 +92,12 @@ model User {
   ncertProgress NCERTProgress?
   smartNotes    SmartNote[]
   noteProgress  NoteProgress?
+  
+  // Social features
+  friendsInitiated  UserConnection[] @relation("FriendshipInitiator")
+  friendsReceived   UserConnection[] @relation("FriendshipReceiver")
+  noteLikes         NoteLike[]
+  noteBookmarks     NoteBookmark[]
   
   @@index([email])
 }
@@ -568,11 +574,18 @@ model SmartNote {
   title           String   // Auto-generated title
   summary         String?  @db.Text  // Brief summary
   
-  // Organization
-  subject         String?  // "Math", "Science", etc.
-  class           String?  // "6", "7", etc.
-  chapter         String?  // Chapter name/number
+  // Organization - MANDATORY for shared notes
+  subject         String   // "Math", "Science", etc. - REQUIRED
+  class           String   // "6", "7", etc. - REQUIRED
+  chapter         String?  // Chapter name/number - OPTIONAL
+  school          String   // School name - REQUIRED (from user profile)
   tags            String[] // ["important", "formula", "exam"]
+  
+  // Social features
+  visibility      String   @default("private") // "private", "friends", "class", "public"
+  likeCount       Int      @default(0)
+  bookmarkCount   Int      @default(0)
+  shareCount      Int      @default(0)
   
   // Caching
   cacheKey        String?  @unique  // For image-based caching
@@ -584,10 +597,18 @@ model SmartNote {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   
+  // Social relations
+  likes           NoteLike[]
+  bookmarks       NoteBookmark[]
+  shares          NoteShare[]
+  
   @@index([userId, subject, class])
   @@index([userId, createdAt])
   @@index([cacheKey])
   @@index([tags])
+  @@index([visibility, class, subject]) // For community feed
+  @@index([visibility, school]) // For school-wide browsing
+  @@index([likeCount]) // For trending/popular
 }
 
 model NoteCacheRegistry {
@@ -637,4 +658,98 @@ model NoteProgress {
   // Metadata
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+// ===========================
+// SOCIAL FEATURES (Phase 1)
+// ===========================
+
+// Friend connections
+model UserConnection {
+  id          String   @id @default(uuid())
+  
+  // Users involved
+  userId      String   // Person who initiated
+  user        User     @relation("FriendshipInitiator", fields: [userId], references: [id], onDelete: Cascade)
+  
+  friendId    String   // Person who received
+  friend      User     @relation("FriendshipReceiver", fields: [friendId], references: [id], onDelete: Cascade)
+  
+  // Status
+  status      String   // "pending", "accepted", "rejected", "blocked"
+  
+  // Metadata
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([userId, friendId]) // Prevent duplicate connections
+  @@index([userId, status])
+  @@index([friendId, status])
+}
+
+// Note likes/reactions
+model NoteLike {
+  id          String   @id @default(uuid())
+  
+  // Who liked
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // What was liked
+  noteId      String
+  note        SmartNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  
+  // Metadata
+  createdAt   DateTime @default(now())
+  
+  @@unique([userId, noteId]) // One like per user per note
+  @@index([noteId]) // Fast counting
+  @@index([userId]) // User's liked notes
+  @@index([createdAt]) // Recent likes
+}
+
+// Note bookmarks/saves
+model NoteBookmark {
+  id          String   @id @default(uuid())
+  
+  // Who bookmarked
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // What was bookmarked
+  noteId      String
+  note        SmartNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  
+  // Optional collection/folder
+  collection  String?  // "Exam Prep 2025", "Weak Topics", etc.
+  
+  // Metadata
+  createdAt   DateTime @default(now())
+  
+  @@unique([userId, noteId]) // One bookmark per user per note
+  @@index([userId, collection]) // User's collections
+  @@index([noteId]) // Popular notes
+}
+
+// Note shares - tracks who shared what with whom
+model NoteShare {
+  id          String   @id @default(uuid())
+  
+  // Note being shared
+  noteId      String
+  note        SmartNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  
+  // Who shared it (note owner)
+  sharedBy    String
+  
+  // Who it was shared with
+  sharedWith  String
+  
+  // Metadata
+  createdAt   DateTime @default(now())
+  
+  @@unique([noteId, sharedWith]) // Can't share same note to same person twice
+  @@index([sharedWith]) // Find notes shared with me
+  @@index([noteId]) // All shares of a note
+  @@index([sharedBy]) // Notes I shared
 }
