@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { authenticatedFetch } from '../utils/api';
 import { getApiUrl } from '../config';
 

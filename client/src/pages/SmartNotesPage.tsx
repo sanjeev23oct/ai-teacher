@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Camera, FileText, Star, Trash2, Search, BookOpen, Users, Heart, Bookmark, Share2, UserPlus, Copy, Check, X } from 'lucide-react';
+import { Camera, FileText, Star, Trash2, Search, BookOpen, Users, Heart, Bookmark, Share2, UserPlus, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { authenticatedFetch } from '../utils/api';
 import { getApiUrl } from '../config';
@@ -74,7 +74,6 @@ export default function SmartNotesPage() {
   const [selectedNote, setSelectedNote] = useState<SmartNote | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [noteToShare, setNoteToShare] = useState<SmartNote | null>(null);
-  const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
   const [progress, setProgress] = useState<NoteProgress | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterSubject, setFilterSubject] = useState('all');
@@ -390,13 +389,6 @@ export default function SmartNotesPage() {
     } catch (error) {
       console.error('Failed to share note:', error);
       throw error;
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      handleImageUpload(file);
     }
   };
 
@@ -1198,23 +1190,6 @@ export default function SmartNotesPage() {
           onClose={() => {
             setShowShareModal(false);
             setNoteToShare(null);
-            setSelectedFriends([]);
-          }}
-          onShare={handleShareNote}
-        />
-      )}
-      </>
-      )}
-
-      {/* Share Modal */}
-      {showShareModal && noteToShare && (
-        <ShareNoteModal
-          note={noteToShare}
-          friends={friends}
-          onClose={() => {
-            setShowShareModal(false);
-            setNoteToShare(null);
-            setSelectedFriends([]);
           }}
           onShare={handleShareNote}
         />

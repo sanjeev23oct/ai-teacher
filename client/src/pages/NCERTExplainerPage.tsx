@@ -436,11 +436,8 @@ const NCERTExplainerPage: React.FC = () => {
             {/* Audio Player */}
             <div className="mb-4">
               <AudioPlayer
-                audioUrl={chapterSummary.audioUrl}
-                audioSource={chapterSummary.audioMetadata.source}
-                cacheKey={chapterSummary.audioMetadata.cacheKey}
-                timestamp={chapterSummary.audioMetadata.timestamp}
-                autoPlay={true}
+                audioEndpoint={`/api/ncert-explainer/chapter/${chapterSummary.chapterId}/audio`}
+                size="md"
                 className="mb-3"
               />
             </div>
@@ -484,11 +481,8 @@ const NCERTExplainerPage: React.FC = () => {
                     {expandedQuestion === q.id && (
                       <div className="px-4 py-3 bg-gray-900 border-t border-gray-700">
                         <AudioPlayer
-                          audioUrl={q.audioUrl}
-                          audioSource={q.audioMetadata.source}
-                          cacheKey={q.audioMetadata.cacheKey}
-                          timestamp={q.audioMetadata.timestamp}
-                          autoPlay={false}
+                          audioEndpoint={`/api/ncert-explainer/question/${q.id}/audio`}
+                          size="sm"
                           className="mb-3"
                         />
                         <div className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">
