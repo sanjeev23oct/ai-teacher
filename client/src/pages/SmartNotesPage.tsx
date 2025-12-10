@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, FileText, Star, Trash2, Search, Filter, BookOpen, TrendingUp } from 'lucide-react';
+import { Camera, FileText, Star, Trash2, Search, BookOpen } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { authenticatedFetch } from '../utils/api';
 import { getApiUrl } from '../config';
