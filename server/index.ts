@@ -3248,15 +3248,14 @@ app.get('/api/smart-notes/ping', (req: Request, res: Response) => {
 });
 console.log('[SMART NOTES] ✅ Registered ping route');
 
-// Only register Smart Notes routes if services loaded successfully
-if (smartNotesService && socialNotesService && notesUpload) {
-  console.log('[SMART NOTES] Services available, registering main routes...');
-  
 console.log('[SMART NOTES] Registering create-text route...');
 // Create note from text (with optional image attachment)
 app.post('/api/smart-notes/create-text', authMiddleware, notesUpload.single('image'), async (req: Request, res: Response) => {
   console.log('[SMART NOTES] create-text route hit');
   try {
+    if (!smartNotesService) {
+      return res.status(503).json({ error: 'Smart Notes service not available' });
+    }
     const { text, subject, class: className, chapter, visibility } = req.body;
 
     if (!text) {
@@ -3305,6 +3304,9 @@ console.log('[SMART NOTES] Registering create-image route...');
 // Create note from image (camera/upload)
 app.post('/api/smart-notes/create-image', authMiddleware, notesUpload.single('image'), async (req: Request, res: Response) => {
   try {
+    if (!smartNotesService) {
+      return res.status(503).json({ error: 'Smart Notes service not available' });
+    }
     if (!req.file) {
       return res.status(400).json({ error: 'Image is required' });
     }
@@ -3368,6 +3370,9 @@ app.post('/api/smart-notes/create-image', authMiddleware, notesUpload.single('im
  */
 app.get('/api/smart-notes', authMiddleware, async (req: Request, res: Response) => {
   try {
+    if (!smartNotesService) {
+      return res.status(503).json({ error: 'Smart Notes service not available' });
+    }
     const { subject, class: className, tags, search, isFavorite } = req.query;
 
     console.log(`[FETCH NOTES] User: ${req.user.id}, Filters:`, { subject, className, tags, search, isFavorite });
@@ -3848,12 +3853,7 @@ app.get('/api/smart-notes/community', authMiddleware, async (req: Request, res: 
   }
 });
 
-} else {
-  console.log('[SMART NOTES] ❌ Services not available, skipping route registration');
-  console.log('[SMART NOTES] smartNotesService:', !!smartNotesService);
-  console.log('[SMART NOTES] socialNotesService:', !!socialNotesService);
-  console.log('[SMART NOTES] notesUpload:', !!notesUpload);
-}
+
 
 // Comprehensive server health check
 app.get('/api/health', async (req: Request, res: Response) => {
