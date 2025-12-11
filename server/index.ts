@@ -3572,7 +3572,7 @@ app.get('/api/test', (req: Request, res: Response) => {
 
 // Catch-all handler: send back React's index.html file for client-side routing
 if (process.env.NODE_ENV === 'production') {
-  app.get('*', (req: Request, res: Response) => {
+  app.get('/*', (req: Request, res: Response) => {
     // Don't catch API routes
     if (req.path.startsWith('/api/')) {
       return res.status(404).json({ error: 'API endpoint not found' });
