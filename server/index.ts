@@ -16,6 +16,7 @@ import * as audioCacheService from './services/audioCacheService';
 import { calculateImageHash } from './lib/imageHash';
 import { authMiddleware, optionalAuthMiddleware } from './middleware/auth';
 import prisma from './lib/prisma';
+import noteCacheService from './services/noteCacheService';
 
 dotenv.config();
 
@@ -3570,17 +3571,9 @@ app.get('/api/test', (req: Request, res: Response) => {
   });
 });
 
-// Catch-all handler: send back React's index.html file for client-side routing
-if (process.env.NODE_ENV === 'production') {
-  app.get('/*', (req: Request, res: Response) => {
-    // Don't catch API routes
-    if (req.path.startsWith('/api/')) {
-      return res.status(404).json({ error: 'API endpoint not found' });
-    }
-    
-    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
-  });
-}
+// Note: Catch-all route removed to prevent path-to-regexp errors
+// React Router will handle client-side routing
+// Static files are served by express.static middleware above
 
 app.listen(port, () => {
     console.log(`🚀 Server running on port ${port}`);
