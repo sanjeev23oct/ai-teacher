@@ -2843,11 +2843,57 @@ app.get('/api/ncert-explainer/chapter/:chapterId/audio', async (req: Request, re
 // Smart Notes API Endpoints
 // ===========================
 
-const smartNotesService = require('./services/smartNotesService').default;
-const socialNotesService = require('./services/socialNotesService').default;
-const notesUpload = multer({ dest: 'uploads/temp/' });
+let smartNotesService, socialNotesService, notesUpload;
 
-console.log('[SMART NOTES] Services loaded, registering routes...');
+try {
+  console.log('[SMART NOTES] Loading smartNotesService...');
+  smartNotesService = require('./services/smartNotesService').default;
+  console.log('[SMART NOTES] ✅ smartNotesService loaded');
+  
+  console.log('[SMART NOTES] Loading socialNotesService...');
+  socialNotesService = require('./services/socialNotesService').default;
+  console.log('[SMART NOTES] ✅ socialNotesService loaded');
+  
+  console.log('[SMART NOTES] Setting up multer...');
+  notesUpload = multer({ dest: 'uploads/temp/' });
+  console.log('[SMART NOTES] ✅ multer configured');
+  
+  console.log('[SMART NOTES] All services loaded successfully, registering routes...');
+} catch (error) {
+  console.error('[SMART NOTES] ❌ Error loading services:', error);
+  console.error('[SMART NOTES] Stack trace:', error.stack);
+  throw error;
+}
+
+// Health check for Smart Notes
+app.get('/api/smart-notes/health', async (req: Request, res: Response) => {
+  try {
+    // Test database connection
+    const noteCount = await prisma.smartNote.count();
+    const cacheCount = await prisma.noteCacheRegistry.count();
+    
+    res.json({
+      status: 'healthy',
+      services: {
+        smartNotesService: !!smartNotesService,
+        socialNotesService: !!socialNotesService,
+        multer: !!notesUpload
+      },
+      database: {
+        smartNotes: noteCount,
+        cacheEntries: cacheCount
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    console.error('[SMART NOTES HEALTH] Error:', error);
+    res.status(500).json({
+      status: 'unhealthy',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
 
 // Create note from text (with optional image attachment)
 app.post('/api/smart-notes/create-text', authMiddleware, notesUpload.single('image'), async (req: Request, res: Response) => {
