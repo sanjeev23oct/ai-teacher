@@ -2606,6 +2606,17 @@ app.post('/api/group-study/audio/stream', authMiddleware, async (req: Request, r
 
 console.log('🔍 REGISTERING NCERT EXPLAINER ROUTES');
 
+try {
+  // Test service loading before registering routes
+  console.log('[NCERT] Testing service imports...');
+  const testNcertService = require('./services/ncertExplainerService').default;
+  const testChapterService = require('./services/chapterDataService').default;
+  console.log('[NCERT] ✅ Services loaded successfully');
+} catch (error) {
+  console.error('[NCERT] ❌ Service loading failed:', error);
+  console.error('[NCERT] Stack:', error.stack);
+}
+
 // Get chapter summary with AI explanation and cached audio
 app.post('/api/ncert-explainer/chapter-summary', authMiddleware, async (req: Request, res: Response) => {
   try {
