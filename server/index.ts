@@ -2919,9 +2919,10 @@ try {
 } catch (error) {
   console.error('[SMART NOTES] ❌ Error loading services:', error);
   console.error('[SMART NOTES] Stack trace:', error.stack);
-  throw error;
+  // Don't throw error - allow other routes to register
 }
 
+console.log('[SMART NOTES] Registering health check route...');
 // Health check for Smart Notes
 app.get('/api/smart-notes/health', async (req: Request, res: Response) => {
   try {
@@ -2952,6 +2953,13 @@ app.get('/api/smart-notes/health', async (req: Request, res: Response) => {
   }
 });
 
+// Simple test route to verify Smart Notes routing works
+app.get('/api/smart-notes/ping', (req: Request, res: Response) => {
+  res.json({ message: 'Smart Notes API is working!', timestamp: new Date().toISOString() });
+});
+console.log('[SMART NOTES] ✅ Registered ping route');
+
+console.log('[SMART NOTES] Registering create-text route...');
 // Create note from text (with optional image attachment)
 app.post('/api/smart-notes/create-text', authMiddleware, notesUpload.single('image'), async (req: Request, res: Response) => {
   console.log('[SMART NOTES] create-text route hit');
@@ -2998,7 +3006,9 @@ app.post('/api/smart-notes/create-text', authMiddleware, notesUpload.single('ima
     res.status(500).json({ error: error.message || 'Failed to create note' });
   }
 });
+console.log('[SMART NOTES] ✅ Registered create-text route');
 
+console.log('[SMART NOTES] Registering create-image route...');
 // Create note from image (camera/upload)
 app.post('/api/smart-notes/create-image', authMiddleware, notesUpload.single('image'), async (req: Request, res: Response) => {
   try {
