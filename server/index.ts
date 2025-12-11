@@ -3586,6 +3586,15 @@ app.get('/api/health', async (req: Request, res: Response) => {
   }
 });
 
+// Root endpoint for Railway health checks
+app.get('/', (req: Request, res: Response) => {
+  res.json({ 
+    status: 'ok',
+    message: 'AI Teacher API is running',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Simple test route to verify API is working
 app.get('/api/test', (req: Request, res: Response) => {
   res.json({ 
