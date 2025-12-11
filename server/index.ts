@@ -2607,24 +2607,30 @@ app.post('/api/group-study/audio/stream', authMiddleware, async (req: Request, r
 
 console.log('🔍 REGISTERING NCERT EXPLAINER ROUTES');
 
-// Load NCERT services with error handling
+// Lazy load NCERT services to reduce memory usage
 let ncertExplainerService = null;
 let chapterDataService = null;
 
-try {
-  console.log('[NCERT] Loading ncertExplainerService...');
-  ncertExplainerService = require('./services/ncertExplainerService').default;
-  console.log('[NCERT] ✅ ncertExplainerService loaded');
-} catch (error) {
-  console.error('[NCERT] ❌ ncertExplainerService failed to load:', error.message);
-}
-
-try {
-  console.log('[NCERT] Loading chapterDataService...');
-  chapterDataService = require('./services/chapterDataService').default;
-  console.log('[NCERT] ✅ chapterDataService loaded');
-} catch (error) {
-  console.error('[NCERT] ❌ chapterDataService failed to load:', error.message);
+function loadNcertServices() {
+  if (!ncertExplainerService) {
+    try {
+      console.log('[NCERT] Lazy loading ncertExplainerService...');
+      ncertExplainerService = require('./services/ncertExplainerService').default;
+      console.log('[NCERT] ✅ ncertExplainerService loaded');
+    } catch (error) {
+      console.error('[NCERT] ❌ ncertExplainerService failed to load:', error.message);
+    }
+  }
+  
+  if (!chapterDataService) {
+    try {
+      console.log('[NCERT] Lazy loading chapterDataService...');
+      chapterDataService = require('./services/chapterDataService').default;
+      console.log('[NCERT] ✅ chapterDataService loaded');
+    } catch (error) {
+      console.error('[NCERT] ❌ chapterDataService failed to load:', error.message);
+    }
+  }
 }
 
 // Get chapter summary with AI explanation and cached audio
@@ -2912,7 +2918,16 @@ try {
   console.log('[SMART NOTES] ✅ socialNotesService loaded');
   
   console.log('[SMART NOTES] Setting up multer...');
-  notesUpload = multer({ dest: 'uploads/temp/' });
+  // Use /tmp for temporary uploads (always available on Railway)
+  const tempUploadDir = '/tmp/uploads';
+  try {
+    if (!fs.existsSync(tempUploadDir)) {
+      fs.mkdirSync(tempUploadDir, { recursive: true });
+    }
+  } catch (e) {
+    console.log('[SMART NOTES] Using default temp dir');
+  }
+  notesUpload = multer({ dest: fs.existsSync(tempUploadDir) ? tempUploadDir : 'uploads/temp/' });
   console.log('[SMART NOTES] ✅ multer configured');
   
   console.log('[SMART NOTES] All services loaded successfully, registering routes...');
@@ -3585,6 +3600,18 @@ app.get('/api/test', (req: Request, res: Response) => {
 // React Router will handle client-side routing
 // Static files are served by express.static middleware above
 
+// Global error handlers to prevent server crashes
+process.on('uncaughtException', (error) => {
+    console.error('💥 Uncaught Exception:', error);
+    console.error('Stack:', error.stack);
+    // Don't exit - keep server running
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
+    // Don't exit - keep server running
+});
+
 app.listen(port, () => {
     console.log(`🚀 Server running on port ${port}`);
     if (genAI) {
@@ -3595,4 +3622,14 @@ app.listen(port, () => {
     }
     console.log(`Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
     console.log('✅ Server is ready and listening for requests');
+    
+    // Force load NCERT and Smart Notes services after server starts
+    setTimeout(() => {
+        console.log('🔄 Loading remaining services...');
+        try {
+            loadNcertServices();
+        } catch (error) {
+            console.error('Error loading NCERT services:', error);
+        }
+    }, 1000);
 });
