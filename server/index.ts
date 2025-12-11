@@ -3155,13 +3155,10 @@ app.get('/api/ncert-explainer/chapter/:chapterId/audio', async (req: Request, re
 let smartNotesService, socialNotesService, notesUpload;
 
 try {
-  console.log('[SMART NOTES] Loading smartNotesService...');
-  smartNotesService = require('./services/smartNotesService').default;
-  console.log('[SMART NOTES] ✅ smartNotesService loaded');
-  
-  console.log('[SMART NOTES] Loading socialNotesService...');
-  socialNotesService = require('./services/socialNotesService').default;
-  console.log('[SMART NOTES] ✅ socialNotesService loaded');
+  console.log('[SMART NOTES] Temporarily disabling Smart Notes services for stability...');
+  // TODO: Re-enable after fixing service loading issues
+  // smartNotesService = require('./services/smartNotesService').default;
+  // socialNotesService = require('./services/socialNotesService').default;
   
   console.log('[SMART NOTES] Setting up multer...');
   // Use /tmp for temporary uploads (always available on Railway)
