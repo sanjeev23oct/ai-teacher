@@ -3454,6 +3454,56 @@ app.get('/api/smart-notes/community', authMiddleware, async (req: Request, res: 
   }
 });
 
+// Comprehensive server health check
+app.get('/api/health', async (req: Request, res: Response) => {
+  try {
+    const health = {
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      server: {
+        port: port,
+        nodeEnv: process.env.NODE_ENV,
+        uptime: process.uptime()
+      },
+      services: {
+        gemini: !!genAI,
+        database: !!process.env.DATABASE_URL,
+        elevenLabs: !!process.env.ELEVENLABS_API_KEY
+      },
+      routes: {
+        ncertExplainer: true,
+        smartNotes: !!smartNotesService,
+        auth: true,
+        grading: true
+      }
+    };
+
+    // Test database connection
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      health.database = { connected: true };
+    } catch (error: any) {
+      health.database = { connected: false, error: error.message };
+    }
+
+    // Test Smart Notes tables
+    try {
+      const smartNoteCount = await prisma.smartNote.count();
+      health.smartNotes = { tablesExist: true, noteCount: smartNoteCount };
+    } catch (error: any) {
+      health.smartNotes = { tablesExist: false, error: error.message };
+    }
+
+    res.json(health);
+  } catch (error: any) {
+    res.status(500).json({
+      status: 'unhealthy',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 app.listen(port, () => {
     console.log(`🚀 Server running on port ${port}`);
     if (genAI) {
