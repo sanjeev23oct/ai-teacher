@@ -4,7 +4,7 @@
 // ===========================
 
 import { aiService } from './aiService';
-import noteCacheService from './noteCacheService';
+// import noteCacheService from './noteCacheService'; // Temporarily disabled for Railway
 import prisma from '../lib/prisma';
 
 export interface NoteEnhancementResult {
@@ -23,12 +23,12 @@ export async function extractTextFromImage(
   imageBuffer: Buffer,
   imageMimeType: string = 'image/jpeg'
 ): Promise<{ text: string; source: 'cache' | 'generated'; cacheKey: string }> {
-  // Generate hash for caching
-  const imageHash = noteCacheService.generateImageHash(imageBuffer);
-  const cacheKey = `ocr_${imageHash}`;
+  // Cache disabled for Railway compatibility
+  const imageHash = 'no-cache';
+  const cacheKey = `ocr_${Date.now()}`;
 
-  // Check cache first
-  const cachedText = await noteCacheService.getOCRFromCache(imageHash);
+  // Skip cache check
+  const cachedText = null;
   
   if (cachedText) {
     return {
@@ -61,8 +61,8 @@ Extract now:`;
 
   const extractedText = result.text.trim();
 
-  // Save to cache
-  await noteCacheService.saveOCRToCache(imageHash, extractedText);
+  // Cache save disabled for Railway compatibility
+  // await noteCacheService.saveOCRToCache(imageHash, extractedText);
 
   console.log(`\x1b[32m[OCR COMPLETE] ✓ Extracted ${extractedText.length} characters\x1b[0m`);
 
@@ -84,11 +84,11 @@ export async function enhanceNote(
     chapter?: string;
   }
 ): Promise<NoteEnhancementResult> {
-  // Generate hash for caching
-  const textHash = noteCacheService.generateTextHash(rawText);
+  // Cache disabled for Railway compatibility
+  const textHash = 'no-cache';
 
-  // Check cache first
-  const cached = await noteCacheService.getEnhancementFromCache(textHash);
+  // Skip cache check
+  const cached = null;
   
   if (cached) {
     return {
@@ -166,8 +166,8 @@ Now generate the enhanced note in this exact JSON format:`;
     throw new Error('AI response missing required fields (enhancedNote or title)');
   }
 
-  // Save to cache
-  await noteCacheService.saveEnhancementToCache(textHash, enhancementData);
+  // Cache save disabled for Railway compatibility
+  // await noteCacheService.saveEnhancementToCache(textHash, enhancementData);
 
   console.log(`\x1b[32m[ENHANCE COMPLETE] ✓ Created structured note: "${enhanced.title}"\x1b[0m`);
 
@@ -220,7 +220,7 @@ export async function createSmartNote(
   if ((data.sourceType === 'image' || data.sourceType === 'mixed') && data.imageBuffer) {
     const ocrResult = await extractTextFromImage(data.imageBuffer, data.imageMimeType);
     const imageText = ocrResult.text;
-    imageHash = noteCacheService.generateImageHash(data.imageBuffer);
+    imageHash = 'no-cache'; // Cache disabled for Railway
     cacheKey = ocrResult.cacheKey;
     
     // For mixed mode, combine user text + extracted text
