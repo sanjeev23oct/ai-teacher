@@ -3504,6 +3504,28 @@ app.get('/api/health', async (req: Request, res: Response) => {
   }
 });
 
+// Simple test route to verify API is working
+app.get('/api/test', (req: Request, res: Response) => {
+  res.json({ 
+    message: 'API is working!', 
+    timestamp: new Date().toISOString(),
+    port: port,
+    env: process.env.NODE_ENV 
+  });
+});
+
+// Catch-all handler: send back React's index.html file for client-side routing
+if (process.env.NODE_ENV === 'production') {
+  app.get('*', (req: Request, res: Response) => {
+    // Don't catch API routes
+    if (req.path.startsWith('/api/')) {
+      return res.status(404).json({ error: 'API endpoint not found' });
+    }
+    
+    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+  });
+}
+
 app.listen(port, () => {
     console.log(`🚀 Server running on port ${port}`);
     if (genAI) {
