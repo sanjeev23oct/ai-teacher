@@ -84,9 +84,16 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: process.env.NODE_ENV === 'production' 
-          ? 'https://ai-teacher-production.up.railway.app'
-          : 'http://localhost:3001',
+        url: 'http://localhost:3001',
+        description: 'Development server',
+      },
+      {
+        url: 'https://studybuddy.aitutor.cloud',
+        description: 'Production server (primary)',
+      },
+      {
+        url: 'https://ai-teacher-production.up.railway.app',
+        description: 'Production server (Railway)',
       },
     ],
     components: {
@@ -375,7 +382,29 @@ app.post('/api/auth/logout', authMiddleware, async (req: Request, res: Response)
 // USER PREFERENCES ENDPOINTS
 // ============================================
 
-// Get available languages
+/**
+ * @swagger
+ * /api/languages:
+ *   get:
+ *     summary: Get all available languages
+ *     tags: [Languages]
+ *     responses:
+ *       200:
+ *         description: List of supported languages
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   code:
+ *                     type: string
+ *                   name:
+ *                     type: string
+ *                   nativeName:
+ *                     type: string
+ */
 app.get('/api/languages', async (req: Request, res: Response) => {
     try {
         const languages = languageService.getAllLanguages();
@@ -1629,7 +1658,36 @@ async function handleDualModeGrading(
 // DOUBT SOLVER ENDPOINTS
 // ============================================
 
-// Explain Question Endpoint
+/**
+ * @swagger
+ * /api/doubts/explain:
+ *   post:
+ *     summary: Get AI explanation for a question
+ *     tags: [Doubts]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               questionImage:
+ *                 type: string
+ *                 format: binary
+ *               questionText:
+ *                 type: string
+ *               subject:
+ *                 type: string
+ *               language:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Question explanation
+ *       401:
+ *         description: Unauthorized
+ */
 app.post('/api/doubts/explain', authMiddleware, upload.single('questionImage'), async (req: Request, res: Response) => {
     try {
         const { questionText, subject, language, questionNumber, worksheetId } = req.body;
@@ -1763,7 +1821,20 @@ app.post('/api/doubts/chat/stream', authMiddleware, async (req: Request, res: Re
     }
 });
 
-// Get Doubt History Endpoint
+/**
+ * @swagger
+ * /api/doubts/history:
+ *   get:
+ *     summary: Get user's doubt history
+ *     tags: [Doubts]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of user's doubts
+ *       401:
+ *         description: Unauthorized
+ */
 app.get('/api/doubts/history', authMiddleware, async (req: Request, res: Response) => {
     try {
         const userId = req.user?.id;
@@ -2348,7 +2419,36 @@ Respond as their teacher:`
 // Revision Friend Routes
 // ============================================================================
 
-// Start revision session
+/**
+ * @swagger
+ * /api/revision-friend/start:
+ *   post:
+ *     summary: Start a new revision session
+ *     tags: [Revision Friend]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - topic
+ *               - subject
+ *             properties:
+ *               topic:
+ *                 type: string
+ *               subject:
+ *                 type: string
+ *               languageCode:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Revision session started
+ *       401:
+ *         description: Unauthorized
+ */
 app.post('/api/revision-friend/start', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { topic, subject, languageCode } = req.body;
@@ -3148,6 +3248,10 @@ app.get('/api/smart-notes/ping', (req: Request, res: Response) => {
 });
 console.log('[SMART NOTES] ✅ Registered ping route');
 
+// Only register Smart Notes routes if services loaded successfully
+if (smartNotesService && socialNotesService && notesUpload) {
+  console.log('[SMART NOTES] Services available, registering main routes...');
+  
 console.log('[SMART NOTES] Registering create-text route...');
 // Create note from text (with optional image attachment)
 app.post('/api/smart-notes/create-text', authMiddleware, notesUpload.single('image'), async (req: Request, res: Response) => {
@@ -3743,6 +3847,13 @@ app.get('/api/smart-notes/community', authMiddleware, async (req: Request, res: 
     res.status(500).json({ error: error.message });
   }
 });
+
+} else {
+  console.log('[SMART NOTES] ❌ Services not available, skipping route registration');
+  console.log('[SMART NOTES] smartNotesService:', !!smartNotesService);
+  console.log('[SMART NOTES] socialNotesService:', !!socialNotesService);
+  console.log('[SMART NOTES] notesUpload:', !!notesUpload);
+}
 
 // Comprehensive server health check
 app.get('/api/health', async (req: Request, res: Response) => {
