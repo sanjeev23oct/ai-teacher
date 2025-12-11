@@ -2606,15 +2606,24 @@ app.post('/api/group-study/audio/stream', authMiddleware, async (req: Request, r
 
 console.log('🔍 REGISTERING NCERT EXPLAINER ROUTES');
 
+// Load NCERT services with error handling
+let ncertExplainerService = null;
+let chapterDataService = null;
+
 try {
-  // Test service loading before registering routes
-  console.log('[NCERT] Testing service imports...');
-  const testNcertService = require('./services/ncertExplainerService').default;
-  const testChapterService = require('./services/chapterDataService').default;
-  console.log('[NCERT] ✅ Services loaded successfully');
+  console.log('[NCERT] Loading ncertExplainerService...');
+  ncertExplainerService = require('./services/ncertExplainerService').default;
+  console.log('[NCERT] ✅ ncertExplainerService loaded');
 } catch (error) {
-  console.error('[NCERT] ❌ Service loading failed:', error);
-  console.error('[NCERT] Stack:', error.stack);
+  console.error('[NCERT] ❌ ncertExplainerService failed to load:', error.message);
+}
+
+try {
+  console.log('[NCERT] Loading chapterDataService...');
+  chapterDataService = require('./services/chapterDataService').default;
+  console.log('[NCERT] ✅ chapterDataService loaded');
+} catch (error) {
+  console.error('[NCERT] ❌ chapterDataService failed to load:', error.message);
 }
 
 // Get chapter summary with AI explanation and cached audio
@@ -2635,7 +2644,13 @@ app.post('/api/ncert-explainer/chapter-summary', authMiddleware, async (req: Req
       });
     }
 
-    const { default: ncertExplainerService } = require('./services/ncertExplainerService');
+    if (!ncertExplainerService) {
+      return res.status(503).json({ 
+        error: 'NCERT Explainer service unavailable',
+        message: 'Service failed to initialize. Please try again later.'
+      });
+    }
+
     const result = await ncertExplainerService.getChapterSummary({
       class: className,
       subject,
@@ -2670,7 +2685,13 @@ app.post('/api/ncert-explainer/followup', authMiddleware, async (req: Request, r
       });
     }
 
-    const { default: ncertExplainerService } = require('./services/ncertExplainerService');
+    if (!ncertExplainerService) {
+      return res.status(503).json({ 
+        error: 'NCERT Explainer service unavailable',
+        message: 'Service failed to initialize. Please try again later.'
+      });
+    }
+
     const result = await ncertExplainerService.answerFollowUp({
       chapterId,
       question,
@@ -2698,7 +2719,13 @@ app.get('/api/ncert-explainer/chapters', async (req: Request, res: Response) => 
       });
     }
 
-    const { default: chapterDataService } = require('./services/chapterDataService');
+    if (!chapterDataService) {
+      return res.status(503).json({ 
+        error: 'Chapter data service unavailable',
+        message: 'Service failed to initialize. Please try again later.'
+      });
+    }
+
     const chapters = await chapterDataService.getChapterList(
       className as string,
       subject as string
@@ -2724,7 +2751,13 @@ app.get('/api/ncert-explainer/search', async (req: Request, res: Response) => {
       });
     }
 
-    const { default: chapterDataService } = require('./services/chapterDataService');
+    if (!chapterDataService) {
+      return res.status(503).json({ 
+        error: 'Chapter data service unavailable',
+        message: 'Service failed to initialize. Please try again later.'
+      });
+    }
+
     const results = await chapterDataService.searchChapters(
       q as string,
       className as string | undefined,
@@ -2749,7 +2782,13 @@ app.get('/api/ncert-explainer/history', authMiddleware, async (req: Request, res
       });
     }
 
-    const { default: ncertExplainerService } = require('./services/ncertExplainerService');
+    if (!ncertExplainerService) {
+      return res.status(503).json({ 
+        error: 'NCERT Explainer service unavailable',
+        message: 'Service failed to initialize. Please try again later.'
+      });
+    }
+
     const history = await ncertExplainerService.getStudyHistory(req.user.id);
 
     res.json({ history });
@@ -2770,7 +2809,13 @@ app.get('/api/ncert-explainer/progress', authMiddleware, async (req: Request, re
       });
     }
 
-    const { default: ncertExplainerService } = require('./services/ncertExplainerService');
+    if (!ncertExplainerService) {
+      return res.status(503).json({ 
+        error: 'NCERT Explainer service unavailable',
+        message: 'Service failed to initialize. Please try again later.'
+      });
+    }
+
     const progress = await ncertExplainerService.getProgress(req.user.id);
 
     res.json(progress);
