@@ -6,6 +6,8 @@ import OpenAI from 'openai';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
+import swaggerUi from 'swagger-ui-express';
+import swaggerJsdoc from 'swagger-jsdoc';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as questionPaperService from './services/questionPaperService';
 import * as gradingService from './services/gradingService';
@@ -70,6 +72,29 @@ app.use(cors({
 }));
 app.use(cookieParser());
 app.use(express.json());
+
+// Swagger configuration
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'AI Teacher API',
+      version: '1.0.0',
+      description: 'API documentation for AI Teacher platform',
+    },
+    servers: [
+      {
+        url: process.env.NODE_ENV === 'production' 
+          ? 'https://ai-teacher-production.up.railway.app'
+          : 'http://localhost:3001',
+      },
+    ],
+  },
+  apis: ['./index.ts'],
+};
+
+const swaggerSpec = swaggerJsdoc(swaggerOptions);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));
@@ -3592,6 +3617,36 @@ app.get('/', (req: Request, res: Response) => {
     status: 'ok',
     message: 'AI Teacher API is running',
     timestamp: new Date().toISOString()
+  });
+});
+
+// List all registered routes
+app.get('/api/routes', (req: Request, res: Response) => {
+  const routes: any[] = [];
+  
+  app._router.stack.forEach((middleware: any) => {
+    if (middleware.route) {
+      // Routes registered directly on the app
+      routes.push({
+        path: middleware.route.path,
+        methods: Object.keys(middleware.route.methods).join(', ').toUpperCase()
+      });
+    } else if (middleware.name === 'router') {
+      // Router middleware
+      middleware.handle.stack.forEach((handler: any) => {
+        if (handler.route) {
+          routes.push({
+            path: handler.route.path,
+            methods: Object.keys(handler.route.methods).join(', ').toUpperCase()
+          });
+        }
+      });
+    }
+  });
+  
+  res.json({ 
+    totalRoutes: routes.length,
+    routes: routes.sort((a, b) => a.path.localeCompare(b.path))
   });
 });
 
