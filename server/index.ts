@@ -3622,14 +3622,4 @@ app.listen(port, () => {
     }
     console.log(`Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
     console.log('✅ Server is ready and listening for requests');
-    
-    // Force load NCERT and Smart Notes services after server starts
-    setTimeout(() => {
-        console.log('🔄 Loading remaining services...');
-        try {
-            loadNcertServices();
-        } catch (error) {
-            console.error('Error loading NCERT services:', error);
-        }
-    }, 1000);
 });
