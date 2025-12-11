@@ -89,11 +89,27 @@ const swaggerOptions = {
           : 'http://localhost:3001',
       },
     ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        },
+      },
+    },
   },
-  apis: ['./index.ts'],
+  apis: [path.join(__dirname, 'index.ts'), path.join(__dirname, 'index.js')],
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
+
+// Serve the raw spec at /api-docs.json
+app.get('/api-docs.json', (req: Request, res: Response) => {
+  res.json(swaggerSpec);
+});
+
+// Serve Swagger UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Serve uploaded files
@@ -173,7 +189,39 @@ function generateDefaultAnnotations(detailedAnalysis: QuestionAnalysis[]): Annot
 // AUTH ENDPOINTS
 // ============================================
 
-// Signup
+/**
+ * @swagger
+ * /api/auth/signup:
+ *   post:
+ *     summary: Create a new user account
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - email
+ *               - password
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               grade:
+ *                 type: string
+ *               school:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: User created successfully
+ *       400:
+ *         description: Invalid input or user already exists
+ */
 app.post('/api/auth/signup', async (req: Request, res: Response) => {
     try {
         const { name, email, password, grade, school } = req.body;
@@ -214,7 +262,32 @@ app.post('/api/auth/signup', async (req: Request, res: Response) => {
     }
 });
 
-// Login
+/**
+ * @swagger
+ * /api/auth/login:
+ *   post:
+ *     summary: Login to user account
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *       401:
+ *         description: Invalid credentials
+ */
 app.post('/api/auth/login', async (req: Request, res: Response) => {
     try {
         const { email, password } = req.body;
@@ -729,7 +802,31 @@ app.get('/api/question-papers/:id', async (req: Request, res: Response) => {
 // Multer middleware that accepts any field
 const uploadAny = multer({ dest: 'uploads/' }).any();
 
-// Enhanced Grading Endpoint (supports single and dual mode)
+/**
+ * @swagger
+ * /api/grade:
+ *   post:
+ *     summary: Grade exam papers (single or dual mode)
+ *     tags: [Grading]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               answerSheet:
+ *                 type: string
+ *                 format: binary
+ *               questionPaper:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Grading results
+ *       400:
+ *         description: Invalid request
+ */
 app.post('/api/grade', optionalAuthMiddleware, uploadAny, async (req: Request, res: Response) => {
     console.log('=== GRADING REQUEST RECEIVED ===');
     console.log('User:', req.user?.email || 'Guest');
@@ -2740,7 +2837,31 @@ app.post('/api/ncert-explainer/followup', authMiddleware, async (req: Request, r
   }
 });
 
-// Get list of chapters for a class and subject
+/**
+ * @swagger
+ * /api/ncert-explainer/chapters:
+ *   get:
+ *     summary: Get list of NCERT chapters for a class and subject
+ *     tags: [NCERT Explainer]
+ *     parameters:
+ *       - in: query
+ *         name: class
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Class number (e.g., "10")
+ *       - in: query
+ *         name: subject
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Subject name (e.g., "Science", "Maths")
+ *     responses:
+ *       200:
+ *         description: List of chapters
+ *       400:
+ *         description: Missing required parameters
+ */
 app.get('/api/ncert-explainer/chapters', async (req: Request, res: Response) => {
   try {
     const { class: className, subject } = req.query;
@@ -2963,7 +3084,26 @@ try {
 }
 
 console.log('[SMART NOTES] Registering health check route...');
-// Health check for Smart Notes
+
+/**
+ * @swagger
+ * /api/smart-notes/health:
+ *   get:
+ *     summary: Health check for Smart Notes service
+ *     tags: [Smart Notes]
+ *     responses:
+ *       200:
+ *         description: Service health status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                 services:
+ *                   type: object
+ */
 app.get('/api/smart-notes/health', async (req: Request, res: Response) => {
   try {
     // Test database connection
@@ -2993,7 +3133,16 @@ app.get('/api/smart-notes/health', async (req: Request, res: Response) => {
   }
 });
 
-// Simple test route to verify Smart Notes routing works
+/**
+ * @swagger
+ * /api/smart-notes/ping:
+ *   get:
+ *     summary: Ping endpoint to verify Smart Notes API is working
+ *     tags: [Smart Notes]
+ *     responses:
+ *       200:
+ *         description: API is working
+ */
 app.get('/api/smart-notes/ping', (req: Request, res: Response) => {
   res.json({ message: 'Smart Notes API is working!', timestamp: new Date().toISOString() });
 });
@@ -3078,7 +3227,41 @@ app.post('/api/smart-notes/create-image', authMiddleware, notesUpload.single('im
   }
 });
 
-// Get all notes with filters
+/**
+ * @swagger
+ * /api/smart-notes:
+ *   get:
+ *     summary: Get all smart notes with optional filters
+ *     tags: [Smart Notes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: subject
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: class
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: tags
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: isFavorite
+ *         schema:
+ *           type: boolean
+ *     responses:
+ *       200:
+ *         description: List of notes
+ *       401:
+ *         description: Unauthorized
+ */
 app.get('/api/smart-notes', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { subject, class: className, tags, search, isFavorite } = req.query;
