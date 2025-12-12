@@ -3184,7 +3184,7 @@ try {
   // Don't throw error - allow other routes to register
 }
 
-console.log('[SMART NOTES] Registering health check route...');
+console.log('[SMART NOTES] Registering health check route (cache disabled)...');
 
 /**
  * @swagger
@@ -3971,14 +3971,22 @@ process.on('unhandledRejection', (reason, promise) => {
     // Don't exit - keep server running
 });
 
+const BUILD_NUMBER = process.env.RAILWAY_DEPLOYMENT_ID || process.env.RAILWAY_REPLICA_ID || `local-${Date.now()}`;
+const BUILD_TIMESTAMP = new Date().toISOString();
+
 app.listen(port, () => {
+    console.log('='.repeat(60));
     console.log(`🚀 Server running on port ${port}`);
+    console.log(`📦 Build: ${BUILD_NUMBER}`);
+    console.log(`⏰ Started: ${BUILD_TIMESTAMP}`);
+    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
     if (genAI) {
-        console.log(`Using Gemini Vision API for exam grading`);
+        console.log(`✅ Using Gemini Vision API for exam grading`);
     } else {
-        console.log(`Connecting to Ollama at ${process.env.OLLAMA_URL || 'http://localhost:11434/v1'}`);
-        console.log(`Tip: Add GEMINI_API_KEY to .env for better OCR results`);
+        console.log(`🔌 Connecting to Ollama at ${process.env.OLLAMA_URL || 'http://localhost:11434/v1'}`);
+        console.log(`💡 Tip: Add GEMINI_API_KEY to .env for better OCR results`);
     }
-    console.log(`Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
+    console.log(`💾 Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
     console.log('✅ Server is ready and listening for requests');
+    console.log('='.repeat(60));
 });
