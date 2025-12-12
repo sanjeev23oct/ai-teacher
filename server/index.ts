@@ -7,7 +7,7 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 import swaggerUi from 'swagger-ui-express';
-import swaggerJsdoc from 'swagger-jsdoc';
+import { swaggerSpec } from './swagger';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as questionPaperService from './services/questionPaperService';
 import * as gradingService from './services/gradingService';
@@ -73,51 +73,14 @@ app.use(cors({
 app.use(cookieParser());
 app.use(express.json());
 
-// Swagger configuration
-const swaggerOptions = {
-  definition: {
-    openapi: '3.0.0',
-    info: {
-      title: 'AI Teacher API',
-      version: '1.0.0',
-      description: 'API documentation for AI Teacher platform',
-    },
-    servers: [
-      {
-        url: 'http://localhost:3001',
-        description: 'Development server',
-      },
-      {
-        url: 'https://studybuddy.aitutor.cloud',
-        description: 'Production server (primary)',
-      },
-      {
-        url: 'https://ai-teacher-production.up.railway.app',
-        description: 'Production server (Railway)',
-      },
-    ],
-    components: {
-      securitySchemes: {
-        bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT',
-        },
-      },
-    },
-  },
-  apis: [path.join(__dirname, 'index.ts'), path.join(__dirname, 'index.js')],
-};
-
-const swaggerSpec = swaggerJsdoc(swaggerOptions);
-
-// Serve the raw spec at /api-docs.json
+// Swagger API documentation - configuration in swagger.ts
 app.get('/api-docs.json', (req: Request, res: Response) => {
   res.json(swaggerSpec);
 });
-
-// Serve Swagger UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+// Health check endpoint
+
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));
@@ -196,39 +159,7 @@ function generateDefaultAnnotations(detailedAnalysis: QuestionAnalysis[]): Annot
 // AUTH ENDPOINTS
 // ============================================
 
-/**
- * @swagger
- * /api/auth/signup:
- *   post:
- *     summary: Create a new user account
- *     tags: [Authentication]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - name
- *               - email
- *               - password
- *             properties:
- *               name:
- *                 type: string
- *               email:
- *                 type: string
- *               password:
- *                 type: string
- *               grade:
- *                 type: string
- *               school:
- *                 type: string
- *     responses:
- *       201:
- *         description: User created successfully
- *       400:
- *         description: Invalid input or user already exists
- */
+// Signup
 app.post('/api/auth/signup', async (req: Request, res: Response) => {
     try {
         const { name, email, password, grade, school } = req.body;
@@ -269,32 +200,7 @@ app.post('/api/auth/signup', async (req: Request, res: Response) => {
     }
 });
 
-/**
- * @swagger
- * /api/auth/login:
- *   post:
- *     summary: Login to user account
- *     tags: [Authentication]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - email
- *               - password
- *             properties:
- *               email:
- *                 type: string
- *               password:
- *                 type: string
- *     responses:
- *       200:
- *         description: Login successful
- *       401:
- *         description: Invalid credentials
- */
+// Login
 app.post('/api/auth/login', async (req: Request, res: Response) => {
     try {
         const { email, password } = req.body;
@@ -382,29 +288,17 @@ app.post('/api/auth/logout', authMiddleware, async (req: Request, res: Response)
 // USER PREFERENCES ENDPOINTS
 // ============================================
 
-/**
- * @swagger
- * /api/languages:
- *   get:
- *     summary: Get all available languages
- *     tags: [Languages]
- *     responses:
- *       200:
- *         description: List of supported languages
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   code:
- *                     type: string
- *                   name:
- *                     type: string
- *                   nativeName:
- *                     type: string
- */
+// Simple ping endpoint to verify server is running
+app.get('/api/ping', (req: Request, res: Response) => {
+    res.json({ 
+        status: 'ok',
+        message: 'Server is running',
+        timestamp: new Date().toISOString(),
+        build: process.env.RAILWAY_DEPLOYMENT_ID || process.env.RAILWAY_REPLICA_ID || 'local'
+    });
+});
+
+// Get available languages
 app.get('/api/languages', async (req: Request, res: Response) => {
     try {
         const languages = languageService.getAllLanguages();
@@ -831,31 +725,7 @@ app.get('/api/question-papers/:id', async (req: Request, res: Response) => {
 // Multer middleware that accepts any field
 const uploadAny = multer({ dest: 'uploads/' }).any();
 
-/**
- * @swagger
- * /api/grade:
- *   post:
- *     summary: Grade exam papers (single or dual mode)
- *     tags: [Grading]
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             properties:
- *               answerSheet:
- *                 type: string
- *                 format: binary
- *               questionPaper:
- *                 type: string
- *                 format: binary
- *     responses:
- *       200:
- *         description: Grading results
- *       400:
- *         description: Invalid request
- */
+// Enhanced Grading Endpoint (supports single and dual mode)
 app.post('/api/grade', optionalAuthMiddleware, uploadAny, async (req: Request, res: Response) => {
     console.log('=== GRADING REQUEST RECEIVED ===');
     console.log('User:', req.user?.email || 'Guest');
@@ -1658,36 +1528,7 @@ async function handleDualModeGrading(
 // DOUBT SOLVER ENDPOINTS
 // ============================================
 
-/**
- * @swagger
- * /api/doubts/explain:
- *   post:
- *     summary: Get AI explanation for a question
- *     tags: [Doubts]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             properties:
- *               questionImage:
- *                 type: string
- *                 format: binary
- *               questionText:
- *                 type: string
- *               subject:
- *                 type: string
- *               language:
- *                 type: string
- *     responses:
- *       200:
- *         description: Question explanation
- *       401:
- *         description: Unauthorized
- */
+// Explain Question Endpoint
 app.post('/api/doubts/explain', authMiddleware, upload.single('questionImage'), async (req: Request, res: Response) => {
     try {
         const { questionText, subject, language, questionNumber, worksheetId } = req.body;
@@ -1821,20 +1662,7 @@ app.post('/api/doubts/chat/stream', authMiddleware, async (req: Request, res: Re
     }
 });
 
-/**
- * @swagger
- * /api/doubts/history:
- *   get:
- *     summary: Get user's doubt history
- *     tags: [Doubts]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: List of user's doubts
- *       401:
- *         description: Unauthorized
- */
+// Get Doubt History Endpoint
 app.get('/api/doubts/history', authMiddleware, async (req: Request, res: Response) => {
     try {
         const userId = req.user?.id;
@@ -2419,36 +2247,7 @@ Respond as their teacher:`
 // Revision Friend Routes
 // ============================================================================
 
-/**
- * @swagger
- * /api/revision-friend/start:
- *   post:
- *     summary: Start a new revision session
- *     tags: [Revision Friend]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - topic
- *               - subject
- *             properties:
- *               topic:
- *                 type: string
- *               subject:
- *                 type: string
- *               languageCode:
- *                 type: string
- *     responses:
- *       200:
- *         description: Revision session started
- *       401:
- *         description: Unauthorized
- */
+// Start revision session
 app.post('/api/revision-friend/start', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { topic, subject, languageCode } = req.body;
@@ -2937,31 +2736,7 @@ app.post('/api/ncert-explainer/followup', authMiddleware, async (req: Request, r
   }
 });
 
-/**
- * @swagger
- * /api/ncert-explainer/chapters:
- *   get:
- *     summary: Get list of NCERT chapters for a class and subject
- *     tags: [NCERT Explainer]
- *     parameters:
- *       - in: query
- *         name: class
- *         schema:
- *           type: string
- *         required: true
- *         description: Class number (e.g., "10")
- *       - in: query
- *         name: subject
- *         schema:
- *           type: string
- *         required: true
- *         description: Subject name (e.g., "Science", "Maths")
- *     responses:
- *       200:
- *         description: List of chapters
- *       400:
- *         description: Missing required parameters
- */
+// Get list of chapters for a class and subject
 app.get('/api/ncert-explainer/chapters', async (req: Request, res: Response) => {
   try {
     const { class: className, subject } = req.query;
@@ -3186,25 +2961,7 @@ try {
 
 console.log('[SMART NOTES] Registering health check route (cache disabled)...');
 
-/**
- * @swagger
- * /api/smart-notes/health:
- *   get:
- *     summary: Health check for Smart Notes service
- *     tags: [Smart Notes]
- *     responses:
- *       200:
- *         description: Service health status
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                 services:
- *                   type: object
- */
+// Health check for Smart Notes
 app.get('/api/smart-notes/health', async (req: Request, res: Response) => {
   try {
     // Test database connection
@@ -3234,16 +2991,7 @@ app.get('/api/smart-notes/health', async (req: Request, res: Response) => {
   }
 });
 
-/**
- * @swagger
- * /api/smart-notes/ping:
- *   get:
- *     summary: Ping endpoint to verify Smart Notes API is working
- *     tags: [Smart Notes]
- *     responses:
- *       200:
- *         description: API is working
- */
+// Simple test route to verify Smart Notes routing works
 app.get('/api/smart-notes/ping', (req: Request, res: Response) => {
   res.json({ message: 'Smart Notes API is working!', timestamp: new Date().toISOString() });
 });
@@ -3334,41 +3082,7 @@ app.post('/api/smart-notes/create-image', authMiddleware, notesUpload.single('im
   }
 });
 
-/**
- * @swagger
- * /api/smart-notes:
- *   get:
- *     summary: Get all smart notes with optional filters
- *     tags: [Smart Notes]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: subject
- *         schema:
- *           type: string
- *       - in: query
- *         name: class
- *         schema:
- *           type: string
- *       - in: query
- *         name: tags
- *         schema:
- *           type: string
- *       - in: query
- *         name: search
- *         schema:
- *           type: string
- *       - in: query
- *         name: isFavorite
- *         schema:
- *           type: boolean
- *     responses:
- *       200:
- *         description: List of notes
- *       401:
- *         description: Unauthorized
- */
+// Get all notes with filters
 app.get('/api/smart-notes', authMiddleware, async (req: Request, res: Response) => {
   try {
     if (!smartNotesService) {
