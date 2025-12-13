@@ -199,6 +199,14 @@ const Navigation: React.FC = () => {
                                             <HelpCircle className="h-4 w-4" />
                                             <span>Doubt History</span>
                                         </Link>
+                                        <Link
+                                            to="/admin/summaries"
+                                            onClick={() => setShowDropdown(false)}
+                                            className="flex items-center space-x-2 px-4 py-2 text-sm text-orange-400 hover:bg-background border-t border-gray-700"
+                                        >
+                                            <BookOpen className="h-4 w-4" />
+                                            <span>Admin: Summaries</span>
+                                        </Link>
                                         <button
                                             onClick={handleLogout}
                                             className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-gray-300 hover:bg-background"

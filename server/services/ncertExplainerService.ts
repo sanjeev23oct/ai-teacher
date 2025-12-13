@@ -4,6 +4,7 @@ import audioCacheService, { generateCacheKey } from './audioCacheService';
 import chapterDataService, { ChapterInfo } from './chapterDataService';
 import { textToSpeech } from './ttsService';
 import ncertProgressService from './ncertProgressService';
+import contentCacheService from './contentCacheService';
 import {
   getEnglishProsePrompt,
   getEnglishPoetryPrompt,
@@ -38,6 +39,7 @@ export interface ChapterResponse {
   subject: string;
   class: string;
   summary: string;
+  source: 'cache' | 'generated';  // New field to indicate summary source
   audioUrl: string;
   audioMetadata: {
     source: 'cache' | 'elevenlabs';
@@ -107,7 +109,7 @@ async function generateAudio(text: string): Promise<Buffer> {
 // ===========================
 
 /**
- * Get chapter summary with AI-generated content and cached audio
+ * Get chapter summary with cache-first approach
  */
 export async function getChapterSummary(request: ChapterRequest): Promise<ChapterResponse> {
   const { class: className, subject, chapterId, userId, languageCode = 'en' } = request;
@@ -118,47 +120,83 @@ export async function getChapterSummary(request: ChapterRequest): Promise<Chapte
     throw new Error(`Chapter not found: ${chapterId}`);
   }
 
-  // Select appropriate prompt based on subject
-  let prompt: string;
-  const promptParams = {
-    chapterName: chapterInfo.name,
-    chapterNumber: chapterInfo.chapterNumber,
-    bookName: chapterInfo.bookName,
-    class: className,
-    subject,
-    ncertPages: chapterInfo.ncertPages,
-    languageCode,
+  let summary: string;
+  let summarySource: 'cache' | 'generated';
+
+  // Check ContentCache first
+  const cacheKey = {
+    module: 'ncert',
+    contentType: 'summary',
+    identifier: chapterId,
+    language: languageCode,
   };
 
-  if (subject === 'English') {
-    if (chapterInfo.type === 'poetry') {
-      prompt = getEnglishPoetryPrompt(promptParams);
-    } else {
-      prompt = getEnglishProsePrompt(promptParams);
-    }
-  } else if (subject === 'Science') {
-    prompt = getSciencePrompt(promptParams);
-  } else if (subject === 'Math') {
-    prompt = getMathPrompt(promptParams);
-  } else if (subject === 'SST') {
-    // Determine History/Geography/Civics from chapterInfo
-    if (chapterInfo.subSubject === 'History') {
-      prompt = getHistoryPrompt(promptParams);
-    } else if (chapterInfo.subSubject === 'Geography') {
-      prompt = getGeographyPrompt(promptParams);
-    } else {
-      prompt = getCivicsPrompt(promptParams);
-    }
+  const cachedSummary = await contentCacheService.get(cacheKey);
+  
+  if (cachedSummary) {
+    // Cache hit - use cached summary
+    summary = cachedSummary.content;
+    summarySource = 'cache';
+    console.log(`[NCERT] Cache hit for chapter ${chapterId}`);
   } else {
-    throw new Error(`Unsupported subject: ${subject}`);
+    // Cache miss - generate via LLM
+    console.log(`[NCERT] Cache miss for chapter ${chapterId}, generating via LLM`);
+    
+    // Select appropriate prompt based on subject
+    let prompt: string;
+    const promptParams = {
+      chapterName: chapterInfo.name,
+      chapterNumber: chapterInfo.chapterNumber,
+      bookName: chapterInfo.bookName,
+      class: className,
+      subject,
+      ncertPages: chapterInfo.ncertPages,
+      languageCode,
+    };
+
+    if (subject === 'English') {
+      if (chapterInfo.type === 'poetry') {
+        prompt = getEnglishPoetryPrompt(promptParams);
+      } else {
+        prompt = getEnglishProsePrompt(promptParams);
+      }
+    } else if (subject === 'Science') {
+      prompt = getSciencePrompt(promptParams);
+    } else if (subject === 'Math') {
+      prompt = getMathPrompt(promptParams);
+    } else if (subject === 'SST') {
+      // Determine History/Geography/Civics from chapterInfo
+      if (chapterInfo.subSubject === 'History') {
+        prompt = getHistoryPrompt(promptParams);
+      } else if (chapterInfo.subSubject === 'Geography') {
+        prompt = getGeographyPrompt(promptParams);
+      } else {
+        prompt = getCivicsPrompt(promptParams);
+      }
+    } else {
+      throw new Error(`Unsupported subject: ${subject}`);
+    }
+
+    // Generate AI content
+    const aiResponse = await aiService.generateContent({ prompt });
+    summary = aiResponse.text;
+    summarySource = 'generated';
+
+    // Store generated summary in cache for future requests
+    await contentCacheService.set(
+      cacheKey,
+      summary,
+      'llm',
+      {
+        title: chapterInfo.name,
+        subject,
+        class: className,
+      }
+    );
   }
 
-  // Generate AI content
-  const aiResponse = await aiService.generateContent({ prompt });
-  const summary = aiResponse.text;
-
-  // Generate cache key for this chapter summary
-  const cacheKey = generateCacheKey({
+  // Generate cache key for audio
+  const audioCacheKey = generateCacheKey({
     module: 'ncert',
     subject: subject.toLowerCase(),
     class: className,
@@ -169,7 +207,7 @@ export async function getChapterSummary(request: ChapterRequest): Promise<Chapte
 
   // Get or generate audio with caching
   const audioResult = await audioCacheService.getOrGenerate(
-    cacheKey,
+    audioCacheKey,
     summary,
     {
       module: 'ncert',
@@ -202,6 +240,7 @@ export async function getChapterSummary(request: ChapterRequest): Promise<Chapte
     subject,
     class: className,
     summary,
+    source: summarySource,
     audioUrl: audioResult.audioUrl,
     audioMetadata: {
       source: audioResult.source,

@@ -2919,6 +2919,130 @@ app.get('/api/ncert-explainer/chapter/:chapterId/audio', async (req: Request, re
 });
 
 // ===========================
+// ADMIN CONTENT CACHE ENDPOINTS
+// ===========================
+
+// Get chapters with cache status
+app.get('/api/admin/content-cache/chapters', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    // TODO: Add admin role check
+    const { subject, class: classLevel } = req.query;
+    
+    const contentCacheService = require('./services/contentCacheService').default;
+    const chapters = await contentCacheService.listChaptersWithStatus(
+      subject as string,
+      classLevel as string
+    );
+    
+    res.json({ chapters });
+  } catch (error: any) {
+    console.error('Error fetching chapters with cache status:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch chapters' });
+  }
+});
+
+// Add or update cached content
+app.post('/api/admin/content-cache', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    // TODO: Add admin role check
+    const { chapterId, content, title, subject, class: classLevel } = req.body;
+    
+    if (!chapterId || !content) {
+      return res.status(400).json({ error: 'chapterId and content are required' });
+    }
+    
+    const contentCacheService = require('./services/contentCacheService').default;
+    await contentCacheService.set(
+      {
+        module: 'ncert',
+        contentType: 'summary',
+        identifier: chapterId,
+        language: 'en',
+      },
+      content,
+      'manual',
+      {
+        title,
+        subject,
+        class: classLevel,
+        createdBy: req.user?.id,
+      }
+    );
+    
+    res.json({ success: true, message: 'Content cached successfully' });
+  } catch (error: any) {
+    console.error('Error caching content:', error);
+    res.status(500).json({ error: error.message || 'Failed to cache content' });
+  }
+});
+
+// Update existing cached content
+app.put('/api/admin/content-cache/:id', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    // TODO: Add admin role check
+    const { id } = req.params;
+    const { content, title } = req.body;
+    
+    if (!content) {
+      return res.status(400).json({ error: 'content is required' });
+    }
+    
+    const prisma = require('@prisma/client').PrismaClient;
+    const db = new prisma();
+    
+    const updated = await db.contentCache.update({
+      where: { id },
+      data: {
+        content,
+        title,
+        updatedAt: new Date(),
+      },
+    });
+    
+    res.json({ success: true, updated });
+  } catch (error: any) {
+    console.error('Error updating cached content:', error);
+    res.status(500).json({ error: error.message || 'Failed to update content' });
+  }
+});
+
+// Delete cached content
+app.delete('/api/admin/content-cache/:id', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    // TODO: Add admin role check
+    const { id } = req.params;
+    
+    const contentCacheService = require('./services/contentCacheService').default;
+    const deleted = await contentCacheService.deleteById(id);
+    
+    if (!deleted) {
+      return res.status(404).json({ error: 'Content not found' });
+    }
+    
+    res.json({ success: true, message: 'Content deleted successfully' });
+  } catch (error: any) {
+    console.error('Error deleting cached content:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete content' });
+  }
+});
+
+// Get cache statistics
+app.get('/api/admin/content-cache/stats', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    // TODO: Add admin role check
+    const { module } = req.query;
+    
+    const contentCacheService = require('./services/contentCacheService').default;
+    const stats = await contentCacheService.getStats(module as string);
+    
+    res.json(stats);
+  } catch (error: any) {
+    console.error('Error fetching cache stats:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch statistics' });
+  }
+});
+
+// ===========================
 // Smart Notes API Endpoints
 // ===========================
 

@@ -1,0 +1,102 @@
+# Implementation Plan
+
+- [x] 1. Add ContentCache database model
+  - [x] 1.1 Add ContentCache model to Prisma schema
+    - Add model with fields: id, module, contentType, subject, class, identifier, language, content, title, source, accessCount, lastAccessedAt, createdAt, updatedAt, createdBy
+    - Add unique constraint on [module, contentType, identifier, language]
+    - Add indexes for efficient querying
+    - _Requirements: 3.1_
+  - [x] 1.2 Run Prisma migration
+    - Generate and apply migration for ContentCache table
+    - _Requirements: 3.1_
+
+- [x] 2. Implement ContentCacheService
+  - [x] 2.1 Create contentCacheService.ts with core CRUD operations
+    - Implement get(key): retrieve cached content by key
+    - Implement set(key, content, source): store content with source tracking
+    - Implement delete(key): remove cached content
+    - Implement updateAccessStats(): increment access count and timestamp
+    - _Requirements: 1.3, 1.4, 1.5, 2.1, 2.2, 3.2_
+  - [ ]* 2.2 Write property test for cache round-trip
+    - **Property 1: Summary persistence round-trip**
+    - **Validates: Requirements 1.3**
+  - [ ]* 2.3 Write property test for access count increment
+    - **Property 4: Access count increments on retrieval**
+    - **Validates: Requirements 3.2**
+  - [x] 2.4 Implement query and filter operations
+    - Implement getByModule(module, filters): list cached content with filters
+    - Implement listWithStatus(module, subject, class): list chapters with cache status
+    - Implement getStats(module): calculate cache statistics
+    - _Requirements: 3.3, 4.1, 4.2, 4.3_
+  - [ ]* 2.5 Write property test for filter correctness
+    - **Property 5: Filter query correctness**
+    - **Validates: Requirements 3.3, 4.3**
+
+- [x] 3. Modify NCERT Explainer Service to use cache
+  - [x] 3.1 Update getChapterSummary to check cache first
+    - Check ContentCache before calling LLM
+    - Return cached content if found, update access stats
+    - Generate via LLM if not found, store in cache
+    - Add source field to response
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 5.1_
+  - [ ]* 3.2 Write property test for cache hit behavior
+    - **Property 2: Cache hit returns cached content**
+    - **Validates: Requirements 2.2**
+  - [ ]* 3.3 Write property test for cache miss behavior
+    - **Property 3: Cache miss stores generated content**
+    - **Validates: Requirements 2.3**
+  - [ ]* 3.4 Write property test for response structure
+    - **Property 6: Response structure consistency**
+    - **Validates: Requirements 5.1**
+
+- [x] 4. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 5. Create Admin API endpoints
+  - [x] 5.1 Add GET /api/admin/content-cache/chapters endpoint
+    - List all chapters with cache status (cached/not cached)
+    - Support filtering by subject and class
+    - _Requirements: 4.1, 4.3_
+  - [x] 5.2 Add POST /api/admin/content-cache endpoint
+    - Accept chapterId, content, title
+    - Store in ContentCache with source='manual'
+    - _Requirements: 1.2, 1.3_
+  - [x] 5.3 Add PUT /api/admin/content-cache/:id endpoint
+    - Update existing cached content
+    - Update timestamp
+    - _Requirements: 1.4_
+  - [x] 5.4 Add DELETE /api/admin/content-cache/:id endpoint
+    - Remove cached content by id
+    - _Requirements: 1.5_
+  - [ ]* 5.5 Write property test for delete operation
+    - **Property 7: Delete removes entry**
+    - **Validates: Requirements 1.5**
+  - [x] 5.6 Add GET /api/admin/content-cache/stats endpoint
+    - Return total cached, manual entries, LLM generated, total accesses
+    - _Requirements: 4.2_
+
+- [x] 6. Create Admin Summary Management Page
+  - [x] 6.1 Create AdminSummaryPage.tsx component
+    - Display chapters grouped by subject
+    - Show cache status indicator for each chapter
+    - Add filter controls for subject, class, cache status
+    - _Requirements: 1.1, 4.1, 4.3_
+  - [x] 6.2 Add summary add/edit modal
+    - Form with textarea for summary content
+    - Title field (optional)
+    - Submit to POST/PUT endpoints
+    - _Requirements: 1.2, 1.3, 1.4_
+  - [x] 6.3 Add delete confirmation and functionality
+    - Confirm dialog before delete
+    - Call DELETE endpoint
+    - _Requirements: 1.5_
+  - [x] 6.4 Add statistics dashboard section
+    - Display cache hit rate, total cached, LLM calls saved
+    - _Requirements: 4.2_
+  - [x] 6.5 Add route and navigation link
+    - Add /admin/summaries route to App.tsx
+    - Add link in Navigation component (admin only)
+    - _Requirements: 1.1_
+
+- [x] 7. Final Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
