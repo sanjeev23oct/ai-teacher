@@ -2865,7 +2865,7 @@ app.get('/api/ncert-explainer/cache/stats', authMiddleware, async (req: Request,
   }
 });
 
-// Stream audio for NCERT chapter explanation
+// Stream audio for NCERT chapter explanation with caching
 app.get('/api/ncert-explainer/chapter/:chapterId/audio', async (req: Request, res: Response) => {
   try {
     const { chapterId } = req.params;
@@ -2885,33 +2885,77 @@ app.get('/api/ncert-explainer/chapter/:chapterId/audio', async (req: Request, re
       });
     }
 
-    const { textToSpeechStream } = await import('./services/ttsService');
     const languageConfig = languageService.getLanguageConfig(languageCode as string);
     
-    const audioStream = await textToSpeechStream(
-      study.explanation,
-      languageConfig?.elevenLabsVoiceId,
-      languageConfig?.elevenLabsModelId
-    );
+    // Import audio cache service
+    const audioCacheService = require('./services/audioCacheService').default;
+    const { generateCacheKey } = require('./services/audioCacheService');
+    const { textToSpeech } = require('./services/ttsService');
 
-    if (!audioStream) {
-      return res.status(503).json({ 
-        error: 'TTS service not available',
-        message: 'ElevenLabs API key not configured.'
-      });
-    }
+    // Parse chapterId to extract subject and class
+    const chapterParts = chapterId.split('_');
+    const subject = chapterParts[0] || 'general';
+    const className = chapterParts[1] || 'general';
 
-    console.log(`[NCERT AUDIO] Chapter: ${chapterId}, Language: ${languageCode}`);
-
-    res.set({
-      'Content-Type': 'audio/mpeg',
-      'Transfer-Encoding': 'chunked'
+    // Generate cache key for this chapter
+    const cacheKey = generateCacheKey({
+      module: 'ncert',
+      subject: subject,
+      class: className,
+      identifier: chapterId,
+      language: languageCode as string,
+      version: 'v1'
     });
 
-    for await (const chunk of audioStream) {
-      res.write(chunk);
+    // Cache options
+    const cacheOptions = {
+      module: 'ncert',
+      subject: subject,
+      class: className,
+      identifier: chapterId,
+      voiceId: languageConfig?.elevenLabsVoiceId,
+      languageCode: languageCode as string,
+      version: 'v1'
+    };
+
+    // TTS generator function
+    const ttsGenerator = async (text: string): Promise<Buffer> => {
+      const audioBuffer = await textToSpeech(
+        text,
+        languageConfig?.elevenLabsVoiceId,
+        languageConfig?.elevenLabsModelId
+      );
+      return audioBuffer;
+    };
+
+    // Get or generate audio with caching
+    const audioResult = await audioCacheService.getOrGenerate(
+      cacheKey,
+      study.explanation,
+      cacheOptions,
+      ttsGenerator
+    );
+
+    console.log(`[NCERT AUDIO] ${audioResult.source === 'cache' ? '📦 CACHED' : '🔊 GENERATED'} - Chapter: ${chapterId}, Language: ${languageCode}`);
+
+    // If cached, redirect to static file
+    if (audioResult.source === 'cache') {
+      return res.redirect(audioResult.audioUrl);
     }
-    res.end();
+
+    // If generated, stream the audio
+    const fs = require('fs');
+    const path = require('path');
+    const filePath = path.join(__dirname, '..', audioResult.audioUrl);
+    
+    res.set({
+      'Content-Type': 'audio/mpeg',
+      'Content-Length': audioResult.metadata.fileSize.toString()
+    });
+
+    const audioStream = fs.createReadStream(filePath);
+    audioStream.pipe(res);
+
   } catch (error: any) {
     console.error('Error generating NCERT chapter audio:', error);
     res.status(500).json({ error: 'Failed to generate speech' });
@@ -3283,11 +3327,11 @@ app.delete('/api/smart-notes/:id', authMiddleware, async (req: Request, res: Res
 });
 
 // Generate TTS audio for note with caching
-app.post('/api/smart-notes/:id/audio', authMiddleware, async (req: Request, res: Response) => {
+app.get('/api/smart-notes/:id/audio', authMiddleware, async (req: Request, res: Response) => {
   try {
     const note = await prisma.smartNote.findUnique({
       where: { id: req.params.id },
-      select: { id: true, enhancedNote: true, title: true }
+      select: { id: true, enhancedNote: true, title: true, subject: true, class: true }
     });
 
     if (!note) {
@@ -3295,33 +3339,72 @@ app.post('/api/smart-notes/:id/audio', authMiddleware, async (req: Request, res:
     }
 
     const languageCode = req.user.languagePreference || 'en';
-    const { textToSpeechStream } = require('./services/ttsService');
     const languageConfig = languageService.getLanguageConfig(languageCode);
     
-    const audioStream = await textToSpeechStream(
-      note.enhancedNote,
-      languageConfig.elevenLabsVoiceId,
-      languageConfig.elevenLabsModelId
-    );
+    // Import audio cache service
+    const audioCacheService = require('./services/audioCacheService').default;
+    const { generateCacheKey } = require('./services/audioCacheService');
+    const { textToSpeech } = require('./services/ttsService');
 
-    if (!audioStream) {
-      return res.status(503).json({ 
-        error: 'TTS service not available',
-        message: 'ElevenLabs API key not configured.'
-      });
-    }
-
-    console.log(`[SMART NOTES AUDIO] Note: ${note.title}, Language: ${languageCode}`);
-
-    res.set({
-      'Content-Type': 'audio/mpeg',
-      'Transfer-Encoding': 'chunked'
+    // Generate cache key for this note
+    const cacheKey = generateCacheKey({
+      module: 'smart-notes',
+      subject: note.subject || 'general',
+      class: note.class || 'general',
+      identifier: note.id,
+      language: languageCode,
+      version: 'v1'
     });
 
-    for await (const chunk of audioStream) {
-      res.write(chunk);
+    // Cache options
+    const cacheOptions = {
+      module: 'smart-notes',
+      subject: note.subject,
+      class: note.class,
+      identifier: note.id,
+      voiceId: languageConfig.elevenLabsVoiceId,
+      languageCode: languageCode,
+      version: 'v1'
+    };
+
+    // TTS generator function
+    const ttsGenerator = async (text: string): Promise<Buffer> => {
+      const audioBuffer = await textToSpeech(
+        text,
+        languageConfig.elevenLabsVoiceId,
+        languageConfig.elevenLabsModelId
+      );
+      return audioBuffer;
+    };
+
+    // Get or generate audio with caching
+    const audioResult = await audioCacheService.getOrGenerate(
+      cacheKey,
+      note.enhancedNote,
+      cacheOptions,
+      ttsGenerator
+    );
+
+    console.log(`[SMART NOTES AUDIO] ${audioResult.source === 'cache' ? '📦 CACHED' : '🔊 GENERATED'} - Note: ${note.title}, Language: ${languageCode}`);
+
+    // If cached, redirect to static file
+    if (audioResult.source === 'cache') {
+      return res.redirect(audioResult.audioUrl);
     }
-    res.end();
+
+    // If generated, stream the audio
+    const fs = require('fs');
+    const path = require('path');
+    const filePath = path.join(__dirname, '..', audioResult.audioUrl);
+    
+    res.set({
+      'Content-Type': 'audio/mpeg',
+      'Content-Length': audioResult.metadata.fileSize.toString()
+    });
+
+    const audioStream = fs.createReadStream(filePath);
+    audioStream.pipe(res);
+
   } catch (error: any) {
     console.error('Error generating note audio:', error);
     res.status(500).json({ error: error.message || 'Failed to generate audio' });

@@ -461,17 +461,22 @@ const NCERTExplainerPage: React.FC = () => {
               </button>
             </div>
 
-            {/* Audio Player */}
-            <div className="mb-4">
-              <AudioPlayer
-                audioEndpoint={`/api/ncert-explainer/chapter/${chapterSummary.chapterId}/audio`}
-                size="md"
-                className="mb-3"
-              />
-            </div>
-
-            {/* Summary Text */}
+            {/* Summary Content with Audio */}
             <div className="bg-gray-900 rounded-lg p-4 mb-4">
+              {/* Audio Player Header */}
+              <div className="flex items-center gap-3 mb-4 pb-3 border-b border-gray-700">
+                <AudioPlayer
+                  audioEndpoint={`/api/ncert-explainer/chapter/${chapterSummary.chapterId}/audio`}
+                  size="md"
+                  method="GET"
+                />
+                <div className="flex-1">
+                  <h3 className="text-sm font-medium text-gray-200">Chapter Summary Audio</h3>
+                  <p className="text-xs text-gray-400">Click to listen to the chapter summary</p>
+                </div>
+              </div>
+              
+              {/* Summary Text */}
               <div className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">
                 {chapterSummary.summary}
               </div>
@@ -508,11 +513,8 @@ const NCERTExplainerPage: React.FC = () => {
                     
                     {expandedQuestion === q.id && (
                       <div className="px-4 py-3 bg-gray-900 border-t border-gray-700">
-                        <AudioPlayer
-                          audioEndpoint={`/api/ncert-explainer/question/${q.id}/audio`}
-                          size="sm"
-                          className="mb-3"
-                        />
+                        {/* TODO: Add audio player when question audio endpoint is implemented */}
+                        
                         <div className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">
                           {q.answer}
                         </div>

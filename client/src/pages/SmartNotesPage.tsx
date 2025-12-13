@@ -805,12 +805,17 @@ export default function SmartNotesPage() {
           <div className="bg-surface rounded-xl p-4 sm:p-6 border border-gray-700">
             <div className="flex items-start justify-between mb-4">
               <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <h2 className="text-xl sm:text-2xl font-bold">{selectedNote.title}</h2>
-                  <AudioPlayer 
-                    audioEndpoint={`/api/smart-notes/${selectedNote.id}/audio`}
-                    size="md"
-                  />
+                <div className="mb-3">
+                  <h2 className="text-xl sm:text-2xl font-bold mb-2">{selectedNote.title}</h2>
+                  <div className="flex items-center gap-3">
+                    <AudioPlayer 
+                      audioEndpoint={`/api/smart-notes/${selectedNote.id}/audio`}
+                      size="md"
+                    />
+                    <span className="text-sm text-gray-400">Listen to this note</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 mb-2">
                   {selectedNote.user?.id === user?.id && (
                     <select
                       value={selectedNote.visibility || 'private'}
