@@ -60,7 +60,12 @@ interface Progress {
 
 const NCERTExplainerPage: React.FC = () => {
   const { user, isLoading: authLoading } = useAuth();
-  const [selectedSubject, setSelectedSubject] = useState(user?.preferredSubject || 'English');
+  
+  // Load subject from localStorage or default to English
+  const [selectedSubject, setSelectedSubject] = useState(() => {
+    return localStorage.getItem('ncert_preferred_subject') || 'English';
+  });
+  
   const [chapters, setChapters] = useState<ChapterInfo[]>([]);
   const [selectedChapter, setSelectedChapter] = useState<string>('');
   const [chapterSummary, setChapterSummary] = useState<ChapterResponse | null>(null);
@@ -70,6 +75,12 @@ const NCERTExplainerPage: React.FC = () => {
   const [progress, setProgress] = useState<Progress | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+
+  // Save subject to localStorage when it changes
+  const handleSubjectChange = (subject: string) => {
+    setSelectedSubject(subject);
+    localStorage.setItem('ncert_preferred_subject', subject);
+  };
 
   useEffect(() => {
     if (user) {
@@ -383,6 +394,23 @@ const NCERTExplainerPage: React.FC = () => {
           <h2 className="text-lg font-semibold text-white mb-4">Select Chapter</h2>
           
           <div className="space-y-3">
+            {/* Subject Selector */}
+            <div>
+              <label className="block text-xs font-medium text-gray-400 mb-2">
+                Subject
+              </label>
+              <select
+                value={selectedSubject}
+                onChange={(e) => handleSubjectChange(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white text-sm"
+              >
+                <option value="English">English</option>
+                <option value="Science">Science</option>
+                <option value="Math">Math</option>
+                <option value="SST">SST (Social Studies)</option>
+              </select>
+            </div>
+
             {/* Chapter Dropdown */}
             <div>
               <label className="block text-xs font-medium text-gray-400 mb-2">
