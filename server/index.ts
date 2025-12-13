@@ -2446,17 +2446,7 @@ Keep it natural, warm, and educational. Don't use bullet points or formal format
   }
 });
 
-// Catch-all route for React Router (must be last)
-if (process.env.NODE_ENV === 'production') {
-  app.use((req: Request, res: Response) => {
-    // Only serve index.html for non-API routes
-    if (!req.path.startsWith('/api') && !req.path.startsWith('/uploads')) {
-      res.sendFile(path.join(__dirname, '../client/dist/index.html'));
-    } else {
-      res.status(404).json({ error: 'Not found' });
-    }
-  });
-}
+// Catch-all route moved to end of file - DO NOT place routes after this!
 
 // ============================================================================
 // Group Study Simulator Routes
@@ -2736,49 +2726,19 @@ app.post('/api/ncert-explainer/followup', authMiddleware, async (req: Request, r
   }
 });
 
+
 // Get list of chapters for a class and subject
 app.get('/api/ncert-explainer/chapters', async (req: Request, res: Response) => {
   // Temporary hardcoded response to test route registration
-  return res.json({ 
+  res.json({ 
     status: 'ok',
     message: 'Chapters endpoint is working',
     chapters: [
       { id: 'ch1', name: 'Test Chapter 1', number: 1 },
       { id: 'ch2', name: 'Test Chapter 2', number: 2 }
     ],
-    note: 'This is a test response - real implementation commented out'
+    note: 'This is a test response - real implementation will be restored'
   });
-
-  /* Original implementation - commented for testing
-  try {
-    const { class: className, subject } = req.query;
-    
-    if (!className || !subject) {
-      return res.status(400).json({ 
-        error: 'Class and subject query parameters are required' 
-      });
-    }
-
-    if (!chapterDataService) {
-      return res.status(503).json({ 
-        error: 'Chapter data service unavailable',
-        message: 'Service failed to initialize. Please try again later.'
-      });
-    }
-
-    const chapters = await chapterDataService.getChapterList(
-      className as string,
-      subject as string
-    );
-
-    res.json({ chapters });
-  } catch (error: any) {
-    console.error('Error getting chapter list:', error);
-    res.status(500).json({ 
-      error: error.message || 'Failed to get chapter list' 
-    });
-  }
-  */
 });
 
 // Search chapters by name or number
@@ -3697,6 +3657,21 @@ process.on('unhandledRejection', (reason, promise) => {
     console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
     // Don't exit - keep server running
 });
+
+// ============================================================================
+// CATCH-ALL ROUTE - MUST BE LAST!
+// ============================================================================
+// This handles React Router - serves index.html for non-API routes
+if (process.env.NODE_ENV === 'production') {
+  app.use((req: Request, res: Response) => {
+    // Only serve index.html for non-API routes
+    if (!req.path.startsWith('/api') && !req.path.startsWith('/uploads') && !req.path.startsWith('/audio-cache')) {
+      res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+    } else {
+      res.status(404).json({ error: 'Not found' });
+    }
+  });
+}
 
 const BUILD_NUMBER = process.env.RAILWAY_DEPLOYMENT_ID || process.env.RAILWAY_REPLICA_ID || `local-${Date.now()}`;
 const BUILD_TIMESTAMP = new Date().toISOString();
