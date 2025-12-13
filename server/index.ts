@@ -2729,16 +2729,34 @@ app.post('/api/ncert-explainer/followup', authMiddleware, async (req: Request, r
 
 // Get list of chapters for a class and subject
 app.get('/api/ncert-explainer/chapters', async (req: Request, res: Response) => {
-  // Temporary hardcoded response to test route registration
-  res.json({ 
-    status: 'ok',
-    message: 'Chapters endpoint is working',
-    chapters: [
-      { id: 'ch1', name: 'Test Chapter 1', number: 1 },
-      { id: 'ch2', name: 'Test Chapter 2', number: 2 }
-    ],
-    note: 'This is a test response - real implementation will be restored'
-  });
+  try {
+    const { class: className, subject } = req.query;
+    
+    if (!className || !subject) {
+      return res.status(400).json({ 
+        error: 'Class and subject query parameters are required' 
+      });
+    }
+
+    if (!chapterDataService) {
+      return res.status(503).json({ 
+        error: 'Chapter data service unavailable',
+        message: 'Service failed to initialize. Please try again later.'
+      });
+    }
+
+    const chapters = await chapterDataService.getChapterList(
+      className as string,
+      subject as string
+    );
+
+    res.json({ chapters });
+  } catch (error: any) {
+    console.error('Error getting chapter list:', error);
+    res.status(500).json({ 
+      error: error.message || 'Failed to get chapter list' 
+    });
+  }
 });
 
 // Search chapters by name or number
@@ -3647,7 +3665,11 @@ app.get('/api/test', (req: Request, res: Response) => {
 // Static files are served by express.static middleware above
 
 // Global error handlers to prevent server crashes
-process.on('uncaughtException', (error) => {
+process.on('uncaughtException', (error: any) => {
+    // Suppress common HTTP parse errors (client disconnects)
+    if (error.code === 'HPE_INVALID_EOF_STATE' || error.message?.includes('Parse Error')) {
+        return; // Ignore - client closed connection
+    }
     console.error('💥 Uncaught Exception:', error);
     console.error('Stack:', error.stack);
     // Don't exit - keep server running
@@ -3676,7 +3698,7 @@ if (process.env.NODE_ENV === 'production') {
 const BUILD_NUMBER = process.env.RAILWAY_DEPLOYMENT_ID || process.env.RAILWAY_REPLICA_ID || `local-${Date.now()}`;
 const BUILD_TIMESTAMP = new Date().toISOString();
 
-app.listen(port, () => {
+const server = app.listen(port, () => {
     console.log('='.repeat(60));
     console.log(`🚀 Server running on port ${port}`);
     console.log(`📦 Build: ${BUILD_NUMBER}`);
@@ -3691,4 +3713,15 @@ app.listen(port, () => {
     console.log(`💾 Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
     console.log('✅ Server is ready and listening for requests');
     console.log('='.repeat(60));
+});
+
+// Handle server errors (like HTTP parse errors from client disconnects)
+server.on('clientError', (err: any, socket: any) => {
+    // Suppress common parse errors from client disconnects
+    if (err.code === 'HPE_INVALID_EOF_STATE' || err.message?.includes('Parse Error')) {
+        socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+        return;
+    }
+    console.error('Client error:', err);
+    socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
 });
