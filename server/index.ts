@@ -2738,6 +2738,18 @@ app.post('/api/ncert-explainer/followup', authMiddleware, async (req: Request, r
 
 // Get list of chapters for a class and subject
 app.get('/api/ncert-explainer/chapters', async (req: Request, res: Response) => {
+  // Temporary hardcoded response to test route registration
+  return res.json({ 
+    status: 'ok',
+    message: 'Chapters endpoint is working',
+    chapters: [
+      { id: 'ch1', name: 'Test Chapter 1', number: 1 },
+      { id: 'ch2', name: 'Test Chapter 2', number: 2 }
+    ],
+    note: 'This is a test response - real implementation commented out'
+  });
+
+  /* Original implementation - commented for testing
   try {
     const { class: className, subject } = req.query;
     
@@ -2766,6 +2778,7 @@ app.get('/api/ncert-explainer/chapters', async (req: Request, res: Response) => 
       error: error.message || 'Failed to get chapter list' 
     });
   }
+  */
 });
 
 // Search chapters by name or number
