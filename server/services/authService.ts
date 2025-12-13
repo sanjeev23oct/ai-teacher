@@ -37,8 +37,8 @@ export async function signup(data: SignupData) {
       name: data.name,
       email: data.email,
       passwordHash,
-      grade: data.grade,
-      school: data.school
+      grade: data.grade || null,
+      school: data.school || null
     }
   });
 
