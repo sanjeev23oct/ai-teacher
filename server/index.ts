@@ -2644,6 +2644,9 @@ function loadNcertServices() {
   }
 }
 
+// Load NCERT services immediately
+loadNcertServices();
+
 // Get chapter summary with AI explanation and cached audio
 app.post('/api/ncert-explainer/chapter-summary', authMiddleware, async (req: Request, res: Response) => {
   try {
