@@ -2922,10 +2922,12 @@ app.get('/api/ncert-explainer/chapter/:chapterId/audio', async (req: Request, re
 // ADMIN CONTENT CACHE ENDPOINTS
 // ===========================
 
+// Import admin middleware
+const { adminMiddleware } = require('./middleware/adminMiddleware');
+
 // Get chapters with cache status
-app.get('/api/admin/content-cache/chapters', authMiddleware, async (req: Request, res: Response) => {
+app.get('/api/admin/content-cache/chapters', authMiddleware, adminMiddleware, async (req: Request, res: Response) => {
   try {
-    // TODO: Add admin role check
     const { subject, class: classLevel } = req.query;
     
     const contentCacheService = require('./services/contentCacheService').default;
@@ -2942,9 +2944,8 @@ app.get('/api/admin/content-cache/chapters', authMiddleware, async (req: Request
 });
 
 // Add or update cached content
-app.post('/api/admin/content-cache', authMiddleware, async (req: Request, res: Response) => {
+app.post('/api/admin/content-cache', authMiddleware, adminMiddleware, async (req: Request, res: Response) => {
   try {
-    // TODO: Add admin role check
     const { chapterId, content, title, subject, class: classLevel } = req.body;
     
     if (!chapterId || !content) {
@@ -2977,9 +2978,8 @@ app.post('/api/admin/content-cache', authMiddleware, async (req: Request, res: R
 });
 
 // Update existing cached content
-app.put('/api/admin/content-cache/:id', authMiddleware, async (req: Request, res: Response) => {
+app.put('/api/admin/content-cache/:id', authMiddleware, adminMiddleware, async (req: Request, res: Response) => {
   try {
-    // TODO: Add admin role check
     const { id } = req.params;
     const { content, title } = req.body;
     
@@ -3007,9 +3007,8 @@ app.put('/api/admin/content-cache/:id', authMiddleware, async (req: Request, res
 });
 
 // Delete cached content
-app.delete('/api/admin/content-cache/:id', authMiddleware, async (req: Request, res: Response) => {
+app.delete('/api/admin/content-cache/:id', authMiddleware, adminMiddleware, async (req: Request, res: Response) => {
   try {
-    // TODO: Add admin role check
     const { id } = req.params;
     
     const contentCacheService = require('./services/contentCacheService').default;
@@ -3027,9 +3026,8 @@ app.delete('/api/admin/content-cache/:id', authMiddleware, async (req: Request, 
 });
 
 // Get cache statistics
-app.get('/api/admin/content-cache/stats', authMiddleware, async (req: Request, res: Response) => {
+app.get('/api/admin/content-cache/stats', authMiddleware, adminMiddleware, async (req: Request, res: Response) => {
   try {
-    // TODO: Add admin role check
     const { module } = req.query;
     
     const contentCacheService = require('./services/contentCacheService').default;

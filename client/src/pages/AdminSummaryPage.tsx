@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Plus, Edit, Trash2, Filter, BarChart3, CheckCircle, Circle } from 'lucide-react';
+import { BookOpen, Plus, Edit, Trash2, Filter, BarChart3, CheckCircle, Circle, Shield } from 'lucide-react';
 import { getApiUrl } from '../config';
 import { authenticatedFetch } from '../utils/api';
+import { useAuth } from '../contexts/AuthContext';
+import { isCurrentUserAdmin } from '../utils/admin';
 
 interface ChapterCacheStatus {
   chapterId: string;
@@ -31,6 +33,7 @@ interface SummaryFormData {
 }
 
 const AdminSummaryPage: React.FC = () => {
+  const { user } = useAuth();
   const [chapters, setChapters] = useState<ChapterCacheStatus[]>([]);
   const [stats, setStats] = useState<CacheStats | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -186,6 +189,44 @@ const AdminSummaryPage: React.FC = () => {
     acc[key].push(chapter);
     return acc;
   }, {} as Record<string, ChapterCacheStatus[]>);
+
+  // Check if user is admin
+  if (!user) {
+    return (
+      <div className="max-w-4xl mx-auto p-4">
+        <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-6">
+          <div className="flex items-start gap-4">
+            <Shield className="w-6 h-6 text-yellow-500 flex-shrink-0 mt-1" />
+            <div>
+              <h3 className="text-lg font-semibold text-yellow-500 mb-2">Authentication Required</h3>
+              <p className="text-gray-300">Please login to access admin features.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isCurrentUserAdmin(user.email)) {
+    return (
+      <div className="max-w-4xl mx-auto p-4">
+        <div className="bg-red-900/20 border border-red-700/50 rounded-lg p-6">
+          <div className="flex items-start gap-4">
+            <Shield className="w-6 h-6 text-red-500 flex-shrink-0 mt-1" />
+            <div>
+              <h3 className="text-lg font-semibold text-red-500 mb-2">Admin Access Required</h3>
+              <p className="text-gray-300 mb-4">
+                You do not have permission to access admin features. Only authorized administrators can manage chapter summaries.
+              </p>
+              <p className="text-sm text-gray-400">
+                If you believe you should have admin access, please contact your system administrator.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto p-4">
