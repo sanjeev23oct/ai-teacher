@@ -158,7 +158,7 @@ export default function SmartNotesPage() {
 
   const fetchCommunityNotes = async () => {
     try {
-      const response = await authenticatedFetch(getApiUrl('/api/smart-notes/community?sortBy=recent&limit=20'));
+      const response = await authenticatedFetch(getApiUrl('/api/smart-notes/community?visibility=public&sortBy=recent&limit=20'));
       if (response.ok) {
         const data = await response.json();
         setCommunityNotes(data.notes || []);
@@ -565,7 +565,7 @@ export default function SmartNotesPage() {
               activeTab === 'community' ? 'bg-primary text-white' : 'bg-surface text-gray-300 hover:bg-gray-700 border border-gray-700'
             }`}
           >
-            🌐 Public
+            🌐 Public ({communityNotes.length})
           </button>
           <button
             onClick={() => setActiveTab('shared')}

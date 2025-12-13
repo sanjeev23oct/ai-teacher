@@ -3225,6 +3225,25 @@ app.get('/api/smart-notes', authMiddleware, async (req: Request, res: Response) 
   }
 });
 
+// Community feed
+app.get('/api/smart-notes/community', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { visibility, class: className, subject, school, sortBy, limit, offset } = req.query;
+    const notes = await socialNotesService.getCommunityNotes(req.user.id, {
+      visibility: visibility as string,
+      class: className as string,
+      subject: subject as string,
+      school: school as string,
+      sortBy: (sortBy as any) || 'recent',
+      limit: limit ? parseInt(limit as string) : 20,
+      offset: offset ? parseInt(offset as string) : 0,
+    });
+    res.json({ notes });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get single note by ID
 app.get('/api/smart-notes/:id', authMiddleware, async (req: Request, res: Response) => {
   try {
@@ -3664,27 +3683,6 @@ app.get('/api/smart-notes/bookmarks', authMiddleware, async (req: Request, res: 
     res.status(500).json({ error: error.message });
   }
 });
-
-// Community feed
-app.get('/api/smart-notes/community', authMiddleware, async (req: Request, res: Response) => {
-  try {
-    const { visibility, class: className, subject, school, sortBy, limit, offset } = req.query;
-    const notes = await socialNotesService.getCommunityNotes(req.user.id, {
-      visibility: visibility as string,
-      class: className as string,
-      subject: subject as string,
-      school: school as string,
-      sortBy: (sortBy as any) || 'recent',
-      limit: limit ? parseInt(limit as string) : 20,
-      offset: offset ? parseInt(offset as string) : 0,
-    });
-    res.json({ notes });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-
 
 // Comprehensive server health check
 app.get('/api/health', async (req: Request, res: Response) => {
