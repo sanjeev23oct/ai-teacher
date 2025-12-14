@@ -7,6 +7,7 @@ import { getApiUrl } from '../config';
 import CameraCapture from '../components/CameraCapture';
 import ShareNoteModal from '../components/ShareNoteModal';
 import AudioPlayer from '../components/AudioPlayer';
+import FormattedContent from '../components/FormattedContent';
 
 interface SmartNote {
   id: string;
@@ -486,7 +487,10 @@ export default function SmartNotesPage() {
               </span>
             </div>
             <div className="prose prose-invert max-w-none">
-              <div dangerouslySetInnerHTML={{ __html: viewingSharedNote.enhancedNote.replace(/\n/g, '<br>') }} />
+              <FormattedContent 
+                content={viewingSharedNote.enhancedNote}
+                className="text-sm"
+              />
             </div>
             {viewingSharedNote.tags && viewingSharedNote.tags.length > 0 && (
               <div className="flex gap-2 flex-wrap mt-4">
@@ -846,8 +850,11 @@ export default function SmartNotesPage() {
             </div>
 
             {/* Enhanced Note Content */}
-            <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 text-sm text-gray-200 whitespace-pre-wrap">
-              {selectedNote.enhancedNote}
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+              <FormattedContent 
+                content={selectedNote.enhancedNote}
+                className="text-sm"
+              />
             </div>
 
             {/* Attached Image */}

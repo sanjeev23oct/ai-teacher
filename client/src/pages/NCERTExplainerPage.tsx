@@ -4,6 +4,7 @@ import { getApiUrl } from '../config';
 import { useAuth } from '../contexts/AuthContext';
 import { authenticatedFetch } from '../utils/api';
 import AudioPlayer from '../components/AudioPlayer';
+import FormattedContent from '../components/FormattedContent';
 
 interface ChapterInfo {
   id: string;
@@ -477,9 +478,10 @@ const NCERTExplainerPage: React.FC = () => {
               </div>
               
               {/* Summary Text */}
-              <div className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">
-                {chapterSummary.summary}
-              </div>
+              <FormattedContent 
+                content={chapterSummary.summary}
+                className="text-sm"
+              />
             </div>
 
             {/* Follow-up Questions Button */}
@@ -515,9 +517,10 @@ const NCERTExplainerPage: React.FC = () => {
                       <div className="px-4 py-3 bg-gray-900 border-t border-gray-700">
                         {/* TODO: Add audio player when question audio endpoint is implemented */}
                         
-                        <div className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">
-                          {q.answer}
-                        </div>
+                        <FormattedContent 
+                          content={q.answer}
+                          className="text-sm"
+                        />
                       </div>
                     )}
                   </div>

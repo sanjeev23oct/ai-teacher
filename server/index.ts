@@ -2866,20 +2866,24 @@ app.get('/api/ncert-explainer/cache/stats', authMiddleware, async (req: Request,
 });
 
 // Stream audio for NCERT chapter explanation with caching
-app.get('/api/ncert-explainer/chapter/:chapterId/audio', async (req: Request, res: Response) => {
+app.get('/api/ncert-explainer/chapter/:chapterId/audio', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { chapterId } = req.params;
     const { languageCode = 'en' } = req.query;
 
-    // Get the chapter explanation from cache or database
-    const study = await prisma.nCERTChapterStudy.findFirst({
-      where: { 
-        chapterId: chapterId as string,
-        languageCode: languageCode as string
-      }
-    });
+    // Get the chapter explanation from content cache
+    const contentCacheService = require('./services/contentCacheService').default;
+    
+    const cacheKey = {
+      module: 'ncert',
+      contentType: 'summary',
+      identifier: chapterId,
+      language: languageCode as string,
+    };
 
-    if (!study || !study.explanation) {
+    const cachedSummary = await contentCacheService.get(cacheKey);
+    
+    if (!cachedSummary || !cachedSummary.content) {
       return res.status(404).json({ 
         error: 'Chapter explanation not found. Generate explanation first.' 
       });
@@ -2897,8 +2901,8 @@ app.get('/api/ncert-explainer/chapter/:chapterId/audio', async (req: Request, re
     const subject = chapterParts[0] || 'general';
     const className = chapterParts[1] || 'general';
 
-    // Generate cache key for this chapter
-    const cacheKey = generateCacheKey({
+    // Generate audio cache key for this chapter
+    const audioCacheKey = generateCacheKey({
       module: 'ncert',
       subject: subject,
       class: className,
@@ -2930,8 +2934,8 @@ app.get('/api/ncert-explainer/chapter/:chapterId/audio', async (req: Request, re
 
     // Get or generate audio with caching
     const audioResult = await audioCacheService.getOrGenerate(
-      cacheKey,
-      study.explanation,
+      audioCacheKey,
+      cachedSummary.content,
       cacheOptions,
       ttsGenerator
     );
