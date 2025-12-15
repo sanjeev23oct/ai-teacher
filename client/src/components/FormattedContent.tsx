@@ -10,8 +10,8 @@ const FormattedContent: React.FC<FormattedContentProps> = ({ content, className 
   const formatContent = (text: string) => {
     // Split content into lines for processing
     const lines = text.split('\n');
-    const elements: JSX.Element[] = [];
-    let currentSection: JSX.Element[] = [];
+    const elements: React.ReactElement[] = [];
+    let currentSection: React.ReactElement[] = [];
     let sectionKey = 0;
 
     const flushSection = () => {
@@ -151,7 +151,7 @@ const FormattedContent: React.FC<FormattedContentProps> = ({ content, className 
   };
 
   // Format inline text (bold, italic, etc.)
-  const formatInlineText = (text: string): JSX.Element => {
+  const formatInlineText = (text: string): React.ReactElement => {
     // Handle bold text **text**
     let formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-white">$1</strong>');
     

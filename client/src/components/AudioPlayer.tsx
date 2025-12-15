@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Play, Pause, Volume2, Loader2 } from 'lucide-react';
+import { Play, Pause, Loader2 } from 'lucide-react';
 import { authenticatedFetch } from '../utils/api';
 import { getApiUrl } from '../config';
 
