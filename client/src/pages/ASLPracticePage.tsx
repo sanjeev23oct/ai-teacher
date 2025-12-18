@@ -13,12 +13,23 @@ interface ASLTask {
   prompt: string;
   keywords: string[];
   duration: number;
+  sampleAnswer?: string;
+  tips?: string[];
 }
 
 interface ASLResult {
   score: number;
   fixes: string[];
   transcription?: string;
+}
+
+interface ASLHistory {
+  id: string;
+  taskTitle: string;
+  score: number;
+  practicedAt: string;
+  class: number;
+  mode: string;
 }
 
 interface ChatMessage {
@@ -46,6 +57,13 @@ const ASLPracticePage: React.FC = () => {
   const [chatInput, setChatInput] = useState('');
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [playingMessageIndex, setPlayingMessageIndex] = useState<number | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [practiceHistory, setPracticeHistory] = useState<ASLHistory[]>([]);
+  const [showTranscription, setShowTranscription] = useState(false);
+  const [preparationTime, setPreparationTime] = useState(0);
+  const [isPreparingToRecord, setIsPreparingToRecord] = useState(false);
+  const [showSampleAnswer, setShowSampleAnswer] = useState(false);
+  const [isPlayingSample, setIsPlayingSample] = useState(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -61,6 +79,13 @@ const ASLPracticePage: React.FC = () => {
     fetchTasks();
   }, [selectedClass, mode]);
 
+  // Fetch practice history when user is available
+  useEffect(() => {
+    if (user) {
+      fetchPracticeHistory();
+    }
+  }, [user]);
+
   const fetchTasks = async () => {
     try {
       const response = await fetch(`/api/asl/tasks?class=${selectedClass}&mode=${mode}`);
@@ -74,6 +99,20 @@ const ASLPracticePage: React.FC = () => {
     }
   };
 
+  const fetchPracticeHistory = async () => {
+    try {
+      const response = await fetch('/api/asl/history', {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setPracticeHistory(data.history || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch practice history:', err);
+    }
+  };
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -82,6 +121,29 @@ const ASLPracticePage: React.FC = () => {
       if (audioContextRef.current) audioContextRef.current.close();
     };
   }, []);
+
+  const startPreparation = () => {
+    if (!user) {
+      alert('Please login or create an account to practice ASL');
+      window.location.href = '/login?redirect=/asl-practice';
+      return;
+    }
+
+    setIsPreparingToRecord(true);
+    setPreparationTime(15); // 15 seconds preparation time
+    
+    const prepTimer = window.setInterval(() => {
+      setPreparationTime((prev) => {
+        if (prev <= 1) {
+          clearInterval(prepTimer);
+          setIsPreparingToRecord(false);
+          startRecording();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   const startRecording = async () => {
     // Check authentication
@@ -241,6 +303,11 @@ const ASLPracticePage: React.FC = () => {
         } else {
           setStudent2Result(data);
         }
+      }
+
+      // Refresh practice history after new result
+      if (user) {
+        fetchPracticeHistory();
       }
     } catch (error) {
       console.error('Error scoring:', error);
@@ -438,6 +505,42 @@ const ASLPracticePage: React.FC = () => {
     }
   };
 
+  const playSampleAudio = async (text: string) => {
+    if (isPlayingSample) return;
+
+    setIsPlayingSample(true);
+    
+    try {
+      const response = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+
+      if (!response.ok) throw new Error('TTS failed');
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      
+      const audio = new Audio(audioUrl);
+      
+      audio.onended = () => {
+        setIsPlayingSample(false);
+        URL.revokeObjectURL(audioUrl);
+      };
+      
+      audio.onerror = () => {
+        setIsPlayingSample(false);
+        URL.revokeObjectURL(audioUrl);
+      };
+      
+      await audio.play();
+    } catch (err) {
+      console.error('TTS error:', err);
+      setIsPlayingSample(false);
+    }
+  };
+
   return (
     <div className="max-w-3xl mx-auto p-3 sm:p-4">
       {/* Authentication Required Message */}
@@ -518,16 +621,26 @@ const ASLPracticePage: React.FC = () => {
           </button>
         </div>
 
-        {/* Task Selection */}
-        <select
-          value={selectedTask?.id || ''}
-          onChange={(e) => setSelectedTask(tasks.find(t => t.id === e.target.value) || null)}
-          className="w-full px-3 py-1.5 bg-gray-900 border border-gray-700 rounded text-white text-sm"
-        >
-          {tasks.map(task => (
-            <option key={task.id} value={task.id}>{task.title}</option>
-          ))}
-        </select>
+        {/* Task Selection and History Button */}
+        <div className="flex gap-2">
+          <select
+            value={selectedTask?.id || ''}
+            onChange={(e) => setSelectedTask(tasks.find(t => t.id === e.target.value) || null)}
+            className="flex-1 px-3 py-1.5 bg-gray-900 border border-gray-700 rounded text-white text-sm"
+          >
+            {tasks.map(task => (
+              <option key={task.id} value={task.id}>{task.title}</option>
+            ))}
+          </select>
+          {user && (
+            <button
+              onClick={() => setShowHistory(!showHistory)}
+              className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 rounded text-white text-sm transition-colors"
+            >
+              History ({practiceHistory.length})
+            </button>
+          )}
+        </div>
 
         {/* Student Selector for Pair Mode */}
         {mode === 'pair' && (
@@ -558,6 +671,33 @@ const ASLPracticePage: React.FC = () => {
         )}
       </div>
 
+      {/* Practice History */}
+      {showHistory && user && (
+        <div className="bg-surface rounded-lg border border-gray-800 p-3 mb-3">
+          <h3 className="text-lg font-semibold text-white mb-3">Practice History</h3>
+          {practiceHistory.length === 0 ? (
+            <p className="text-gray-400 text-sm">No practice sessions yet. Start practicing to see your progress!</p>
+          ) : (
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {practiceHistory.slice(0, 10).map((practice) => (
+                <div key={practice.id} className="flex items-center justify-between bg-gray-800 p-2 rounded">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-sm font-medium truncate">{practice.taskTitle}</p>
+                    <p className="text-gray-400 text-xs">
+                      Class {practice.class} • {practice.mode} • {new Date(practice.practicedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-yellow-500">★</span>
+                    <span className="text-white text-sm font-semibold">{practice.score}/5</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Main Content */}
       <div className="bg-surface rounded-lg border border-gray-800 p-3 sm:p-4">
         {!result ? (
@@ -565,13 +705,52 @@ const ASLPracticePage: React.FC = () => {
             {/* Task Display */}
             {selectedTask && (
               <div className="mb-3">
-                <h2 className="text-base sm:text-lg font-semibold text-white mb-1">
-                  {selectedTask.title}
-                </h2>
-                <p className="text-gray-300 text-sm mb-1">{selectedTask.prompt}</p>
-                <p className="text-xs text-primary">
-                  Duration: {selectedTask.duration}s
-                </p>
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1">
+                    <h2 className="text-base sm:text-lg font-semibold text-white mb-1">
+                      {selectedTask.title}
+                    </h2>
+                    <p className="text-gray-300 text-sm mb-1">{selectedTask.prompt}</p>
+                    <p className="text-xs text-primary">
+                      Duration: {selectedTask.duration}s
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowSampleAnswer(!showSampleAnswer)}
+                    className="px-2 py-1 bg-green-600 hover:bg-green-700 rounded text-white text-xs transition-colors"
+                  >
+                    {showSampleAnswer ? 'Hide' : 'Sample'}
+                  </button>
+                </div>
+
+                {/* Sample Answer */}
+                {showSampleAnswer && selectedTask.sampleAnswer && (
+                  <div className="bg-green-900/20 border border-green-700/50 rounded-lg p-3 mb-2">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-semibold text-green-400">Sample Answer:</h4>
+                      <button
+                        onClick={() => playSampleAudio(selectedTask.sampleAnswer!)}
+                        disabled={isPlayingSample}
+                        className="px-2 py-1 bg-green-600 hover:bg-green-700 rounded text-white text-xs transition-colors disabled:opacity-50"
+                      >
+                        {isPlayingSample ? 'Playing...' : '🔊 Listen'}
+                      </button>
+                    </div>
+                    <p className="text-gray-300 text-sm leading-relaxed italic">
+                      "{selectedTask.sampleAnswer}"
+                    </p>
+                    {selectedTask.tips && (
+                      <div className="mt-2 pt-2 border-t border-green-700/30">
+                        <p className="text-xs text-green-400 mb-1">Quick Tips:</p>
+                        <ul className="text-xs text-gray-400 space-y-1">
+                          {selectedTask.tips.map((tip, idx) => (
+                            <li key={idx}>• {tip}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -587,32 +766,46 @@ const ASLPracticePage: React.FC = () => {
 
               {/* Timer and Record Button */}
               <div className="flex flex-col items-center mb-3">
-                <div className={`text-4xl sm:text-5xl font-bold mb-2 ${isRecording ? 'text-red-500' : 'text-gray-500'}`}>
-                  {timeLeft}s
-                </div>
-                
-                <button
-                  onClick={isRecording ? stopRecording : startRecording}
-                  disabled={isProcessing}
-                  className={`relative p-5 sm:p-6 rounded-full transition-all ${
-                    isRecording
-                      ? 'bg-red-500 hover:bg-red-600'
-                      : 'bg-primary hover:bg-primary-hover'
-                  } disabled:opacity-50 shadow-lg`}
-                >
-                  {isRecording ? (
-                    <>
-                      <div className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-75"></div>
-                      <MicOff className="relative w-8 h-8 sm:w-10 sm:h-10 text-white" />
-                    </>
-                  ) : (
-                    <Mic className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
-                  )}
-                </button>
-                
-                <p className="text-xs text-gray-400 mt-2">
-                  {isRecording ? 'Tap to stop recording' : 'Tap to start recording'}
-                </p>
+                {isPreparingToRecord ? (
+                  <>
+                    <div className="text-4xl sm:text-5xl font-bold mb-2 text-yellow-500">
+                      {preparationTime}s
+                    </div>
+                    <div className="p-5 sm:p-6 rounded-full bg-yellow-500 shadow-lg">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-full animate-pulse"></div>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-2">Get ready to speak...</p>
+                  </>
+                ) : (
+                  <>
+                    <div className={`text-4xl sm:text-5xl font-bold mb-2 ${isRecording ? 'text-red-500' : 'text-gray-500'}`}>
+                      {timeLeft}s
+                    </div>
+                    
+                    <button
+                      onClick={isRecording ? stopRecording : startPreparation}
+                      disabled={isProcessing || isPreparingToRecord}
+                      className={`relative p-5 sm:p-6 rounded-full transition-all ${
+                        isRecording
+                          ? 'bg-red-500 hover:bg-red-600'
+                          : 'bg-primary hover:bg-primary-hover'
+                      } disabled:opacity-50 shadow-lg`}
+                    >
+                      {isRecording ? (
+                        <>
+                          <div className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-75"></div>
+                          <MicOff className="relative w-8 h-8 sm:w-10 sm:h-10 text-white" />
+                        </>
+                      ) : (
+                        <Mic className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+                      )}
+                    </button>
+                    
+                    <p className="text-xs text-gray-400 mt-2">
+                      {isRecording ? 'Tap to stop recording' : 'Tap to start (15s prep time)'}
+                    </p>
+                  </>
+                )}
               </div>
 
               {isProcessing && (
@@ -656,14 +849,36 @@ const ASLPracticePage: React.FC = () => {
               </p>
             </div>
 
+            {/* Transcription */}
+            {result.transcription && (
+              <div className="mb-3">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-semibold text-white">What I heard:</h3>
+                  <button
+                    onClick={() => setShowTranscription(!showTranscription)}
+                    className="text-xs text-primary hover:text-blue-300"
+                  >
+                    {showTranscription ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+                {showTranscription && (
+                  <div className="bg-gray-800 p-3 rounded text-sm">
+                    <p className="text-gray-300 italic">"{result.transcription}"</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Feedback */}
             <div className="mb-3">
-              <h3 className="text-sm font-semibold text-white mb-2">Ways to improve:</h3>
-              <div className="space-y-1.5">
+              <h3 className="text-sm font-semibold text-white mb-2">Teacher's feedback:</h3>
+              <div className="space-y-2">
                 {result.fixes.map((fix, index) => (
-                  <div key={index} className="bg-gray-800 p-2 rounded text-sm">
-                    <span className="text-primary font-semibold">{index + 1}. </span>
-                    <span className="text-gray-300">{fix}</span>
+                  <div key={index} className="bg-gray-800 p-3 rounded text-sm">
+                    <div className="flex items-start gap-2">
+                      <span className="text-primary font-semibold text-lg">{index + 1}.</span>
+                      <p className="text-gray-300 leading-relaxed">{fix}</p>
+                    </div>
                   </div>
                 ))}
               </div>

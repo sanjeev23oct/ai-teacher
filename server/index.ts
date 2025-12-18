@@ -2151,16 +2151,20 @@ app.post('/api/asl/score', authMiddleware, upload.single('audio'), async (req: R
     }
 
     const { taskId, mode } = req.body;
+    const fs = require('fs');
     
     // Read audio file
     const audioBuffer = fs.readFileSync(req.file.path);
+    
+    // Import services
+    const aslScoringService = require('./services/aslScoringService');
+    const aslTasks = require('./data/aslTasks');
     
     // Transcribe audio
     const transcription = await aslScoringService.transcribeAudio(audioBuffer);
     
     // Get task details
-    const { getTaskById } = require('./data/aslTasks');
-    const task = getTaskById(taskId);
+    const task = aslTasks.getTaskById(taskId);
     
     if (!task) {
       return res.status(400).json({ error: 'Invalid task ID' });
@@ -2174,12 +2178,56 @@ app.post('/api/asl/score', authMiddleware, upload.single('audio'), async (req: R
       duration: task.duration
     });
     
+    // Save practice to history (if user is authenticated)
+    if (req.user?.id) {
+      try {
+        const { PrismaClient } = require('@prisma/client');
+        const prisma = new PrismaClient();
+        
+        await prisma.aSLPractice.create({
+          data: {
+            userId: req.user.id,
+            taskId: task.id,
+            taskTitle: task.title,
+            taskPrompt: task.prompt,
+            class: task.class,
+            mode: task.mode,
+            duration: task.duration,
+            transcription,
+            score: result.score,
+            feedback: JSON.stringify(result.fixes),
+            fillerCount: aslScoringService.analyzeFillerWords(transcription).fillerCount
+          }
+        });
+        
+        await prisma.$disconnect();
+      } catch (saveError) {
+        console.error('Error saving ASL practice:', saveError);
+        // Don't fail the request if saving fails
+      }
+    }
+    
     // Clean up uploaded file
-    fs.unlinkSync(req.file.path);
+    try {
+      fs.unlinkSync(req.file.path);
+    } catch (cleanupError) {
+      console.warn('Failed to cleanup uploaded file:', cleanupError);
+    }
     
     res.json(result);
   } catch (error) {
     console.error('ASL scoring error:', error);
+    
+    // Cleanup file on error too
+    if (req.file?.path) {
+      try {
+        const fs = require('fs');
+        fs.unlinkSync(req.file.path);
+      } catch (cleanupError) {
+        console.warn('Failed to cleanup uploaded file on error:', cleanupError);
+      }
+    }
+    
     res.status(500).json({ error: 'Failed to score ASL response' });
   }
 });
@@ -3093,6 +3141,93 @@ app.delete('/api/admin/content-cache/:id', authMiddleware, adminMiddleware, asyn
   } catch (error: any) {
     console.error('Error deleting cached content:', error);
     res.status(500).json({ error: error.message || 'Failed to delete content' });
+  }
+});
+
+// ===========================
+// ASL Practice History API
+// ===========================
+
+// Get user's ASL practice history
+app.get('/api/asl/history', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+    
+    const { PrismaClient } = require('@prisma/client');
+    const prisma = new PrismaClient();
+    
+    const history = await prisma.aSLPractice.findMany({
+      where: { userId },
+      orderBy: { practicedAt: 'desc' },
+      take: 50, // Last 50 practices
+      select: {
+        id: true,
+        taskTitle: true,
+        score: true,
+        practicedAt: true,
+        class: true,
+        mode: true
+      }
+    });
+    
+    await prisma.$disconnect();
+    
+    res.json({ history });
+  } catch (error: any) {
+    console.error('Error fetching ASL history:', error);
+    // Return empty history if table doesn't exist or other DB issues
+    res.json({ history: [] });
+  }
+});
+
+// Save ASL practice result
+app.post('/api/asl/save-practice', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const { 
+      taskId, 
+      taskTitle, 
+      taskPrompt, 
+      class: classNum, 
+      mode, 
+      duration, 
+      transcription, 
+      score, 
+      feedback,
+      keywordsUsed,
+      fillerCount 
+    } = req.body;
+    
+    const { PrismaClient } = require('@prisma/client');
+    const prisma = new PrismaClient();
+    
+    const practice = await prisma.aSLPractice.create({
+      data: {
+        userId,
+        taskId,
+        taskTitle,
+        taskPrompt,
+        class: parseInt(classNum),
+        mode,
+        duration,
+        transcription,
+        score,
+        feedback: JSON.stringify(feedback),
+        keywordsUsed: keywordsUsed ? JSON.stringify(keywordsUsed) : null,
+        fillerCount: fillerCount || 0
+      }
+    });
+    
+    await prisma.$disconnect();
+    
+    res.json({ success: true, practiceId: practice.id });
+  } catch (error: any) {
+    console.error('Error saving ASL practice:', error);
+    res.status(500).json({ error: error.message || 'Failed to save practice' });
   }
 });
 

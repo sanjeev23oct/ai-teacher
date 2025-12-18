@@ -11,6 +11,8 @@ export interface ASLTask {
   prompt: string;
   keywords: string[];
   duration: number; // seconds
+  sampleAnswer?: string; // Sample answer for reference
+  tips?: string[]; // Quick tips for this task
 }
 
 export const ASL_TASKS: ASLTask[] = [
@@ -22,7 +24,14 @@ export const ASL_TASKS: ASLTask[] = [
     title: 'My Favorite Book',
     prompt: 'Talk about your favorite book. What is it about? Why do you like it? Would you recommend it to others?',
     keywords: ['book', 'story', 'character', 'recommend', 'favorite'],
-    duration: 60
+    duration: 60,
+    sampleAnswer: "My favorite book is Harry Potter and the Philosopher's Stone by J.K. Rowling. It's about a young boy who discovers he's a wizard and goes to Hogwarts School of Witchcraft and Wizardry. I love this book because it has an amazing story with interesting characters like Harry, Hermione, and Ron. The magical world is so creative and exciting. I would definitely recommend this book to others because it teaches us about friendship, courage, and believing in yourself. The story is full of adventure and keeps you interested from beginning to end.",
+    tips: [
+      "Start with the book title and author",
+      "Explain the main story in 2-3 sentences", 
+      "Give specific reasons why you like it",
+      "End with a clear recommendation"
+    ]
   },
   {
     id: 'c9-solo-2',
@@ -31,7 +40,14 @@ export const ASL_TASKS: ASLTask[] = [
     title: 'A Memorable Day',
     prompt: 'Describe a memorable day in your life. What happened? Why was it special? How did you feel?',
     keywords: ['day', 'special', 'remember', 'happened', 'felt'],
-    duration: 60
+    duration: 60,
+    sampleAnswer: "The most memorable day of my life was when I won the inter-school debate competition last year. That morning, I was very nervous because I had to speak in front of 200 people. My topic was about environmental protection. When I started speaking, I felt confident and spoke clearly about how we can save our planet. The judges appreciated my points and examples. When they announced that I won first prize, I felt extremely happy and proud. My parents and teachers were so excited. This day was special because it boosted my confidence and showed me that hard work pays off. I will never forget this amazing experience.",
+    tips: [
+      "Choose a specific day, not a general experience",
+      "Describe what happened step by step",
+      "Explain your feelings clearly",
+      "Tell why it was important to you"
+    ]
   },
   {
     id: 'c9-solo-3',
