@@ -1,0 +1,85 @@
+# StudyBuddy - AI-Powered Educational Platform
+# Robots.txt for optimal SEO crawling
+
+User-agent: *
+Allow: /
+
+# High-priority pages for crawling
+Allow: /smart-notes
+Allow: /ncert-explainer
+Allow: /doubts
+Allow: /grade
+Allow: /revision-friend
+Allow: /asl
+Allow: /group-study
+Allow: /signup
+Allow: /login
+
+# Subject and class-specific pages (SEO landing pages)
+Allow: /subjects/
+Allow: /class/
+
+# Static assets and resources
+Allow: /assets/
+Allow: /images/
+Allow: /icons/
+Allow: /*.css$
+Allow: /*.js$
+Allow: /*.png$
+Allow: /*.jpg$
+Allow: /*.jpeg$
+Allow: /*.gif$
+Allow: /*.svg$
+Allow: /*.webp$
+
+# Disallow private/admin areas
+Disallow: /admin/
+Disallow: /api/
+Disallow: /history
+Disallow: /doubts/history
+
+# Disallow user-specific content
+Disallow: /profile/
+Disallow: /dashboard/
+Disallow: /settings/
+
+# Disallow temporary or cache content
+Disallow: /uploads/
+Disallow: /audio-cache/
+Disallow: /temp/
+Disallow: /cache/
+
+# Disallow search and filter pages to avoid duplicate content
+Disallow: /*?*
+Disallow: /search?*
+Disallow: /*&*
+
+# Special directives for major search engines
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 2
+
+User-agent: Slurp
+Allow: /
+Crawl-delay: 2
+
+# Block bad bots
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+# Sitemap locations
+Sitemap: https://studybuddy.app/sitemap.xml
+Sitemap: https://studybuddy.app/sitemap-images.xml
+
+# Host directive (helps with canonicalization)
+Host: https://studybuddy.app
