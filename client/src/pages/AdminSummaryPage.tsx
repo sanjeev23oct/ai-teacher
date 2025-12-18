@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Plus, Edit, Trash2, Filter, BarChart3, CheckCircle, Circle, Shield } from 'lucide-react';
+import { BookOpen, Filter, BarChart3, CheckCircle, Circle, Shield } from 'lucide-react';
 import { getApiUrl } from '../config';
 import { authenticatedFetch } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -23,14 +23,7 @@ interface CacheStats {
   totalAccesses: number;
 }
 
-interface SummaryFormData {
-  chapterId: string;
-  chapterName: string;
-  content: string;
-  title: string;
-  subject: string;
-  class: string;
-}
+// Removed unused SummaryFormData interface since editing functionality was removed
 
 // Simplified admin page - view only
 
@@ -89,31 +82,6 @@ const AdminSummaryPage: React.FC = () => {
   };
 
   // Simplified - no editing functionality for now
-
-  const handleDelete = async (chapter: ChapterCacheStatus) => {
-    if (!chapter.cacheId) return;
-    
-    if (!confirm(`Delete cached summary for "${chapter.chapterName}"?`)) return;
-
-    try {
-      const response = await authenticatedFetch(
-        getApiUrl(`/api/admin/content-cache/${chapter.cacheId}`),
-        { method: 'DELETE' }
-      );
-
-      if (response.ok) {
-        fetchChapters();
-        fetchStats();
-        alert('Summary deleted successfully!');
-      } else {
-        const error = await response.json();
-        alert(`Error: ${error.error}`);
-      }
-    } catch (error) {
-      console.error('Failed to delete summary:', error);
-      alert('Failed to delete summary');
-    }
-  };
 
   const filteredChapters = chapters.filter(chapter => {
     if (cacheFilter === 'cached' && !chapter.cached) return false;
