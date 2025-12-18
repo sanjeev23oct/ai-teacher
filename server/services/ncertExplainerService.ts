@@ -22,6 +22,32 @@ import { AUDIO_DURATION_ESTIMATES } from '../config/audioCacheConfig';
 const prisma = new PrismaClient();
 
 // ===========================
+// HTML Sanitization Helper
+// ===========================
+
+/**
+ * Strip HTML tags and clean up AI-generated content
+ */
+function sanitizeAIContent(content: string): string {
+  if (!content) return '';
+  
+  return content
+    // Remove complete HTML tags like <span class="font-bold text-white">content</span>
+    .replace(/<[^>]*>/g, '')
+    // Remove malformed HTML-like content with quotes
+    .replace(/"[^"]*">/g, '')
+    .replace(/>[^<]*"/g, '')
+    // Remove standalone CSS class names that might be left behind
+    .replace(/\b(font-bold|font-semibold|font-medium|text-white|text-gray-\d+|text-blue-\d+|text-green-\d+|text-red-\d+|text-yellow-\d+|text-purple-\d+|text-orange-\d+|text-cyan-\d+|bg-\w+[-\w]*)\b/g, '')
+    // Remove any remaining quote artifacts
+    .replace(/["""]/g, '')
+    // Clean up multiple spaces and normalize whitespace
+    .replace(/\s+/g, ' ')
+    // Remove leading/trailing whitespace
+    .trim();
+}
+
+// ===========================
 // TypeScript Interfaces
 // ===========================
 
@@ -179,7 +205,8 @@ export async function getChapterSummary(request: ChapterRequest): Promise<Chapte
 
     // Generate AI content
     const aiResponse = await aiService.generateContent({ prompt });
-    summary = aiResponse.text;
+    // Sanitize HTML tags from AI response
+    summary = sanitizeAIContent(aiResponse.text);
     summarySource = 'generated';
 
     // Store generated summary in cache for future requests

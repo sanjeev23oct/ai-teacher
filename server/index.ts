@@ -3025,6 +3025,29 @@ app.post('/api/admin/content-cache', authMiddleware, adminMiddleware, async (req
   }
 });
 
+// Get individual cached content
+app.get('/api/admin/content-cache/:id', authMiddleware, adminMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    const prisma = require('@prisma/client').PrismaClient;
+    const db = new prisma();
+    
+    const cached = await db.contentCache.findUnique({
+      where: { id },
+    });
+    
+    if (!cached) {
+      return res.status(404).json({ error: 'Content not found' });
+    }
+    
+    res.json({ content: cached });
+  } catch (error: any) {
+    console.error('Error fetching cached content:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch content' });
+  }
+});
+
 // Update existing cached content
 app.put('/api/admin/content-cache/:id', authMiddleware, adminMiddleware, async (req: Request, res: Response) => {
   try {

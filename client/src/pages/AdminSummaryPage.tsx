@@ -32,21 +32,14 @@ interface SummaryFormData {
   class: string;
 }
 
+// Simplified admin page - view only
+
 const AdminSummaryPage: React.FC = () => {
   const { user } = useAuth();
   const [chapters, setChapters] = useState<ChapterCacheStatus[]>([]);
   const [stats, setStats] = useState<CacheStats | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [editingChapter, setEditingChapter] = useState<ChapterCacheStatus | null>(null);
-  const [formData, setFormData] = useState<SummaryFormData>({
-    chapterId: '',
-    chapterName: '',
-    content: '',
-    title: '',
-    subject: '',
-    class: '',
-  });
+  // Removed editing functionality for simplicity
 
   // Filters
   const [selectedSubject, setSelectedSubject] = useState<string>('');
@@ -95,62 +88,7 @@ const AdminSummaryPage: React.FC = () => {
     }
   };
 
-  const openAddModal = (chapter: ChapterCacheStatus) => {
-    setEditingChapter(chapter);
-    setFormData({
-      chapterId: chapter.chapterId,
-      chapterName: chapter.chapterName,
-      content: '',
-      title: chapter.chapterName,
-      subject: chapter.subject,
-      class: chapter.class,
-    });
-    setShowModal(true);
-  };
-
-  const openEditModal = async (chapter: ChapterCacheStatus) => {
-    if (!chapter.cacheId) return;
-    
-    setEditingChapter(chapter);
-    // TODO: Fetch existing content
-    setFormData({
-      chapterId: chapter.chapterId,
-      chapterName: chapter.chapterName,
-      content: '', // Would fetch from API
-      title: chapter.chapterName,
-      subject: chapter.subject,
-      class: chapter.class,
-    });
-    setShowModal(true);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    try {
-      const response = await authenticatedFetch(
-        getApiUrl('/api/admin/content-cache'),
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData),
-        }
-      );
-
-      if (response.ok) {
-        setShowModal(false);
-        fetchChapters();
-        fetchStats();
-        alert('Summary saved successfully!');
-      } else {
-        const error = await response.json();
-        alert(`Error: ${error.error}`);
-      }
-    } catch (error) {
-      console.error('Failed to save summary:', error);
-      alert('Failed to save summary');
-    }
-  };
+  // Simplified - no editing functionality for now
 
   const handleDelete = async (chapter: ChapterCacheStatus) => {
     if (!chapter.cacheId) return;
@@ -362,30 +300,9 @@ const AdminSummaryPage: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       {chapter.cached ? (
-                        <>
-                          <button
-                            onClick={() => openEditModal(chapter)}
-                            className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20 rounded transition-colors"
-                            title="Edit Summary"
-                          >
-                            <Edit size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(chapter)}
-                            className="p-2 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded transition-colors"
-                            title="Delete Summary"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </>
+                        <span className="text-green-400 text-sm">✓ Cached</span>
                       ) : (
-                        <button
-                          onClick={() => openAddModal(chapter)}
-                          className="flex items-center gap-2 px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm transition-colors"
-                        >
-                          <Plus size={14} />
-                          Add Summary
-                        </button>
+                        <span className="text-gray-500 text-sm">Not Cached</span>
                       )}
                     </div>
                   </div>
@@ -396,64 +313,7 @@ const AdminSummaryPage: React.FC = () => {
         )}
       </div>
 
-      {/* Add/Edit Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-surface rounded-lg border border-gray-800 p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-semibold text-white mb-4">
-              {editingChapter?.cached ? 'Edit' : 'Add'} Summary: {editingChapter?.chapterName}
-            </h2>
-            
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Title (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white text-sm"
-                  placeholder="Leave empty to use chapter name"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Summary Content *
-                </label>
-                <textarea
-                  value={formData.content}
-                  onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                  className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white text-sm"
-                  rows={15}
-                  placeholder="Paste your chapter summary here (from ChatGPT, etc.)"
-                  required
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Tip: You can copy summaries from ChatGPT, Claude, or other AI tools and paste them here.
-                </p>
-              </div>
-              
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
-                >
-                  Save Summary
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Simplified admin page - no editing for now */}
     </div>
   );
 };
