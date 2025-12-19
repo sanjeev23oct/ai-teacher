@@ -66,6 +66,34 @@ const AdminSummaryPage: React.FC = () => {
     }
   };
 
+  // Add delete function
+  const deleteCachedContent = async (cacheId: string, chapterName: string) => {
+    if (!window.confirm(`Are you sure you want to delete the cached content for "${chapterName}"? This will force regeneration of the content.`)) {
+      return;
+    }
+
+    try {
+      const response = await authenticatedFetch(
+        getApiUrl(`/api/admin/content-cache/${cacheId}`),
+        {
+          method: 'DELETE',
+        }
+      );
+
+      if (response.ok) {
+        // Refresh the chapter list
+        fetchChapters();
+        alert('Cached content deleted successfully. Fresh content will be generated on next request.');
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to delete cached content: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Failed to delete cached content:', error);
+      alert('Failed to delete cached content. Please try again.');
+    }
+  };
+
   const fetchStats = async () => {
     try {
       const response = await authenticatedFetch(
@@ -268,7 +296,15 @@ const AdminSummaryPage: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       {chapter.cached ? (
-                        <span className="text-green-400 text-sm">✓ Cached</span>
+                        <>
+                          <span className="text-green-400 text-sm">✓ Cached</span>
+                          <button
+                            onClick={() => deleteCachedContent(chapter.cacheId!, chapter.chapterName)}
+                            className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-white text-sm transition-colors"
+                          >
+                            Delete
+                          </button>
+                        </>
                       ) : (
                         <span className="text-gray-500 text-sm">Not Cached</span>
                       )}
