@@ -2171,7 +2171,7 @@ app.post('/api/asl/score', authMiddleware, upload.single('audio'), async (req: R
     }
     
     // Score the response
-    const result = await aslScoringService.scoreASLResponse({
+    const result = await aslScoringService.scoreASLResponseDetailed({
       transcription,
       taskPrompt: task.prompt,
       keywords: task.keywords,
@@ -2196,7 +2196,8 @@ app.post('/api/asl/score', authMiddleware, upload.single('audio'), async (req: R
             transcription,
             score: result.score,
             feedback: JSON.stringify(result.fixes),
-            fillerCount: aslScoringService.analyzeFillerWords(transcription).fillerCount
+            fillerCount: aslScoringService.analyzeFillerWords(transcription).fillerCount,
+            detailedFeedback: result.detailedFeedback ? JSON.stringify(result.detailedFeedback) : null
           }
         });
         
@@ -3170,7 +3171,9 @@ app.get('/api/asl/history', authMiddleware, async (req: Request, res: Response) 
         score: true,
         practicedAt: true,
         class: true,
-        mode: true
+        mode: true,
+        transcription: true,
+        detailedFeedback: true
       }
     });
     

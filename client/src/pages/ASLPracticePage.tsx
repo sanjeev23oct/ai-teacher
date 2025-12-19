@@ -21,6 +21,14 @@ interface ASLResult {
   score: number;
   fixes: string[];
   transcription?: string;
+  detailedFeedback?: {
+    originalText: string;
+    improvements: Array<{
+      original: string;
+      suggestion: string;
+      severity: 'minor' | 'major' | 'critical';
+    }>;
+  };
 }
 
 interface ASLHistory {
@@ -30,6 +38,15 @@ interface ASLHistory {
   practicedAt: string;
   class: number;
   mode: string;
+  transcription?: string;
+  detailedFeedback?: {
+    originalText: string;
+    improvements: Array<{
+      original: string;
+      suggestion: string;
+      severity: 'minor' | 'major' | 'critical';
+    }>;
+  };
 }
 
 interface ChatMessage {
@@ -64,6 +81,8 @@ const ASLPracticePage: React.FC = () => {
   const [isPreparingToRecord, setIsPreparingToRecord] = useState(false);
   const [showSampleAnswer, setShowSampleAnswer] = useState(false);
   const [isPlayingSample, setIsPlayingSample] = useState(false);
+  const [showDetailedFeedback, setShowDetailedFeedback] = useState(false);
+  const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -104,12 +123,34 @@ const ASLPracticePage: React.FC = () => {
       const response = await fetch('/api/asl/history', {
         credentials: 'include'
       });
+      
       if (response.ok) {
         const data = await response.json();
-        setPracticeHistory(data.history || []);
+        // Check if data has history property
+        if (data && Array.isArray(data.history)) {
+          // Parse detailedFeedback JSON strings
+          const parsedHistory = data.history.map((item: any) => ({
+            ...item,
+            detailedFeedback: item.detailedFeedback ? 
+              (typeof item.detailedFeedback === 'string' ? 
+                JSON.parse(item.detailedFeedback) : 
+                item.detailedFeedback) : 
+              null
+          }));
+          setPracticeHistory(parsedHistory);
+        } else {
+          console.warn('Unexpected response format:', data);
+          setPracticeHistory([]);
+        }
+      } else {
+        // Handle HTTP errors
+        const errorData = await response.json().catch(() => ({}));
+        console.error('HTTP Error fetching practice history:', response.status, errorData);
+        setPracticeHistory([]);
       }
     } catch (err) {
-      console.error('Failed to fetch practice history:', err);
+      console.error('Network error fetching practice history:', err);
+      setPracticeHistory([]);
     }
   };
 
@@ -680,17 +721,62 @@ const ASLPracticePage: React.FC = () => {
           ) : (
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {practiceHistory.slice(0, 10).map((practice) => (
-                <div key={practice.id} className="flex items-center justify-between bg-gray-800 p-2 rounded">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-medium truncate">{practice.taskTitle}</p>
-                    <p className="text-gray-400 text-xs">
-                      Class {practice.class} • {practice.mode} • {new Date(practice.practicedAt).toLocaleDateString()}
-                    </p>
+                <div key={practice.id} className="bg-gray-800 rounded">
+                  <div 
+                    className="flex items-center justify-between p-2 cursor-pointer"
+                    onClick={() => setExpandedHistoryId(expandedHistoryId === practice.id ? null : practice.id)}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-sm font-medium truncate">{practice.taskTitle}</p>
+                      <p className="text-gray-400 text-xs">
+                        Class {practice.class} • {practice.mode} • {new Date(practice.practicedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-yellow-500">★</span>
+                      <span className="text-white text-sm font-semibold">{practice.score}/5</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-yellow-500">★</span>
-                    <span className="text-white text-sm font-semibold">{practice.score}/5</span>
-                  </div>
+                  
+                  {/* Expanded Details */}
+                  {expandedHistoryId === practice.id && (
+                    <div className="px-2 pb-2 border-t border-gray-700">
+                      {/* Transcription */}
+                      {practice.transcription && (
+                        <div className="mt-2">
+                          <p className="text-xs text-gray-400 mb-1">Your response:</p>
+                          <p className="text-gray-300 text-sm italic">"{practice.transcription}"</p>
+                        </div>
+                      )}
+                      
+                      {/* Detailed Feedback Preview */}
+                      {practice.detailedFeedback && (
+                        <div className="mt-2">
+                          <p className="text-xs text-gray-400 mb-1">Feedback highlights:</p>
+                          <div className="space-y-1">
+                            {practice.detailedFeedback.improvements.slice(0, 2).map((imp, idx) => (
+                              <div key={idx} className="text-xs">
+                                <span className={`px-1 py-0.5 rounded ${
+                                  imp.severity === 'critical' ? 'bg-red-500' :
+                                  imp.severity === 'major' ? 'bg-orange-500' : 'bg-yellow-500'
+                                }`}>
+                                  {imp.severity}
+                                </span>
+                                <span className="text-gray-300 ml-1">
+                                  "{imp.original}" → "{imp.suggestion}"
+                                </span>
+                              </div>
+                            ))}
+                            {practice.detailedFeedback.improvements.length > 2 && (
+                              <p className="text-xs text-gray-500">
+                                +{practice.detailedFeedback.improvements.length - 2} more suggestions
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -883,6 +969,58 @@ const ASLPracticePage: React.FC = () => {
                 ))}
               </div>
             </div>
+
+            {/* Detailed Feedback Toggle */}
+            {result.detailedFeedback && (
+              <div className="mb-3">
+                <button
+                  onClick={() => setShowDetailedFeedback(!showDetailedFeedback)}
+                  className="w-full py-2 bg-purple-600 hover:bg-purple-700 rounded text-white transition-all text-sm flex items-center justify-between px-3"
+                >
+                  <span>Detailed Feedback</span>
+                  <span>{showDetailedFeedback ? '▲' : '▼'}</span>
+                </button>
+                
+                {showDetailedFeedback && (
+                  <div className="mt-2 bg-gray-800 rounded-lg p-3 space-y-3">
+                    {/* Original Text */}
+                    <div>
+                      <h4 className="text-sm font-semibold text-purple-400 mb-1">Your Response:</h4>
+                      <div className="bg-gray-900 p-2 rounded text-sm text-gray-300">
+                        <p className="italic">"{result.detailedFeedback.originalText}"</p>
+                      </div>
+                    </div>
+                    
+                    {/* Improvements */}
+                    <div>
+                      <h4 className="text-sm font-semibold text-purple-400 mb-1">Improvement Suggestions:</h4>
+                      <div className="space-y-2">
+                        {result.detailedFeedback.improvements.map((improvement, index) => (
+                          <div key={index} className="bg-gray-900 p-2 rounded">
+                            <div className="flex items-start gap-2">
+                              <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                                improvement.severity === 'critical' ? 'bg-red-500' :
+                                improvement.severity === 'major' ? 'bg-orange-500' : 'bg-yellow-500'
+                              }`}>
+                                {improvement.severity.toUpperCase()}
+                              </span>
+                              <div className="flex-1">
+                                <p className="text-sm text-gray-300">
+                                  <span className="font-medium">Replace:</span> "{improvement.original}"
+                                </p>
+                                <p className="text-sm text-gray-300">
+                                  <span className="font-medium">With:</span> "{improvement.suggestion}"
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Action Buttons */}
             <div className="space-y-2 mb-3">
