@@ -4,6 +4,16 @@ interface ASLScoringResult {
   score: number; // 1-5
   fixes: string[]; // Exactly 3 fixes
   transcription: string;
+  detailedFeedback?: {
+    originalText: string;
+    annotatedText: string;
+    improvements: Array<{
+      original: string;
+      suggestion: string;
+      severity: 'minor' | 'major' | 'critical';
+      position: number;
+    }>;
+  };
 }
 
 /**
@@ -85,7 +95,95 @@ RESPONSE FORMAT (JSON only):
 CRITICAL: Only mention issues that are clearly present in the transcription. Don't assume problems!`;
 
 /**
- * Score student's ASL response
+ * Enhanced scoring with detailed word-by-word feedback
+ */
+export async function scoreASLResponseDetailed(params: {
+  transcription: string;
+  taskPrompt: string;
+  keywords: string[];
+  duration: number;
+}): Promise<ASLScoringResult> {
+  const { transcription, taskPrompt, keywords, duration } = params;
+
+  // Enhanced prompt for detailed analysis
+  const detailedPrompt = `You are a CBSE English teacher providing detailed word-by-word feedback on ASL speaking.
+
+TASK: "${taskPrompt}"
+STUDENT RESPONSE: "${transcription}"
+
+Provide:
+1. Score (1-5) based on CBSE rubric
+2. Three conversational feedback points
+3. Detailed word-by-word analysis with HTML highlighting
+
+For the annotated text, highlight issues using:
+- <span style="background-color: #fef3c7; color: #92400e;">word</span> for minor issues (yellow)
+- <span style="background-color: #fed7aa; color: #c2410c;">word</span> for major issues (orange)  
+- <span style="background-color: #fecaca; color: #dc2626;">word</span> for critical issues (red)
+- <em style="color: #10b981;">suggested replacement</em> for AI suggestions
+
+Example annotated text:
+"I <span style="background-color: #fef3c7; color: #92400e;">really really</span> <em style="color: #10b981;">really</em> like books because they <span style="background-color: #fed7aa; color: #c2410c;">are good</span> <em style="color: #10b981;">teach us many things</em>."
+
+RESPONSE FORMAT (JSON only):
+{
+  "score": 4,
+  "fixes": [
+    "You said 'really really' twice - just say 'really' once for better flow",
+    "Instead of 'books are good', try 'books teach us many things' - more specific!",
+    "Great job staying on topic! Next time add a personal example"
+  ],
+  "detailedFeedback": {
+    "originalText": "${transcription}",
+    "annotatedText": "Your annotated text with HTML highlighting here",
+    "improvements": [
+      {
+        "original": "really really",
+        "suggestion": "really",
+        "severity": "minor",
+        "position": 2
+      }
+    ]
+  }
+}`;
+
+  try {
+    const aiResult = await aiService.generateContent({ prompt: detailedPrompt });
+    const response = aiResult.text;
+    
+    // Parse JSON response
+    let jsonStr = response;
+    if (response.includes('```json')) {
+      jsonStr = response.split('```json')[1].split('```')[0];
+    } else if (response.includes('```')) {
+      jsonStr = response.split('```')[1].split('```')[0];
+    }
+    
+    const result = JSON.parse(jsonStr.trim());
+    
+    // Validate response
+    if (!result.score || !result.fixes || result.fixes.length !== 3) {
+      throw new Error('Invalid scoring response format');
+    }
+    
+    // Ensure score is 1-5
+    result.score = Math.max(1, Math.min(5, result.score));
+    
+    return {
+      score: result.score,
+      fixes: result.fixes,
+      transcription,
+      detailedFeedback: result.detailedFeedback
+    };
+  } catch (error) {
+    console.error('Enhanced ASL scoring error:', error);
+    // Fallback to basic scoring
+    return scoreASLResponse(params);
+  }
+}
+
+/**
+ * Score student's ASL response (basic version)
  */
 export async function scoreASLResponse(params: {
   transcription: string;
@@ -145,50 +243,73 @@ Now score this response and provide exactly 3 fixes. Return ONLY valid JSON.`;
  * Transcribe audio using ElevenLabs Speech-to-Text
  */
 export async function transcribeAudio(audioBuffer: Buffer): Promise<string> {
-  console.log('Audio received, size:', audioBuffer.length, 'bytes');
+  console.log('🎤 Starting audio transcription...');
+  console.log('📊 Audio buffer size:', audioBuffer.length, 'bytes');
   
   const elevenlabsApiKey = process.env.ELEVENLABS_API_KEY;
   
   if (!elevenlabsApiKey) {
-    console.warn('ELEVENLABS_API_KEY not found, using mock transcription');
-    return `This is a sample student response about the topic. The student spoke for about 60 seconds discussing the main points with some examples. There were a few hesitations and filler words like um and uh, but overall the response was clear and on topic.`;
+    console.error('❌ ElevenLabs API key not found');
+    throw new Error('ElevenLabs API key not configured. Please set ELEVENLABS_API_KEY in environment variables.');
   }
+  
+  console.log('✅ ElevenLabs API key found, proceeding with transcription...');
+  
+  // Use correct STT model (scribe_v2 is the latest available for STT)
+  const sttModelId = process.env.ELEVENLABS_STT_MODEL_ID || 'scribe_v2';
   
   try {
     // ElevenLabs Speech-to-Text API
-    const FormData = require('form-data');
+    // Using native FormData instead of form-data library to avoid parsing issues
     const form = new FormData();
-    form.append('audio', audioBuffer, {
-      filename: 'audio.webm',
-      contentType: 'audio/webm',
-      knownLength: audioBuffer.length
-    });
+    form.append('file', new Blob([audioBuffer]), 'audio.webm');
+    form.append('model_id', sttModelId);
+    form.append('language', 'en');
+    
+    console.log('🌐 Making request to ElevenLabs STT API...');
     
     const response = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
       method: 'POST',
       headers: {
-        'xi-api-key': elevenlabsApiKey,
-        ...form.getHeaders()
+        'xi-api-key': elevenlabsApiKey
       },
       body: form
     });
     
+    console.log('📡 ElevenLabs API response status:', response.status);
+    
     if (!response.ok) {
       const error = await response.text();
-      console.error('ElevenLabs STT error:', error);
-      throw new Error(`ElevenLabs STT failed: ${response.status}`);
+      console.error('❌ ElevenLabs STT API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: error
+      });
+      throw new Error(`ElevenLabs Speech-to-Text API failed with status ${response.status}: ${error}`);
     }
     
     const data = await response.json();
+    console.log('📝 ElevenLabs API response data:', data);
+    
     const transcription = data.text || data.transcription || '';
     
-    console.log('Transcription successful:', transcription.substring(0, 100) + '...');
+    if (!transcription || transcription.trim().length === 0) {
+      console.error('❌ No transcription text found in response');
+      throw new Error('No speech detected in audio. Please speak clearly and try again.');
+    }
+    
+    console.log('✅ Transcription successful:', transcription.substring(0, 100) + '...');
     return transcription;
     
   } catch (error) {
     console.error('Transcription error:', error);
-    // Fallback to mock for testing
-    return `This is a sample student response about the topic. The student spoke for about 60 seconds discussing the main points with some examples. There were a few hesitations and filler words like um and uh, but overall the response was clear and on topic.`;
+    
+    // Re-throw the error with a user-friendly message
+    if (error instanceof Error) {
+      throw error;
+    } else {
+      throw new Error('Failed to transcribe audio. Please check your internet connection and try again.');
+    }
   }
 }
 
