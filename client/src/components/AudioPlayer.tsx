@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Play, Pause, Loader2 } from 'lucide-react';
 import { authenticatedFetch } from '../utils/api';
 import { getApiUrl } from '../config';
@@ -13,7 +13,9 @@ interface AudioPlayerProps {
 export default function AudioPlayer({ audioEndpoint, className = '', size = 'md', method = 'GET' }: AudioPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
 
   const sizeConfig = {
     sm: { 
@@ -33,14 +35,8 @@ export default function AudioPlayer({ audioEndpoint, className = '', size = 'md'
     }
   };
 
-  const playAudio = async () => {
-    // Stop if already playing
-    if (isPlaying) {
-      currentAudio?.pause();
-      setCurrentAudio(null);
-      setIsPlaying(false);
-      return;
-    }
+  const loadAudio = async () => {
+    if (isLoaded && audioRef.current) return;
 
     try {
       setIsLoading(true);
@@ -56,40 +52,93 @@ export default function AudioPlayer({ audioEndpoint, className = '', size = 'md'
         
         audio.onended = () => {
           setIsPlaying(false);
-          setIsLoading(false);
-          setCurrentAudio(null);
-          URL.revokeObjectURL(audioUrl);
         };
         
         audio.onerror = () => {
           setIsPlaying(false);
           setIsLoading(false);
-          setCurrentAudio(null);
-          URL.revokeObjectURL(audioUrl);
+          setIsLoaded(false);
           console.error('Audio playback error');
+          // Clean up on error
+          if (audioUrlRef.current) {
+            URL.revokeObjectURL(audioUrlRef.current);
+            audioUrlRef.current = null;
+          }
+          audioRef.current = null;
         };
         
         audio.oncanplay = () => {
           setIsLoading(false);
-          setIsPlaying(true);
+          setIsLoaded(true);
         };
         
-        setCurrentAudio(audio);
-        await audio.play();
+        audioRef.current = audio;
+        audioUrlRef.current = audioUrl;
       } else {
         setIsLoading(false);
+        throw new Error('Failed to load audio');
       }
     } catch (error) {
-      console.error('Failed to play audio:', error);
+      console.error('Failed to load audio:', error);
       setIsLoading(false);
+      setIsLoaded(false);
     }
   };
+
+  const togglePlayPause = async () => {
+    // If audio is not loaded yet, load it first
+    if (!isLoaded || !audioRef.current) {
+      await loadAudio();
+      // After loading, start playing
+      if (audioRef.current) {
+        try {
+          await audioRef.current.play();
+          setIsPlaying(true);
+        } catch (error) {
+          console.error('Failed to play audio:', error);
+        }
+      }
+      return;
+    }
+
+    // If audio is loaded, toggle play/pause
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      try {
+        await audioRef.current.play();
+        setIsPlaying(true);
+      } catch (error) {
+        console.error('Failed to play audio:', error);
+      }
+    }
+  };
+
+  // Cleanup function to revoke blob URL when component unmounts
+  const cleanup = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
+    }
+    setIsPlaying(false);
+    setIsLoaded(false);
+  };
+
+  // Cleanup on unmount
+  React.useEffect(() => {
+    return cleanup;
+  }, []);
 
   const config = sizeConfig[size];
   
   return (
     <button
-      onClick={playAudio}
+      onClick={togglePlayPause}
       disabled={isLoading}
       className={`${config.button} rounded-full transition-all duration-200 flex items-center justify-center ${
         isPlaying 

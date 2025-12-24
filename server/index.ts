@@ -1194,28 +1194,37 @@ Teacher:`;
     }
 });
 
-// Text-to-Speech Streaming Endpoint (ElevenLabs) - Faster response
+// Text-to-Speech Streaming Endpoint (Dual Provider) - Faster response
 app.post('/api/tts/stream', async (req: Request, res: Response) => {
     try {
-        const { text } = req.body;
+        const { text, provider, languageCode, voiceId, modelId } = req.body;
 
         if (!text) {
             return res.status(400).json({ error: 'Text is required' });
         }
 
-        const { textToSpeechStream } = await import('./services/ttsService');
-        const audioStream = await textToSpeechStream(text);
+        const { textToSpeechStreamWithOptions } = await import('./services/ttsService');
+        
+        // Build TTS options
+        const options = {
+            languageCode,
+            voiceId,
+            modelId
+        };
+
+        const audioStream = await textToSpeechStreamWithOptions(text, options);
 
         if (!audioStream) {
             return res.status(503).json({ 
                 error: 'TTS service not available',
-                message: 'ElevenLabs API key not configured.'
+                message: 'No TTS providers are currently available. Please check API configuration.'
             });
         }
 
         res.set({
             'Content-Type': 'audio/mpeg',
-            'Transfer-Encoding': 'chunked'
+            'Transfer-Encoding': 'chunked',
+            'X-TTS-Provider': provider || 'auto' // Indicate which provider was used
         });
 
         // Stream audio chunks as they arrive
@@ -1230,28 +1239,37 @@ app.post('/api/tts/stream', async (req: Request, res: Response) => {
     }
 });
 
-// Text-to-Speech Endpoint (ElevenLabs) - Full audio
+// Text-to-Speech Endpoint (Dual Provider) - Full audio
 app.post('/api/tts', async (req: Request, res: Response) => {
     try {
-        const { text } = req.body;
+        const { text, provider, languageCode, voiceId, modelId } = req.body;
 
         if (!text) {
             return res.status(400).json({ error: 'Text is required' });
         }
 
-        const { textToSpeech } = await import('./services/ttsService');
-        const audioBuffer = await textToSpeech(text);
+        const { textToSpeechWithOptions } = await import('./services/ttsService');
+        
+        // Build TTS options
+        const options = {
+            languageCode,
+            voiceId,
+            modelId
+        };
+
+        const audioBuffer = await textToSpeechWithOptions(text, options);
 
         if (!audioBuffer) {
             return res.status(503).json({ 
                 error: 'TTS service not available',
-                message: 'ElevenLabs API key not configured. Add ELEVENLABS_API_KEY to environment variables.'
+                message: 'No TTS providers are currently available. Please check API configuration.'
             });
         }
 
         res.set({
             'Content-Type': 'audio/mpeg',
-            'Content-Length': audioBuffer.length
+            'Content-Length': audioBuffer.length,
+            'X-TTS-Provider': provider || 'auto' // Indicate which provider was used
         });
         res.send(audioBuffer);
     } catch (error) {
@@ -2144,39 +2162,57 @@ app.get('/api/asl/tasks', authMiddleware, (req: Request, res: Response) => {
 });
 
 // Score ASL response
+// Test endpoint to verify server is working
+app.get('/api/asl/test', (req: Request, res: Response) => {
+  console.log('🧪 [ASL] Test endpoint hit');
+  res.json({ message: 'ASL endpoint is working', timestamp: new Date().toISOString() });
+});
+
 app.post('/api/asl/score', authMiddleware, upload.single('audio'), async (req: Request, res: Response) => {
+  console.log('🎤 [ASL] Starting ASL scoring request...');
   try {
     if (!req.file) {
+      console.log('❌ [ASL] No audio file provided');
       return res.status(400).json({ error: 'No audio file provided' });
     }
 
     const { taskId, mode } = req.body;
+    console.log('📋 [ASL] Request details:', { taskId, mode, fileSize: req.file.size, mimeType: req.file.mimetype });
+    
     const fs = require('fs');
     
     // Read audio file
     const audioBuffer = fs.readFileSync(req.file.path);
+    console.log('📁 [ASL] Audio file read successfully, size:', audioBuffer.length, 'bytes');
     
     // Import services
     const aslScoringService = require('./services/aslScoringService');
     const aslTasks = require('./data/aslTasks');
     
-    // Transcribe audio
-    const transcription = await aslScoringService.transcribeAudio(audioBuffer);
-    
-    // Get task details
+    // Get task details first
     const task = aslTasks.getTaskById(taskId);
     
     if (!task) {
+      console.log('❌ [ASL] Invalid task ID:', taskId);
       return res.status(400).json({ error: 'Invalid task ID' });
     }
     
+    console.log('✅ [ASL] Task found:', task.title);
+    
+    // Transcribe audio
+    console.log('🎯 [ASL] Starting audio transcription...');
+    const transcription = await aslScoringService.transcribeAudio(audioBuffer);
+    console.log('✅ [ASL] Transcription completed:', transcription.substring(0, 100) + '...');
+    
     // Score the response
+    console.log('📊 [ASL] Starting ASL scoring...');
     const result = await aslScoringService.scoreASLResponseDetailed({
       transcription,
       taskPrompt: task.prompt,
       keywords: task.keywords,
       duration: task.duration
     });
+    console.log('✅ [ASL] Scoring completed, score:', result.score);
     
     // Save practice to history (if user is authenticated)
     if (req.user?.id) {
@@ -2217,7 +2253,14 @@ app.post('/api/asl/score', authMiddleware, upload.single('audio'), async (req: R
     
     res.json(result);
   } catch (error) {
-    console.error('ASL scoring error:', error);
+    console.error('❌ [ASL] ASL scoring error:', error);
+    console.error('❌ [ASL] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    console.error('❌ [ASL] Error details:', {
+      message: error instanceof Error ? error.message : String(error),
+      taskId: req.body?.taskId,
+      fileSize: req.file?.size,
+      mimeType: req.file?.mimetype
+    });
     
     // Cleanup file on error too
     if (req.file?.path) {
@@ -2418,13 +2461,14 @@ app.post('/api/revision-friend/audio/stream', authMiddleware, async (req: Reques
     if (!audioStream) {
       return res.status(503).json({ 
         error: 'TTS service not available',
-        message: 'ElevenLabs API key not configured.'
+        message: 'No TTS providers are currently available. Please check API configuration.'
       });
     }
 
     res.set({
       'Content-Type': 'audio/mpeg',
-      'Transfer-Encoding': 'chunked'
+      'Transfer-Encoding': 'chunked',
+      'X-TTS-Provider': 'auto' // Dual provider system handles selection
     });
 
     // Stream audio chunks as they arrive
@@ -2938,12 +2982,11 @@ app.get('/api/ncert-explainer/chapter/:chapterId/audio', authMiddleware, async (
       });
     }
 
-    const languageConfig = languageService.getLanguageConfig(languageCode as string);
-    
-    // Import audio cache service
+    // Import audio cache service and dual-provider TTS
     const audioCacheService = require('./services/audioCacheService').default;
     const { generateCacheKey } = require('./services/audioCacheService');
-    const { textToSpeech } = require('./services/ttsService');
+    const { textToSpeechWithOptions } = require('./services/ttsService');
+    const { languageService } = require('./services/languageService');
 
     // Parse chapterId to extract subject and class
     const chapterParts = chapterId.split('_');
@@ -2960,24 +3003,35 @@ app.get('/api/ncert-explainer/chapter/:chapterId/audio', authMiddleware, async (
       version: 'v1'
     });
 
-    // Cache options
+    // Get voice configuration for current provider
+    const primaryProvider = process.env.TTS_PROVIDER?.toLowerCase() === 'elevenlabs' ? 'elevenlabs' : 'google';
+    const voiceConfig = languageService.getVoiceForProvider(languageCode as string, primaryProvider);
+
+    // Cache options with provider information
     const cacheOptions = {
       module: 'ncert',
       subject: subject,
       class: className,
       identifier: chapterId,
-      voiceId: languageConfig?.elevenLabsVoiceId,
+      voiceId: voiceConfig.voiceId,
       languageCode: languageCode as string,
-      version: 'v1'
+      version: 'v1',
+      provider: primaryProvider,
+      modelId: voiceConfig.modelId
     };
 
-    // TTS generator function
+    // TTS generator function using dual-provider system
     const ttsGenerator = async (text: string): Promise<Buffer> => {
-      const audioBuffer = await textToSpeech(
-        text,
-        languageConfig?.elevenLabsVoiceId,
-        languageConfig?.elevenLabsModelId
-      );
+      const options = {
+        languageCode: languageCode as string,
+        voiceId: voiceConfig.voiceId,
+        modelId: voiceConfig.modelId
+      };
+      
+      const audioBuffer = await textToSpeechWithOptions(text, options);
+      if (!audioBuffer) {
+        throw new Error('Failed to generate audio with dual-provider TTS');
+      }
       return audioBuffer;
     };
 
@@ -2989,7 +3043,7 @@ app.get('/api/ncert-explainer/chapter/:chapterId/audio', authMiddleware, async (
       ttsGenerator
     );
 
-    console.log(`[NCERT AUDIO] ${audioResult.source === 'cache' ? '📦 CACHED' : '🔊 GENERATED'} - Chapter: ${chapterId}, Language: ${languageCode}`);
+    console.log(`[NCERT AUDIO] ${audioResult.source === 'cache' ? '📦 CACHED' : '🔊 GENERATED'} - Chapter: ${chapterId}, Language: ${languageCode}, Provider: ${primaryProvider}`);
 
     // If cached, redirect to static file
     if (audioResult.source === 'cache') {
@@ -2999,15 +3053,37 @@ app.get('/api/ncert-explainer/chapter/:chapterId/audio', authMiddleware, async (
     // If generated, stream the audio
     const fs = require('fs');
     const path = require('path');
-    const filePath = path.join(__dirname, '..', audioResult.audioUrl);
+    // audioResult.audioUrl is like "/audio-cache/ncert/filename.mp3"
+    // We need to convert it to a file system path relative to server directory
+    const relativePath = audioResult.audioUrl.replace('/audio-cache/', 'audio-cache/');
+    const filePath = path.join(__dirname, relativePath);
     
-    res.set({
-      'Content-Type': 'audio/mpeg',
-      'Content-Length': audioResult.metadata.fileSize.toString()
-    });
+    console.log(`[NCERT AUDIO DEBUG] Streaming file: ${filePath}`);
+    
+    // Check if file exists and get actual file size
+    try {
+      const stats = fs.statSync(filePath);
+      console.log(`[NCERT AUDIO DEBUG] File exists, size: ${stats.size} bytes`);
+      
+      res.set({
+        'Content-Type': 'audio/mpeg',
+        'Content-Length': stats.size.toString(),
+        'X-TTS-Provider': primaryProvider
+      });
 
-    const audioStream = fs.createReadStream(filePath);
-    audioStream.pipe(res);
+      const audioStream = fs.createReadStream(filePath);
+      audioStream.on('error', (streamError: any) => {
+        console.error('[NCERT AUDIO ERROR] Stream error:', streamError);
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Audio streaming failed' });
+        }
+      });
+      
+      audioStream.pipe(res);
+    } catch (fileError: any) {
+      console.error('[NCERT AUDIO ERROR] File access error:', fileError);
+      res.status(500).json({ error: 'Audio file not accessible' });
+    }
 
   } catch (error: any) {
     console.error('Error generating NCERT chapter audio:', error);
@@ -3504,12 +3580,12 @@ app.get('/api/smart-notes/:id/audio', authMiddleware, async (req: Request, res: 
     }
 
     const languageCode = req.user.languagePreference || 'en';
-    const languageConfig = languageService.getLanguageConfig(languageCode);
     
-    // Import audio cache service
+    // Import audio cache service and dual-provider TTS
     const audioCacheService = require('./services/audioCacheService').default;
     const { generateCacheKey } = require('./services/audioCacheService');
-    const { textToSpeech } = require('./services/ttsService');
+    const { textToSpeechWithOptions } = require('./services/ttsService');
+    const { languageService } = require('./services/languageService');
 
     // Generate cache key for this note
     const cacheKey = generateCacheKey({
@@ -3521,24 +3597,35 @@ app.get('/api/smart-notes/:id/audio', authMiddleware, async (req: Request, res: 
       version: 'v1'
     });
 
-    // Cache options
+    // Get voice configuration for current provider
+    const primaryProvider = process.env.TTS_PROVIDER?.toLowerCase() === 'elevenlabs' ? 'elevenlabs' : 'google';
+    const voiceConfig = languageService.getVoiceForProvider(languageCode, primaryProvider);
+
+    // Cache options with provider information
     const cacheOptions = {
       module: 'smart-notes',
       subject: note.subject,
       class: note.class,
       identifier: note.id,
-      voiceId: languageConfig.elevenLabsVoiceId,
+      voiceId: voiceConfig.voiceId,
       languageCode: languageCode,
-      version: 'v1'
+      version: 'v1',
+      provider: primaryProvider,
+      modelId: voiceConfig.modelId
     };
 
-    // TTS generator function
+    // TTS generator function using dual-provider system
     const ttsGenerator = async (text: string): Promise<Buffer> => {
-      const audioBuffer = await textToSpeech(
-        text,
-        languageConfig.elevenLabsVoiceId,
-        languageConfig.elevenLabsModelId
-      );
+      const options = {
+        languageCode: languageCode,
+        voiceId: voiceConfig.voiceId,
+        modelId: voiceConfig.modelId
+      };
+      
+      const audioBuffer = await textToSpeechWithOptions(text, options);
+      if (!audioBuffer) {
+        throw new Error('Failed to generate audio with dual-provider TTS');
+      }
       return audioBuffer;
     };
 
@@ -3550,7 +3637,7 @@ app.get('/api/smart-notes/:id/audio', authMiddleware, async (req: Request, res: 
       ttsGenerator
     );
 
-    console.log(`[SMART NOTES AUDIO] ${audioResult.source === 'cache' ? '📦 CACHED' : '🔊 GENERATED'} - Note: ${note.title}, Language: ${languageCode}`);
+    console.log(`[SMART NOTES AUDIO] ${audioResult.source === 'cache' ? '📦 CACHED' : '🔊 GENERATED'} - Note: ${note.title}, Language: ${languageCode}, Provider: ${primaryProvider}`);
 
     // If cached, redirect to static file
     if (audioResult.source === 'cache') {
@@ -3560,15 +3647,36 @@ app.get('/api/smart-notes/:id/audio', authMiddleware, async (req: Request, res: 
     // If generated, stream the audio
     const fs = require('fs');
     const path = require('path');
-    const filePath = path.join(__dirname, '..', audioResult.audioUrl);
+    // audioResult.audioUrl is like "/audio-cache/smart-notes/filename.mp3"
+    // We need to convert it to a file system path relative to server directory
+    const relativePath = audioResult.audioUrl.replace('/audio-cache/', 'audio-cache/');
+    const filePath = path.join(__dirname, relativePath);
     
-    res.set({
-      'Content-Type': 'audio/mpeg',
-      'Content-Length': audioResult.metadata.fileSize.toString()
-    });
+    console.log(`[SMART NOTES AUDIO DEBUG] Streaming file: ${filePath}`);
+    
+    // Check if file exists and get actual file size
+    try {
+      const stats = fs.statSync(filePath);
+      console.log(`[SMART NOTES AUDIO DEBUG] File exists, size: ${stats.size} bytes`);
+      
+      res.set({
+        'Content-Type': 'audio/mpeg',
+        'Content-Length': stats.size.toString()
+      });
 
-    const audioStream = fs.createReadStream(filePath);
-    audioStream.pipe(res);
+      const audioStream = fs.createReadStream(filePath);
+      audioStream.on('error', (streamError: any) => {
+        console.error('[SMART NOTES AUDIO ERROR] Stream error:', streamError);
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Audio streaming failed' });
+        }
+      });
+      
+      audioStream.pipe(res);
+    } catch (fileError: any) {
+      console.error('[SMART NOTES AUDIO ERROR] File access error:', fileError);
+      res.status(500).json({ error: 'Audio file not accessible' });
+    }
 
   } catch (error: any) {
     console.error('Error generating note audio:', error);

@@ -18,11 +18,14 @@ export interface CacheOptions {
   voiceId?: string;
   languageCode?: string;
   version?: string;
+  // Enhanced for dual providers
+  provider?: 'google' | 'elevenlabs' | 'browser';
+  modelId?: string;
 }
 
 export interface AudioCacheResult {
   audioUrl: string;
-  source: 'cache' | 'elevenlabs';
+  source: 'cache' | 'google' | 'elevenlabs' | 'browser';
   cacheKey: string;
   metadata: CacheMetadata;
 }
@@ -34,6 +37,10 @@ export interface CacheMetadata {
   voiceId: string;
   languageCode: string;
   version: string;
+  // Enhanced for dual providers
+  provider: 'google' | 'elevenlabs' | 'browser';
+  modelId?: string;
+  estimatedCost?: number;
 }
 
 export interface CacheStats {
@@ -43,6 +50,13 @@ export interface CacheStats {
   missCount: number;
   hitRatio: number;
   costSaved: number; // in USD
+  // Enhanced for dual providers
+  providerBreakdown: {
+    google: { files: number; size: number; cost: number };
+    elevenlabs: { files: number; size: number; cost: number };
+    browser: { files: number; size: number; cost: number };
+  };
+  totalEstimatedCost: number;
 }
 
 interface CacheKeyParams {
@@ -52,6 +66,9 @@ interface CacheKeyParams {
   identifier: string;
   language?: string;
   version?: string;
+  // Enhanced for dual providers
+  provider?: string;
+  voiceId?: string;
 }
 
 // ===========================
@@ -70,6 +87,7 @@ let cacheStats = {
 /**
  * Generates a deterministic cache key based on content parameters
  * Format: {module}_{subject}_{class}_{identifier}_{language}_{version}.mp3
+ * Note: Provider-agnostic to allow reuse across providers
  */
 export function generateCacheKey(params: CacheKeyParams): string {
   const {
@@ -79,6 +97,7 @@ export function generateCacheKey(params: CacheKeyParams): string {
     identifier,
     language = 'en',
     version = 'v1'
+    // Note: We don't include provider/voiceId in cache key to allow reuse
   } = params;
 
   // Sanitize identifier: lowercase, remove special chars, normalize
@@ -95,6 +114,21 @@ export function generateCacheKey(params: CacheKeyParams): string {
   parts.push(sanitized, language, version);
 
   return `${parts.join('_')}.mp3`;
+}
+
+/**
+ * Generates a provider-specific cache key for debugging/analytics
+ * This is used for logging but not for actual file storage
+ */
+export function generateProviderSpecificKey(params: CacheKeyParams): string {
+  const baseKey = generateCacheKey(params);
+  const { provider, voiceId } = params;
+  
+  if (provider && voiceId) {
+    return `${baseKey.replace('.mp3', '')}_${provider}_${voiceId}.mp3`;
+  }
+  
+  return baseKey;
 }
 
 /**
@@ -158,9 +192,12 @@ export async function getCached(cacheKey: string, module: string): Promise<Audio
       generatedAt: registry.generatedAt.toISOString(),
       fileSize: registry.fileSize,
       characterCount: registry.characterCount,
-      voiceId: 'cached',
+      voiceId: registry.voiceId || 'cached',
       languageCode: registry.language,
       version: registry.version,
+      provider: (registry.provider as 'google' | 'elevenlabs' | 'browser') || 'google', // Default for backward compatibility
+      modelId: registry.modelId || undefined,
+      estimatedCost: registry.estimatedCost || undefined,
     } : {
       generatedAt: stats.mtime.toISOString(),
       fileSize: stats.size,
@@ -168,10 +205,14 @@ export async function getCached(cacheKey: string, module: string): Promise<Audio
       voiceId: 'cached',
       languageCode: 'en',
       version: 'v1',
+      provider: 'google', // Default for backward compatibility
+      estimatedCost: 0,
     };
 
-    // Calculate cost saved (ElevenLabs pricing from config)
-    const costSaved = (metadata.characterCount / 1000) * AUDIO_CACHE_CONFIG.PRICE_PER_1000_CHARS;
+    // Log cache hit with provider info
+    const providerInfo = metadata.provider ? ` [${metadata.provider}]` : '';
+    const costInfo = metadata.estimatedCost ? ` (saved $${metadata.estimatedCost.toFixed(6)})` : '';
+    console.log(`\x1b[34m[CACHE HIT] 📦 ${cacheKey}${providerInfo}${costInfo}\x1b[0m`);
 
     // Log cache hit
     console.log(`\x1b[34m[CACHE HIT] 📦 ${cacheKey} (saved $${costSaved.toFixed(3)})\x1b[0m`);
@@ -196,7 +237,8 @@ export async function saveToCache(
   cacheKey: string,
   audioBuffer: Buffer,
   options: CacheOptions,
-  characterCount: number
+  characterCount: number,
+  estimatedCost?: number
 ): Promise<void> {
   try {
     await ensureCacheDir(options.module);
@@ -207,29 +249,41 @@ export async function saveToCache(
 
     const stats = await fs.stat(filePath);
 
-    // Save to registry
+    // Save to registry with provider information
     await prisma.audioCacheRegistry.upsert({
       where: { cacheKey },
       create: {
         cacheKey,
         module: options.module,
-        subject: options.subject,
-        class: options.class,
+        subject: options.subject || null,
+        class: options.class || null,
         identifier: options.identifier,
         language: options.languageCode || 'en',
         version: options.version || 'v1',
         filePath,
         fileSize: stats.size,
         characterCount,
+        // Enhanced provider fields - ensure no undefined values
+        provider: options.provider || 'google',
+        voiceId: options.voiceId || null,
+        modelId: options.modelId || null,
+        estimatedCost: estimatedCost || null,
       },
       update: {
         lastAccessed: new Date(),
         fileSize: stats.size,
         characterCount,
+        // Update provider info on cache refresh - ensure no undefined values
+        provider: options.provider || 'google',
+        voiceId: options.voiceId || null,
+        modelId: options.modelId || null,
+        estimatedCost: estimatedCost || null,
       },
     });
 
-    console.log(`[CACHE SAVE] ✓ ${cacheKey} (${stats.size} bytes)`);
+    const providerInfo = options.provider ? ` [${options.provider}]` : '';
+    const costInfo = estimatedCost ? ` ($${estimatedCost.toFixed(6)})` : '';
+    console.log(`[CACHE SAVE] ✓ ${cacheKey}${providerInfo} (${stats.size} bytes)${costInfo}`);
   } catch (error) {
     console.error(`[CACHE ERROR] Failed to save ${cacheKey}:`, error);
   }
@@ -237,12 +291,14 @@ export async function saveToCache(
 
 /**
  * Main method: Get audio from cache or generate via TTS
+ * Enhanced for dual-provider support
  */
 export async function getOrGenerate(
   cacheKey: string,
   textContent: string,
   options: CacheOptions,
-  ttsGenerator: (text: string) => Promise<Buffer>
+  ttsGenerator: (text: string) => Promise<Buffer>,
+  estimatedCost?: number
 ): Promise<AudioCacheResult> {
   // Check cache first
   const cached = await getCached(cacheKey, options.module);
@@ -251,14 +307,15 @@ export async function getOrGenerate(
   }
 
   // Cache miss - generate via TTS
-  console.log(`\x1b[32m[ELEVENLABS] 🔊 Generating ${cacheKey} (${textContent.length} chars)\x1b[0m`);
+  const providerName = options.provider || 'google';
+  console.log(`\x1b[32m[${providerName.toUpperCase()}] 🔊 Generating ${cacheKey} (${textContent.length} chars)\x1b[0m`);
   cacheStats.missCount++;
 
   const audioBuffer = await ttsGenerator(textContent);
 
   // Calculate cost from config
   const cost = (textContent.length / 1000) * AUDIO_CACHE_CONFIG.PRICE_PER_1000_CHARS;
-  console.log(`\x1b[32m[ELEVENLABS] 🔊 Generated ${cacheKey} (${textContent.length} chars, $${cost.toFixed(3)}) - cached ✓\x1b[0m`);
+  console.log(`\x1b[32m[GOOGLE] 🔊 Generated ${cacheKey} (${textContent.length} chars, $${cost.toFixed(3)}) - cached ✓\x1b[0m`);
 
   // Save to cache
   await saveToCache(cacheKey, audioBuffer, options, textContent.length);
@@ -274,7 +331,7 @@ export async function getOrGenerate(
 
   return {
     audioUrl: `/audio-cache/${options.module}/${cacheKey}`,
-    source: 'elevenlabs',
+    source: 'google',
     cacheKey,
     metadata,
   };
@@ -310,8 +367,28 @@ export async function getCacheStats(): Promise<CacheStats> {
   const totalSize = registryEntries.reduce((sum: number, entry) => sum + entry.fileSize, 0);
   const totalCharacters = registryEntries.reduce((sum: number, entry) => sum + entry.characterCount, 0);
   
-  // Cost saved from config
-  const costSaved = (totalCharacters / 1000) * AUDIO_CACHE_CONFIG.PRICE_PER_1000_CHARS;
+  // Calculate provider breakdown
+  const providerBreakdown = {
+    google: { files: 0, size: 0, cost: 0 },
+    elevenlabs: { files: 0, size: 0, cost: 0 },
+    browser: { files: 0, size: 0, cost: 0 }
+  };
+
+  let totalEstimatedCost = 0;
+
+  for (const entry of registryEntries) {
+    const provider = (entry.provider as 'google' | 'elevenlabs' | 'browser') || 'google';
+    const cost = entry.estimatedCost || 0;
+    
+    providerBreakdown[provider].files++;
+    providerBreakdown[provider].size += entry.fileSize;
+    providerBreakdown[provider].cost += cost;
+    totalEstimatedCost += cost;
+  }
+  
+  // Fallback cost calculation for backward compatibility
+  const fallbackCostSaved = (totalCharacters / 1000) * AUDIO_CACHE_CONFIG.PRICE_PER_1000_CHARS;
+  const costSaved = totalEstimatedCost > 0 ? totalEstimatedCost : fallbackCostSaved;
 
   const totalRequests = cacheStats.hitCount + cacheStats.missCount;
   const hitRatio = totalRequests > 0 ? cacheStats.hitCount / totalRequests : 0;
@@ -322,7 +399,9 @@ export async function getCacheStats(): Promise<CacheStats> {
     hitCount: cacheStats.hitCount,
     missCount: cacheStats.missCount,
     hitRatio: parseFloat((hitRatio * 100).toFixed(2)),
-    costSaved: parseFloat(costSaved.toFixed(2)),
+    costSaved: parseFloat(costSaved.toFixed(6)),
+    providerBreakdown,
+    totalEstimatedCost: parseFloat(totalEstimatedCost.toFixed(6)),
   };
 }
 
@@ -380,6 +459,7 @@ export function logSessionSummary(): void {
 
 export default {
   generateCacheKey,
+  generateProviderSpecificKey,
   getCached,
   saveToCache,
   getOrGenerate,

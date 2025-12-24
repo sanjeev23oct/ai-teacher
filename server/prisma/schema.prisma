@@ -572,6 +572,12 @@ model AudioCacheRegistry {
   fileSize       Int
   characterCount Int
   
+  // Provider info (enhanced for dual providers)
+  provider       String?  @default("google") // "google", "elevenlabs", "browser"
+  voiceId        String?
+  modelId        String?
+  estimatedCost  Float?
+  
   // Usage tracking
   generatedAt    DateTime @default(now())
   lastAccessed   DateTime @default(now())
@@ -584,6 +590,7 @@ model AudioCacheRegistry {
   @@index([module, subject, class])
   @@index([lastAccessed])
   @@index([cacheKey])
+  @@index([provider])
 }
 
 model ContentCache {

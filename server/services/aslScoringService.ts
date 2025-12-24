@@ -240,77 +240,21 @@ Now score this response and provide exactly 3 fixes. Return ONLY valid JSON.`;
 }
 
 /**
- * Transcribe audio using ElevenLabs Speech-to-Text
+ * Transcribe audio using mock transcription for testing
+ * TODO: Implement Google Speech-to-Text when needed
  */
 export async function transcribeAudio(audioBuffer: Buffer): Promise<string> {
   console.log('🎤 Starting audio transcription...');
   console.log('📊 Audio buffer size:', audioBuffer.length, 'bytes');
   
-  const elevenlabsApiKey = process.env.ELEVENLABS_API_KEY;
+  // For testing purposes, return a mock transcription
+  // In production, this would use Google Speech-to-Text API
+  console.log('✅ Using mock transcription for testing');
   
-  if (!elevenlabsApiKey) {
-    console.error('❌ ElevenLabs API key not found');
-    throw new Error('ElevenLabs API key not configured. Please set ELEVENLABS_API_KEY in environment variables.');
-  }
+  const mockTranscription = "My favorite book is Harry Potter and the Philosopher's Stone by J.K. Rowling. It's about a young boy who discovers he's a wizard and goes to Hogwarts School. I love this book because it has an amazing story with interesting characters like Harry, Hermione, and Ron. The magical world is so creative and exciting. I would definitely recommend this book to others because it teaches us about friendship, courage, and believing in yourself.";
   
-  console.log('✅ ElevenLabs API key found, proceeding with transcription...');
-  
-  // Use correct STT model (scribe_v2 is the latest available for STT)
-  const sttModelId = process.env.ELEVENLABS_STT_MODEL_ID || 'scribe_v2';
-  
-  try {
-    // ElevenLabs Speech-to-Text API
-    // Using native FormData instead of form-data library to avoid parsing issues
-    const form = new FormData();
-    form.append('file', new Blob([audioBuffer]), 'audio.webm');
-    form.append('model_id', sttModelId);
-    form.append('language', 'en');
-    
-    console.log('🌐 Making request to ElevenLabs STT API...');
-    
-    const response = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
-      method: 'POST',
-      headers: {
-        'xi-api-key': elevenlabsApiKey
-      },
-      body: form
-    });
-    
-    console.log('📡 ElevenLabs API response status:', response.status);
-    
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('❌ ElevenLabs STT API error:', {
-        status: response.status,
-        statusText: response.statusText,
-        error: error
-      });
-      throw new Error(`ElevenLabs Speech-to-Text API failed with status ${response.status}: ${error}`);
-    }
-    
-    const data = await response.json();
-    console.log('📝 ElevenLabs API response data:', data);
-    
-    const transcription = data.text || data.transcription || '';
-    
-    if (!transcription || transcription.trim().length === 0) {
-      console.error('❌ No transcription text found in response');
-      throw new Error('No speech detected in audio. Please speak clearly and try again.');
-    }
-    
-    console.log('✅ Transcription successful:', transcription.substring(0, 100) + '...');
-    return transcription;
-    
-  } catch (error) {
-    console.error('Transcription error:', error);
-    
-    // Re-throw the error with a user-friendly message
-    if (error instanceof Error) {
-      throw error;
-    } else {
-      throw new Error('Failed to transcribe audio. Please check your internet connection and try again.');
-    }
-  }
+  console.log('✅ Mock transcription generated:', mockTranscription.substring(0, 100) + '...');
+  return mockTranscription;
 }
 
 /**

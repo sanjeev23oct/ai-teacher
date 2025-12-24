@@ -110,7 +110,7 @@ const AdminSummaryPage: React.FC = () => {
   };
 
   // Add function to view cached content
-  const viewCachedContent = async (cacheId: string, chapterName: string) => {
+  const viewCachedContent = async (cacheId: string) => {
     try {
       const response = await authenticatedFetch(
         getApiUrl(`/api/admin/content-cache/${cacheId}`)
@@ -422,7 +422,7 @@ const AdminSummaryPage: React.FC = () => {
                         <>
                           <span className="text-green-400 text-sm">✓ Cached</span>
                           <button
-                            onClick={() => viewCachedContent(chapter.cacheId!, chapter.chapterName)}
+                            onClick={() => viewCachedContent(chapter.cacheId!)}
                             className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-white text-sm transition-colors flex items-center gap-1"
                           >
                             <Eye size={16} />

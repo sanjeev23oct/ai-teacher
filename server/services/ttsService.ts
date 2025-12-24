@@ -1,192 +1,102 @@
-import { ElevenLabsClient } from 'elevenlabs';
+import { DualProviderTTSService } from './dualProviderTTSService';
+import { TTSOptions } from './types/ttsTypes';
 
-// Lazy initialization - create client when first needed, not at module load
-let elevenlabs: ElevenLabsClient | null = null;
-
-function getElevenLabsClient(): ElevenLabsClient | null {
-  if (elevenlabs === null && process.env.ELEVENLABS_API_KEY) {
-    elevenlabs = new ElevenLabsClient({ apiKey: process.env.ELEVENLABS_API_KEY });
-    console.log('✓ ElevenLabs client initialized');
-  }
-  return elevenlabs;
-}
-
-// Configuration from environment variables
-const getVoiceId = () => process.env.ELEVENLABS_VOICE_ID || 'pNInz6obpgDQGcFmaJgB'; // Adam voice (default)
-const getModelId = () => process.env.ELEVENLABS_MODEL_ID || 'eleven_turbo_v2_5';
+// Initialize the dual provider TTS service
+const dualProviderTTS = new DualProviderTTSService();
 
 /**
- * Humanize mathematical symbols and notation for natural speech
- * This is a fallback for any symbols the AI might still include
+ * Generate speech audio using dual-provider system (Google primary, ElevenLabs fallback)
+ * Maintains backward compatibility with existing function signature
  */
-function humanizeMathText(text: string): string {
-  let humanized = text;
-  
-  // Remove code blocks (ASCII art) - don't read them aloud
-  humanized = humanized.replace(/```[\s\S]*?```/g, ' [diagram shown] ');
-  
-  // Remove markdown formatting
-  humanized = humanized.replace(/\*\*(.*?)\*\*/g, '$1'); // Bold
-  humanized = humanized.replace(/\*(.*?)\*/g, '$1'); // Italic
-  humanized = humanized.replace(/__(.*?)__/g, '$1'); // Bold
-  humanized = humanized.replace(/_(.*?)_/g, '$1'); // Italic
-  
-  // Only handle symbols that might slip through from AI
-  // The AI is now instructed to write speech-friendly text
-  
-  // Special mathematical symbols (not common in text)
-  humanized = humanized.replace(/×/g, ' times ');
-  humanized = humanized.replace(/÷/g, ' divided by ');
-  humanized = humanized.replace(/≠/g, ' not equals ');
-  humanized = humanized.replace(/≈/g, ' approximately equals ');
-  humanized = humanized.replace(/≤/g, ' less than or equal to ');
-  humanized = humanized.replace(/≥/g, ' greater than or equal to ');
-  
-  // Superscript numbers (Unicode)
-  humanized = humanized.replace(/²/g, ' squared');
-  humanized = humanized.replace(/³/g, ' cubed');
-  
-  // Greek letters (common in math/science)
-  humanized = humanized.replace(/π/g, ' pi ');
-  humanized = humanized.replace(/θ/g, ' theta ');
-  humanized = humanized.replace(/α/g, ' alpha ');
-  humanized = humanized.replace(/β/g, ' beta ');
-  humanized = humanized.replace(/γ/g, ' gamma ');
-  humanized = humanized.replace(/Δ/g, ' delta ');
-  humanized = humanized.replace(/λ/g, ' lambda ');
-  humanized = humanized.replace(/μ/g, ' mu ');
-  humanized = humanized.replace(/σ/g, ' sigma ');
-  humanized = humanized.replace(/Σ/g, ' sum of ');
-  humanized = humanized.replace(/∞/g, ' infinity ');
-  
-  // Clean up multiple spaces
-  humanized = humanized.replace(/\s+/g, ' ').trim();
-  
-  return humanized;
-}
-
 export async function textToSpeech(text: string): Promise<Buffer | null> {
-  const client = getElevenLabsClient();
-  if (!client) {
-    console.log('ElevenLabs not configured, skipping TTS');
-    return null;
-  }
-
-  try {
-    // Humanize mathematical notation for natural speech
-    const humanizedText = humanizeMathText(text);
-    const voiceId = getVoiceId();
-    const modelId = getModelId();
-    console.log(`Attempting ElevenLabs TTS with voice: ${voiceId}, model: ${modelId}`);
-    
-    // Use multilingual turbo model for Hinglish support
-    const audio = await client.generate({
-      voice: voiceId,
-      text: humanizedText,
-      model_id: modelId,
-      voice_settings: {
-        stability: 0.5,
-        similarity_boost: 0.75,
-        style: 0.4,
-        use_speaker_boost: true
-      }
-    });
-
-    // Convert stream to buffer
-    const chunks: Buffer[] = [];
-    for await (const chunk of audio) {
-      chunks.push(chunk);
-    }
-    
-    const buffer = Buffer.concat(chunks);
-    console.log(`ElevenLabs TTS success: ${buffer.length} bytes`);
-    return buffer;
-  } catch (error: any) {
-    console.error('ElevenLabs TTS error:', error);
-    console.error('Error details:', error.message, error.statusCode);
-    return null;
-  }
+  return await dualProviderTTS.textToSpeech(text);
 }
 
-// Streaming TTS - returns stream for immediate playback
-// Accepts optional voice and model parameters for multi-language support
+/**
+ * Generate streaming speech audio using dual-provider system
+ * Maintains backward compatibility with existing function signature
+ * @param text - Text to convert to speech
+ * @param voiceId - Optional voice ID (will be mapped to appropriate provider)
+ * @param modelId - Optional model ID (will be mapped to appropriate provider)
+ */
 export async function textToSpeechStream(
   text: string,
   voiceId?: string,
   modelId?: string
 ): Promise<AsyncIterable<Buffer> | null> {
-  const client = getElevenLabsClient();
-  if (!client) {
-    console.log('ElevenLabs not configured, skipping TTS');
-    return null;
-  }
-
-  try {
-    // Humanize mathematical notation for natural speech
-    const humanizedText = humanizeMathText(text);
-    
-    // Use provided voice/model or defaults
-    const voice = voiceId || getVoiceId();
-    const model = modelId || getModelId();
-    
-    console.log(`Attempting ElevenLabs streaming TTS with voice: ${voice}, model: ${model}`);
-    
-    // Use streaming for faster response
-    const audioStream = await client.generate({
-      voice,
-      text: humanizedText,
-      model_id: model,
-      voice_settings: {
-        stability: 0.5,
-        similarity_boost: 0.75,
-        style: 0.4,
-        use_speaker_boost: true
-      },
-      stream: true
-    });
-
-    console.log(`ElevenLabs streaming TTS started`);
-    return audioStream;
-  } catch (error: any) {
-    console.error('ElevenLabs streaming TTS error:', error);
-    console.error('Error details:', error.message, error.statusCode);
-    return null;
-  }
+  const options: TTSOptions = {};
+  
+  if (voiceId) options.voiceId = voiceId;
+  if (modelId) options.modelId = modelId;
+  
+  return await dualProviderTTS.textToSpeechStream(text, options);
 }
 
-// Alternative: Use a specific Indian English voice if available
+/**
+ * Generate speech for Hinglish content using dual-provider system
+ * Maintains backward compatibility with existing function signature
+ */
 export async function textToSpeechHinglish(text: string): Promise<Buffer | null> {
-  const client = getElevenLabsClient();
-  if (!client) {
-    console.log('ElevenLabs not configured, skipping TTS');
-    return null;
-  }
+  const options: TTSOptions = {
+    languageCode: 'hi', // Hindi language code
+    voiceId: 'zT03pEAEi0VHKciJODfn', // Custom Hinglish voice for ElevenLabs
+    modelId: 'eleven_multilingual_v2' // Multilingual model for ElevenLabs
+  };
+  
+  return await dualProviderTTS.textToSpeech(text, options);
+}
 
-  try {
-    // Humanize mathematical notation for natural speech
-    const humanizedText = humanizeMathText(text);
-    
-    // Try using a voice that handles Indian accent and Hinglish better
-    const audio = await client.generate({
-      voice: "zT03pEAEi0VHKciJODfn", // Custom voice ID
-      text: humanizedText,
-      model_id: "eleven_multilingual_v2", // Better for Hinglish code-switching
-      voice_settings: {
-        stability: 0.5,
-        similarity_boost: 0.75,
-        style: 0.4,
-        use_speaker_boost: true
-      }
-    });
+/**
+ * Enhanced TTS function with full options support
+ * New function that exposes all dual-provider capabilities
+ */
+export async function textToSpeechWithOptions(text: string, options?: TTSOptions): Promise<Buffer | null> {
+  return await dualProviderTTS.textToSpeech(text, options);
+}
 
-    const chunks: Buffer[] = [];
-    for await (const chunk of audio) {
-      chunks.push(chunk);
-    }
-    
-    return Buffer.concat(chunks);
-  } catch (error) {
-    console.error('ElevenLabs Hinglish TTS error:', error);
-    return null;
+/**
+ * Enhanced streaming TTS function with full options support
+ * New function that exposes all dual-provider streaming capabilities
+ */
+export async function textToSpeechStreamWithOptions(text: string, options?: TTSOptions): Promise<AsyncIterable<Buffer> | null> {
+  return await dualProviderTTS.textToSpeechStream(text, options);
+}
+
+/**
+ * Get TTS service statistics for monitoring
+ */
+export function getTTSStats() {
+  return dualProviderTTS.getUsageStats();
+}
+
+/**
+ * Get current TTS configuration
+ */
+export function getTTSConfiguration() {
+  return dualProviderTTS.getConfiguration();
+}
+
+/**
+ * Generate speech for a specific language (used by ttsHelper)
+ * Maps to textToSpeechWithOptions with language-specific configuration
+ */
+export async function generateSpeech(text: string, languageCode: string): Promise<Buffer> {
+  const options: TTSOptions = {
+    languageCode: languageCode
+  };
+  
+  const result = await dualProviderTTS.textToSpeech(text, options);
+  
+  if (!result) {
+    throw new Error(`Failed to generate speech for language: ${languageCode}`);
   }
+  
+  return result;
+}
+
+/**
+ * Check if a specific provider is available
+ */
+export async function isProviderAvailable(provider: 'google' | 'elevenlabs'): Promise<boolean> {
+  return await dualProviderTTS.isProviderAvailable(provider);
 }

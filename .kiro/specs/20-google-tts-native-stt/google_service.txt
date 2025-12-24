@@ -1,0 +1,115 @@
+import os
+import google.generativeai as genai
+from google.cloud import texttospeech, speech
+from gtts import gTTS
+import tempfile
+
+class GoogleService:
+    def __init__(self):
+        self.api_key = os.getenv("GOOGLE_API_KEY")
+        print(f"DEBUG: GoogleService initializing with API key: {self.api_key[:10] if self.api_key else 'None'}...")
+        if self.api_key:
+            genai.configure(api_key=self.api_key)
+            # Initialize Cloud clients if API key is available
+            try:
+                from google.api_core import client_options
+                options = client_options.ClientOptions(api_key=self.api_key)
+                self.tts_client = texttospeech.TextToSpeechClient(client_options=options)
+                self.stt_client = speech.SpeechClient(client_options=options)
+            except Exception as e:
+                print(f"Failed to initialize Google Cloud clients: {e}")
+                self.tts_client = None
+                self.stt_client = None
+        else:
+            self.tts_client = None
+            self.stt_client = None
+
+    async def generate_tts(self, text: str, voice_id: str) -> str:
+        """
+        Generates TTS using Google Cloud TTS (Premium).
+        No fallback.
+        """
+        if not self.tts_client:
+            raise Exception("Google Cloud TTS client not initialized (check API key)")
+
+        print(f"Using Google Cloud TTS for voice: {voice_id}")
+        synthesis_input = texttospeech.SynthesisInput(text=text)
+        
+        # Extract language code from voice_id (e.g., en-IN-Wavenet-A -> en-IN)
+        lang_parts = voice_id.split("-")
+        lang_code = "-".join(lang_parts[:2])
+        
+        voice = texttospeech.VoiceSelectionParams(
+            language_code=lang_code,
+            name=voice_id
+        )
+        
+        audio_config = texttospeech.AudioConfig(
+            audio_encoding=texttospeech.AudioEncoding.MP3
+        )
+        
+        response = self.tts_client.synthesize_speech(
+            input=synthesis_input, voice=voice, audio_config=audio_config
+        )
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as fp:
+            fp.write(response.audio_content)
+            return fp.name
+
+    async def generate_gtts(self, text: str, lang: str = "en") -> str:
+        """
+        Generates TTS using gTTS (Free).
+        """
+        print(f"Using gTTS for lang: {lang}")
+        tts = gTTS(text=text, lang=lang)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as fp:
+            tts.save(fp.name)
+            return fp.name
+
+    async def transcribe_audio_gemini(self, audio_path: str, language: str = "en-IN") -> str:
+        """
+        Transcribes audio using Gemini 1.5 Flash.
+        """
+        if not self.api_key:
+            return "Error: GOOGLE_API_KEY not set."
+        
+        try:
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            sample_file = genai.upload_file(path=audio_path)
+            response = model.generate_content(["Transcribe this audio file exactly as spoken.", sample_file])
+            return response.text
+        except Exception as e:
+            print(f"Error in Google Gemini STT: {e}")
+            return f"Error: {str(e)}"
+
+    async def transcribe_audio_cloud(self, audio_path: str, language: str = "en-IN") -> str:
+        """
+        Transcribes audio using Google Cloud Speech-to-Text (Premium).
+        """
+        if not self.stt_client:
+            return "Error: Google Cloud STT client not initialized."
+
+        try:
+            with open(audio_path, "rb") as audio_file:
+                content = audio_file.read()
+
+            audio = speech.RecognitionAudio(content=content)
+            config = speech.RecognitionConfig(
+                encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
+                language_code=language,
+                alternative_language_codes=["en-IN", "hi-IN", "ta-IN", "pa-IN"],
+                enable_automatic_punctuation=True,
+            )
+
+            response = self.stt_client.recognize(config=config, audio=audio)
+
+            transcript = ""
+            for result in response.results:
+                transcript += result.alternatives[0].transcript + " "
+            
+            return transcript.strip() or "No transcription available."
+        except Exception as e:
+            print(f"Error in Google Cloud STT: {e}")
+            return f"Error: {str(e)}"
+
+google_service = GoogleService()

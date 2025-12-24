@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Loader2, Send, BookOpen, Camera, X, Menu, ChevronRight, LogIn } from 'lucide-react';
+import { Mic, MicOff, Loader2, Send, BookOpen, Camera, X, Menu, ChevronRight, LogIn, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { nativeSTTService, type STTResult } from '../services/nativeSTTService';
 
 interface Message {
     role: 'user' | 'model';
@@ -17,13 +18,15 @@ const VoiceChat: React.FC = () => {
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [autoPlay, setAutoPlay] = useState(true);
     const [transcript, setTranscript] = useState('');
+    const [interimTranscript, setInterimTranscript] = useState('');
     const [messages, setMessages] = useState<Message[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [lastResponseText, setLastResponseText] = useState<string>('');
     const [uploadedImage, setUploadedImage] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string>('');
     const [showMenu, setShowMenu] = useState(false);
-    const recognitionRef = useRef<any>(null);
+    const [sttError, setSTTError] = useState<string>('');
+    const [micPermission, setMicPermission] = useState<boolean | null>(null);
     const synthRef = useRef<SpeechSynthesis>(window.speechSynthesis);
     const currentAudioRef = useRef<HTMLAudioElement | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -40,45 +43,106 @@ const VoiceChat: React.FC = () => {
     };
 
     useEffect(() => {
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-            const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-            recognitionRef.current = new SpeechRecognition();
-            recognitionRef.current.continuous = false;
-            recognitionRef.current.interimResults = true;
-            recognitionRef.current.lang = 'en-IN'; // Default to Indian English
-
-            recognitionRef.current.onresult = (event: any) => {
-                const current = event.resultIndex;
-                const transcriptText = event.results[current][0].transcript;
-                setTranscript(transcriptText);
-            };
-
-            recognitionRef.current.onend = () => {
-                setIsListening(false);
-                if (transcript) {
-                    handleSendMessage(transcript);
-                }
-            };
-        } else {
-            console.error("Speech recognition not supported");
-        }
-
-        return () => {
-            if (recognitionRef.current) {
-                recognitionRef.current.stop();
+        // Check STT support and microphone permission on component mount
+        const initializeSTT = async () => {
+            if (!nativeSTTService.isSTTSupported()) {
+                setSTTError('Speech recognition not supported in this browser');
+                return;
             }
+
+            // Check microphone permission
+            const hasPermission = await nativeSTTService.checkMicrophonePermission();
+            setMicPermission(hasPermission);
+            
+            if (!hasPermission) {
+                console.log('Microphone permission not granted');
+            }
+        };
+
+        initializeSTT();
+
+        // Cleanup on unmount
+        return () => {
+            nativeSTTService.cleanup();
             synthRef.current.cancel();
         };
-    }, [transcript]);
+    }, []);
 
-    const toggleListening = () => {
+    const toggleListening = async () => {
         if (isListening) {
-            recognitionRef.current.stop();
+            // Stop listening
+            nativeSTTService.stopListening();
             setIsListening(false);
+            setInterimTranscript('');
         } else {
-            setTranscript('');
-            recognitionRef.current.start();
-            setIsListening(true);
+            // Clear any previous errors
+            setSTTError('');
+            
+            // Check microphone permission first
+            if (micPermission === false) {
+                const hasPermission = await nativeSTTService.requestMicrophonePermission();
+                setMicPermission(hasPermission);
+                
+                if (!hasPermission) {
+                    setSTTError('Microphone permission required for voice input');
+                    return;
+                }
+            }
+
+            // Start listening with enhanced STT service
+            const success = nativeSTTService.startListening(
+                {
+                    language: 'en-IN',
+                    continuous: false,
+                    interimResults: true,
+                    maxAlternatives: 1
+                },
+                {
+                    onStart: () => {
+                        setIsListening(true);
+                        setTranscript('');
+                        setInterimTranscript('');
+                        console.log('🎤 Started listening');
+                    },
+                    onEnd: () => {
+                        setIsListening(false);
+                        setInterimTranscript('');
+                        console.log('🎤 Stopped listening');
+                        
+                        // Send message if we have a final transcript
+                        if (transcript.trim()) {
+                            handleSendMessage(transcript);
+                        }
+                    },
+                    onResult: (result: STTResult) => {
+                        if (result.isFinal) {
+                            console.log('🎤 Final result:', result.transcript);
+                            setTranscript(result.transcript);
+                            setInterimTranscript('');
+                        }
+                    },
+                    onInterimResult: (interimText: string) => {
+                        console.log('🎤 Interim result:', interimText);
+                        setInterimTranscript(interimText);
+                    },
+                    onError: (error: string) => {
+                        console.error('🎤 STT Error:', error);
+                        setSTTError(error);
+                        setIsListening(false);
+                        setInterimTranscript('');
+                    },
+                    onNoMatch: () => {
+                        console.log('🎤 No speech detected');
+                        setSTTError('No speech detected. Please try again.');
+                        setIsListening(false);
+                        setInterimTranscript('');
+                    }
+                }
+            );
+
+            if (!success) {
+                setSTTError('Failed to start speech recognition');
+            }
         }
     };
 
@@ -586,6 +650,38 @@ const VoiceChat: React.FC = () => {
                 </div>
             )}
 
+            {/* STT Error Display */}
+            {sttError && (
+                <div className="bg-red-900/20 border border-red-700/50 rounded-lg p-3 mx-4 mb-2">
+                    <div className="flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                            <p className="text-red-400 text-sm">{sttError}</p>
+                            {sttError.includes('permission') && (
+                                <button
+                                    onClick={async () => {
+                                        const hasPermission = await nativeSTTService.requestMicrophonePermission();
+                                        setMicPermission(hasPermission);
+                                        if (hasPermission) {
+                                            setSTTError('');
+                                        }
+                                    }}
+                                    className="mt-2 px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-white text-xs transition-colors"
+                                >
+                                    Grant Permission
+                                </button>
+                            )}
+                        </div>
+                        <button
+                            onClick={() => setSTTError('')}
+                            className="text-red-500 hover:text-red-400"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Controls - Mobile Optimized */}
             <div className="px-4 pb-4">
                 <input
@@ -613,11 +709,23 @@ const VoiceChat: React.FC = () => {
                     <div className="flex-1 relative">
                         <input
                             type="text"
-                            value={transcript}
+                            value={isListening ? interimTranscript : transcript}
                             onChange={(e) => setTranscript(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage(transcript)}
-                            placeholder={isListening ? "Listening..." : "Ask anything..."}
-                            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-full focus:outline-none focus:ring-2 focus:ring-primary text-white placeholder-gray-500 pr-10"
+                            placeholder={
+                                isListening 
+                                    ? "Listening..." 
+                                    : micPermission === false 
+                                        ? "Microphone permission required"
+                                        : "Ask anything..."
+                            }
+                            className={`w-full px-4 py-3 bg-gray-900 border rounded-full focus:outline-none focus:ring-2 focus:ring-primary text-white placeholder-gray-500 pr-10 ${
+                                isListening 
+                                    ? 'border-primary animate-pulse' 
+                                    : sttError 
+                                        ? 'border-red-500' 
+                                        : 'border-gray-700'
+                            }`}
                             disabled={isListening}
                         />
                         <button
@@ -632,13 +740,31 @@ const VoiceChat: React.FC = () => {
                     {/* Mic Button */}
                     <button
                         onClick={toggleListening}
-                        disabled={isLoading}
-                        className={`p-3 rounded-full transition-all disabled:opacity-50 flex-shrink-0 ${isListening
+                        disabled={isLoading || (!nativeSTTService.isSTTSupported())}
+                        className={`p-3 rounded-full transition-all disabled:opacity-50 flex-shrink-0 ${
+                            isListening
                                 ? 'bg-red-500 hover:bg-red-600 animate-pulse'
-                                : 'bg-primary hover:bg-primary-hover'
-                            }`}
+                                : micPermission === false
+                                    ? 'bg-yellow-500 hover:bg-yellow-600'
+                                    : 'bg-primary hover:bg-primary-hover'
+                        }`}
+                        title={
+                            !nativeSTTService.isSTTSupported()
+                                ? 'Speech recognition not supported'
+                                : micPermission === false
+                                    ? 'Click to grant microphone permission'
+                                    : isListening
+                                        ? 'Stop listening'
+                                        : 'Start voice input'
+                        }
                     >
-                        {isListening ? <MicOff className="h-5 w-5 text-white" /> : <Mic className="h-5 w-5 text-white" />}
+                        {isListening ? (
+                            <MicOff className="h-5 w-5 text-white" />
+                        ) : micPermission === false ? (
+                            <AlertCircle className="h-5 w-5 text-white" />
+                        ) : (
+                            <Mic className="h-5 w-5 text-white" />
+                        )}
                     </button>
 
                     {/* Play/Pause Button - Only show when needed */}
