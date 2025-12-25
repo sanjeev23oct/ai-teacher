@@ -29,6 +29,7 @@ export class NativeSTTService {
   private recognition: any = null;
   private isSupported: boolean = false;
   private isListening: boolean = false;
+  private shouldKeepListening: boolean = false;
   private callbacks: STTCallbacks = {};
   private options: STTOptions = {};
 
@@ -40,20 +41,31 @@ export class NativeSTTService {
    * Initialize Web Speech API recognition
    */
   private initializeRecognition(): void {
+    console.log('🎤 [STT] Initializing Web Speech API...');
+    
     // Check for Web Speech API support
     const SpeechRecognition = 
       (window as any).SpeechRecognition || 
       (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      console.warn('Web Speech API not supported in this browser');
+      console.warn('❌ [STT] Web Speech API not supported in this browser');
       this.isSupported = false;
       return;
     }
 
+    console.log('✅ [STT] Web Speech API found');
     this.isSupported = true;
-    this.recognition = new SpeechRecognition();
-    this.setupRecognitionHandlers();
+    
+    try {
+      this.recognition = new SpeechRecognition();
+      console.log('✅ [STT] SpeechRecognition instance created');
+      this.setupRecognitionHandlers();
+      console.log('✅ [STT] Event handlers configured');
+    } catch (error) {
+      console.error('❌ [STT] Failed to initialize SpeechRecognition:', error);
+      this.isSupported = false;
+    }
   }
 
   /**
@@ -64,53 +76,80 @@ export class NativeSTTService {
 
     // Recognition starts
     this.recognition.onstart = () => {
-      console.log('🎤 Speech recognition started');
+      console.log('✅ [STT] Speech recognition started');
       this.isListening = true;
       this.callbacks.onStart?.();
     };
 
     // Recognition ends
     this.recognition.onend = () => {
-      console.log('🎤 Speech recognition ended');
+      console.log('🎤 [STT] Speech recognition ended');
       this.isListening = false;
-      this.callbacks.onEnd?.();
+      
+      // If we were supposed to be listening continuously, restart
+      if (this.options.continuous && this.callbacks.onStart) {
+        console.log('🔄 [STT] Auto-restarting continuous recognition...');
+        setTimeout(() => {
+          if (!this.isListening) {
+            try {
+              this.recognition.start();
+            } catch (error) {
+              console.error('❌ [STT] Failed to restart recognition:', error);
+              this.callbacks.onError?.('Recognition stopped unexpectedly');
+            }
+          }
+        }, 100);
+      } else {
+        this.callbacks.onEnd?.();
+      }
     };
 
     // Results received
     this.recognition.onresult = (event: any) => {
-      const results = event.results;
-      const lastResult = results[results.length - 1];
+      console.log('🎤 [STT] Results received, event:', event);
+      console.log('🎤 [STT] Total results:', event.results.length);
       
-      if (lastResult) {
-        const transcript = lastResult[0].transcript;
-        const confidence = lastResult[0].confidence || 0;
-        const isFinal = lastResult.isFinal;
-
-        console.log(`🎤 Speech result: "${transcript}" (confidence: ${confidence}, final: ${isFinal})`);
-
-        // Call appropriate callback
-        if (isFinal) {
-          this.callbacks.onResult?.({
-            transcript,
-            confidence,
-            isFinal: true
-          });
+      // Process all results to build complete transcript
+      let interimTranscript = '';
+      let finalTranscript = '';
+      
+      for (let i = 0; i < event.results.length; i++) {
+        const result = event.results[i];
+        const transcript = result[0].transcript;
+        
+        if (result.isFinal) {
+          finalTranscript += transcript;
+          console.log(`🎤 [STT] Final result ${i}: "${transcript}"`);
         } else {
-          this.callbacks.onInterimResult?.(transcript);
+          interimTranscript += transcript;
+          console.log(`🎤 [STT] Interim result ${i}: "${transcript}"`);
         }
+      }
+      
+      // Send callbacks
+      if (finalTranscript) {
+        this.callbacks.onResult?.({
+          transcript: finalTranscript,
+          confidence: event.results[event.results.length - 1][0].confidence || 0,
+          isFinal: true
+        });
+      }
+      
+      if (interimTranscript) {
+        this.callbacks.onInterimResult?.(interimTranscript);
       }
     };
 
     // No speech detected
     this.recognition.onnomatch = () => {
-      console.log('🎤 No speech detected');
+      console.log('⚠️ [STT] No speech detected');
       this.callbacks.onNoMatch?.();
     };
 
     // Error handling
     this.recognition.onerror = (event: any) => {
       const error = event.error;
-      console.error('🎤 Speech recognition error:', error);
+      console.error('❌ [STT] Speech recognition error:', error, 'Event:', event);
       
       let errorMessage = 'Speech recognition failed';
       
@@ -136,10 +175,14 @@ export class NativeSTTService {
         case 'language-not-supported':
           errorMessage = 'Selected language not supported for speech recognition.';
           break;
+        case 'aborted':
+          errorMessage = 'Speech recognition was aborted.';
+          break;
         default:
           errorMessage = `Speech recognition error: ${error}`;
       }
       
+      console.error('❌ [STT] Processed error message:', errorMessage);
       this.callbacks.onError?.(errorMessage);
     };
   }
@@ -162,14 +205,16 @@ export class NativeSTTService {
    * Start speech recognition
    */
   startListening(options?: STTOptions, callbacks?: STTCallbacks): boolean {
+    console.log('🎤 [STT] Starting speech recognition...');
+    
     if (!this.isSupported) {
-      console.error('Speech recognition not supported');
+      console.error('❌ [STT] Speech recognition not supported');
       callbacks?.onError?.('Speech recognition not supported in this browser');
       return false;
     }
 
     if (this.isListening) {
-      console.warn('Speech recognition already active');
+      console.warn('⚠️ [STT] Speech recognition already active');
       return false;
     }
 
@@ -177,15 +222,25 @@ export class NativeSTTService {
     this.options = { ...this.getDefaultOptions(), ...options };
     this.callbacks = callbacks || {};
 
+    console.log('🎤 [STT] Configuration:', this.options);
+
     // Configure recognition
     this.configureRecognition();
 
     try {
+      console.log('🎤 [STT] Attempting to start recognition...');
       this.recognition.start();
+      console.log('✅ [STT] Recognition start command sent');
       return true;
     } catch (error) {
-      console.error('Failed to start speech recognition:', error);
-      this.callbacks.onError?.('Failed to start speech recognition');
+      console.error('❌ [STT] Failed to start speech recognition:', error);
+      
+      let errorMessage = 'Failed to start speech recognition';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      this.callbacks.onError?.(errorMessage);
       return false;
     }
   }

@@ -241,20 +241,15 @@ Now score this response and provide exactly 3 fixes. Return ONLY valid JSON.`;
 
 /**
  * Transcribe audio using mock transcription for testing
- * TODO: Implement Google Speech-to-Text when needed
+ * NOTE: This function is deprecated - we now use client-side native STT
+ * @deprecated Use client-side nativeSTTService instead
  */
 export async function transcribeAudio(audioBuffer: Buffer): Promise<string> {
-  console.log('🎤 Starting audio transcription...');
+  console.log('⚠️  [DEPRECATED] transcribeAudio called - should use client-side STT instead');
   console.log('📊 Audio buffer size:', audioBuffer.length, 'bytes');
   
-  // For testing purposes, return a mock transcription
-  // In production, this would use Google Speech-to-Text API
-  console.log('✅ Using mock transcription for testing');
-  
-  const mockTranscription = "My favorite book is Harry Potter and the Philosopher's Stone by J.K. Rowling. It's about a young boy who discovers he's a wizard and goes to Hogwarts School. I love this book because it has an amazing story with interesting characters like Harry, Hermione, and Ron. The magical world is so creative and exciting. I would definitely recommend this book to others because it teaches us about friendship, courage, and believing in yourself.";
-  
-  console.log('✅ Mock transcription generated:', mockTranscription.substring(0, 100) + '...');
-  return mockTranscription;
+  // Return a fallback message indicating this shouldn't be used
+  return "This is a deprecated server-side transcription. Please use client-side native STT instead.";
 }
 
 /**

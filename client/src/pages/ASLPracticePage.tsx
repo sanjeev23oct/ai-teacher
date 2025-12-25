@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Mic, MicOff, Loader2, RefreshCw, Users, User, Volume2, LogIn } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
+import { nativeSTTService, type STTResult } from '../services/nativeSTTService';
 
 type Mode = 'solo' | 'pair';
 
@@ -84,12 +85,14 @@ const ASLPracticePage: React.FC = () => {
   const [showDetailedFeedback, setShowDetailedFeedback] = useState(false);
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
   
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
+  // STT-related state
+  const [transcription, setTranscription] = useState<string>('');
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [interimTranscript, setInterimTranscript] = useState<string>('');
+  
   const timerRef = useRef<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
 
@@ -193,57 +196,144 @@ const ASLPracticePage: React.FC = () => {
       window.location.href = '/login?redirect=/asl-practice';
       return;
     }
-    
+
+    if (!selectedTask) return;
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      console.log('🎤 Starting ASL recording with native STT...');
       
-      // Setup audio context for waveform
-      audioContextRef.current = new AudioContext();
-      const source = audioContextRef.current.createMediaStreamSource(stream);
-      analyserRef.current = audioContextRef.current.createAnalyser();
-      analyserRef.current.fftSize = 256;
-      source.connect(analyserRef.current);
+      // Debug browser compatibility
+      const compatibility = nativeSTTService.getBrowserCompatibility();
+      console.log('🌐 Browser compatibility:', compatibility);
       
-      // Start waveform visualization
-      drawWaveform();
+      // Additional browser checks
+      console.log('🔍 Additional browser info:', {
+        userAgent: navigator.userAgent,
+        isSecureContext: window.isSecureContext,
+        protocol: window.location.protocol,
+        hasWebkitSpeechRecognition: !!(window as any).webkitSpeechRecognition,
+        hasSpeechRecognition: !!(window as any).SpeechRecognition,
+        hasMediaDevices: !!navigator.mediaDevices,
+        hasGetUserMedia: !!navigator.mediaDevices?.getUserMedia
+      });
       
-      // Setup media recorder
-      mediaRecorderRef.current = new MediaRecorder(stream);
-      audioChunksRef.current = [];
-      
-      mediaRecorderRef.current.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
-      };
-      
-      mediaRecorderRef.current.onstop = handleRecordingStop;
-      
-      mediaRecorderRef.current.start();
-      setIsRecording(true);
-      const duration = selectedTask?.duration || (mode === 'solo' ? 60 : 30);
-      setTimeLeft(duration);
-      
-      // Start countdown timer
-      timerRef.current = window.setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            stopRecording();
-            return 0;
-          }
-          return prev - 1;
+      // Check if STT is supported
+      if (!nativeSTTService.isSTTSupported()) {
+        console.error('❌ Speech recognition not supported');
+        console.log('Browser details:', {
+          userAgent: navigator.userAgent,
+          hasWebkitSpeechRecognition: !!(window as any).webkitSpeechRecognition,
+          hasSpeechRecognition: !!(window as any).SpeechRecognition
         });
-      }, 1000);
-      
+        
+        // More specific error message based on browser
+        let errorMessage = 'Speech recognition is not supported in this browser.';
+        if (navigator.userAgent.includes('Firefox')) {
+          errorMessage = 'Speech recognition is not supported in Firefox. Please use Chrome or Edge.';
+        } else if (navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome')) {
+          errorMessage = 'Speech recognition support in Safari is limited. Please use Chrome or Edge for best results.';
+        }
+        
+        alert(errorMessage);
+        return;
+      }
+
+      console.log('✅ STT is supported');
+
+      // Request microphone permission
+      console.log('🎤 Requesting microphone permission...');
+      const hasPermission = await nativeSTTService.requestMicrophonePermission();
+      if (!hasPermission) {
+        console.error('❌ Microphone permission denied');
+        alert('Microphone permission is required for ASL practice.');
+        return;
+      }
+
+      console.log('✅ Microphone permission granted');
+
+      // Clear previous transcription
+      setTranscription('');
+      setInterimTranscript('');
+      setIsTranscribing(true);
+
+      // Start speech recognition
+      const sttOptions = {
+        language: languageCode === 'hi' ? 'hi-IN' : 'en-IN',
+        continuous: true,
+        interimResults: true,
+        maxAlternatives: 1
+      };
+
+      console.log('🎤 Starting STT with options:', sttOptions);
+
+      const sttCallbacks = {
+        onResult: (result: STTResult) => {
+          console.log('🎤 STT Final Result:', result.transcript);
+          // Append the final result to our transcription
+          setTranscription(prev => {
+            const newText = prev.trim() + (prev.trim() ? ' ' : '') + result.transcript.trim();
+            console.log('📝 Updated transcription:', newText);
+            return newText;
+          });
+          setInterimTranscript('');
+        },
+        onInterimResult: (transcript: string) => {
+          console.log('🎤 STT Interim Result:', transcript);
+          setInterimTranscript(transcript);
+        },
+        onStart: () => {
+          console.log('🎤 STT Started successfully');
+          setIsRecording(true);
+          const duration = selectedTask?.duration || (mode === 'solo' ? 60 : 30);
+          setTimeLeft(duration);
+          
+          // Start timer
+          timerRef.current = window.setInterval(() => {
+            setTimeLeft(prev => {
+              if (prev <= 1) {
+                stopRecording();
+                return 0;
+              }
+              return prev - 1;
+            });
+          }, 1000);
+        },
+        onEnd: () => {
+          console.log('🎤 STT Ended');
+          setIsTranscribing(false);
+          handleTranscriptionComplete();
+        },
+        onError: (error: string) => {
+          console.error('❌ STT Error:', error);
+          setIsTranscribing(false);
+          setIsRecording(false);
+          alert(`Speech recognition error: ${error}`);
+        }
+      };
+
+      const success = nativeSTTService.startListening(sttOptions, sttCallbacks);
+      if (!success) {
+        console.error('❌ Failed to start STT service');
+        alert('Failed to start speech recognition. Please try again.');
+        setIsTranscribing(false);
+      } else {
+        console.log('✅ STT service started successfully');
+      }
+
     } catch (error) {
-      console.error('Error accessing microphone:', error);
-      alert('Please allow microphone access to record');
+      console.error('❌ Error starting recording:', error);
+      alert('Failed to start recording. Please check your microphone.');
+      setIsTranscribing(false);
     }
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+    if (isRecording || isTranscribing) {
+      // Stop speech recognition
+      nativeSTTService.stopListening();
+      
       setIsRecording(false);
+      setIsTranscribing(false);
       
       if (timerRef.current) {
         clearInterval(timerRef.current);
@@ -262,69 +352,31 @@ const ASLPracticePage: React.FC = () => {
     }
   };
 
-  const drawWaveform = () => {
-    if (!analyserRef.current || !canvasRef.current) return;
-    
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    
-    const bufferLength = analyserRef.current.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
-    
-    const draw = () => {
-      if (!analyserRef.current) return;
-      
-      animationRef.current = requestAnimationFrame(draw);
-      analyserRef.current.getByteTimeDomainData(dataArray);
-      
-      ctx.fillStyle = '#1a1a23';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = '#2563eb';
-      ctx.beginPath();
-      
-      const sliceWidth = canvas.width / bufferLength;
-      let x = 0;
-      
-      for (let i = 0; i < bufferLength; i++) {
-        const v = dataArray[i] / 128.0;
-        const y = (v * canvas.height) / 2;
-        
-        if (i === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
-        
-        x += sliceWidth;
-      }
-      
-      ctx.lineTo(canvas.width, canvas.height / 2);
-      ctx.stroke();
-    };
-    
-    draw();
-  };
-
-  const handleRecordingStop = async () => {
+  const handleTranscriptionComplete = async () => {
     if (!selectedTask) return;
 
-    const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+    const finalTranscript = transcription.trim();
+    if (!finalTranscript) {
+      alert('No speech was detected. Please try again.');
+      return;
+    }
+
     setIsProcessing(true);
     
     try {
-      const formData = new FormData();
-      formData.append('audio', audioBlob);
-      formData.append('taskId', selectedTask.id);
-      formData.append('mode', mode);
-      formData.append('languageCode', languageCode);
-      
+      // Send transcription to server for scoring
       const response = await fetch('/api/asl/score', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
         credentials: 'include',
+        body: JSON.stringify({
+          transcription: finalTranscript,
+          taskId: selectedTask.id,
+          mode: mode,
+          languageCode: languageCode
+        })
       });
       
       if (!response.ok) {
@@ -898,6 +950,19 @@ const ASLPracticePage: React.FC = () => {
                 <div className="text-center py-2">
                   <Loader2 className="inline w-5 h-5 animate-spin text-primary" />
                   <p className="text-gray-400 text-sm mt-1">Analyzing...</p>
+                </div>
+              )}
+
+              {/* Real-time transcription display */}
+              {(isRecording || isTranscribing) && (transcription || interimTranscript) && (
+                <div className="mt-4 p-3 bg-gray-800 rounded-lg">
+                  <h4 className="text-sm font-medium text-gray-300 mb-2">What you're saying:</h4>
+                  <p className="text-sm text-white">
+                    {transcription}
+                    {interimTranscript && (
+                      <span className="text-gray-400 italic"> {interimTranscript}</span>
+                    )}
+                  </p>
                 </div>
               )}
             </div>

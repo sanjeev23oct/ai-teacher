@@ -27,7 +27,7 @@ const FormattedContent: React.FC<FormattedContentProps> = ({ content, className 
 
     lines.forEach((line, index) => {
       const trimmedLine = line.trim();
-      
+
       // Skip empty lines but add spacing
       if (!trimmedLine) {
         if (currentSection.length > 0) {
@@ -96,7 +96,7 @@ const FormattedContent: React.FC<FormattedContentProps> = ({ content, className 
         const timeMatch = trimmedLine.match(/\((\d+)\s+seconds?\)/);
         const timeText = timeMatch ? timeMatch[1] : '';
         const content = trimmedLine.replace(/\(\d+\s+seconds?\)/, '').trim();
-        
+
         currentSection.push(
           <div key={`timed-${index}`} className="flex items-start gap-3 mb-3 p-3 bg-purple-900/20 rounded-lg border-l-4 border-purple-400">
             <div className="flex-shrink-0">
@@ -129,7 +129,7 @@ const FormattedContent: React.FC<FormattedContentProps> = ({ content, className 
         const value = valueParts.join(': ');
         currentSection.push(
           <div key={`keyvalue-${index}`} className="flex gap-3 mb-2">
-            <span className="font-semibold text-cyan-400 min-w-fit">{key}:</span>
+            <span className="font-semibold text-cyan-400 min-w-fit">{formatInlineText(key)}:</span>
             <span className="text-gray-300 leading-relaxed">{formatInlineText(value)}</span>
           </div>
         );
@@ -152,20 +152,29 @@ const FormattedContent: React.FC<FormattedContentProps> = ({ content, className 
 
   // Format inline text (bold, italic, etc.)
   const formatInlineText = (text: string): React.ReactElement => {
-    // Handle bold text **text**
-    let formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-white">$1</strong>');
-    
-    // Handle italic text *text*
-    formattedText = formattedText.replace(/\*(.*?)\*/g, '<em class="italic text-yellow-300">$1</em>');
-    
-    // Handle inline code `code`
+    // We need to be careful not to let later regexes match the HTML tags added by earlier ones.
+    // A better approach is to use a single pass or placeholders, but for now, 
+    // we'll just reorder and refine the regexes.
+
+    let formattedText = text;
+
+    // 1. Handle inline code `code` (do this first as it's most specific)
     formattedText = formattedText.replace(/`(.*?)`/g, '<code class="px-1 py-0.5 bg-gray-800 text-green-400 rounded text-sm font-mono">$1</code>');
-    
-    // Handle dates and years (1789, 1815, etc.)
-    formattedText = formattedText.replace(/\b(1[6-9]\d{2}|20\d{2})\b/g, '<span class="font-semibold text-orange-400">$1</span>');
-    
-    // Handle important terms in quotes
-    formattedText = formattedText.replace(/"([^"]+)"/g, '<span class="font-medium text-blue-300">"$1"</span>');
+
+    // 2. Handle bold text **text**
+    formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-white">$1</strong>');
+
+    // 3. Handle italic text *text*
+    formattedText = formattedText.replace(/\*(.*?)\*/g, '<em class="italic text-yellow-300">$1</em>');
+
+    // 4. Handle dates and years (1789, 1815, etc.) - only if not inside a tag
+    // This is tricky, but we can look for numbers not preceded by = or "
+    formattedText = formattedText.replace(/(?<![="])\b(1[6-9]\d{2}|20\d{2})\b/g, '<span class="font-semibold text-orange-400">$1</span>');
+
+    // 5. Handle important terms in quotes - only if not inside a tag
+    // We use a negative lookbehind to ensure we're not matching inside an HTML attribute
+    // Note: JS support for negative lookbehind is good in modern browsers
+    formattedText = formattedText.replace(/(?<!=)"([^"]+)"/g, '<span class="font-medium text-blue-300">"$1"</span>');
 
     return <span dangerouslySetInnerHTML={{ __html: formattedText }} />;
   };

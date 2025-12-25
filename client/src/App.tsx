@@ -7,6 +7,7 @@ import { LanguageProvider } from './contexts/LanguageContext';
 import GradeExamPage from './pages/GradeExamPage';
 import VoiceTutorPage from './pages/VoiceTutorPage';
 import ASLPracticePage from './pages/ASLPracticePage';
+import STTTestPage from './pages/STTTestPage';
 import SignupPage from './pages/SignupPage';
 import LoginPage from './pages/LoginPage';
 import HistoryPage from './pages/HistoryPage';
@@ -326,6 +327,7 @@ function App() {
               <Route path="/grade" element={<Layout><GradeExamPage /></Layout>} />
               <Route path="/voice" element={<Layout><VoiceTutorPage /></Layout>} />
               <Route path="/asl" element={<Layout><ASLPracticePage /></Layout>} />
+              <Route path="/stt-test" element={<Layout><STTTestPage /></Layout>} />
               <Route path="/history" element={<Layout><HistoryPage /></Layout>} />
               <Route path="/exams/:id" element={<Layout><ExamDetailPage /></Layout>} />
               <Route path="/doubts" element={<Layout><DoubtsPage /></Layout>} />

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STT Diagnostic</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #1a1a23; color: white; }
+        .result { margin: 10px 0; padding: 10px; background: #2a2a33; border-radius: 5px; }
+        .success { border-left: 4px solid #10b981; }
+        .error { border-left: 4px solid #ef4444; }
+        .warning { border-left: 4px solid #f59e0b; }
+        button { padding: 10px 20px; margin: 10px 0; background: #2563eb; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #1d4ed8; }
+        #logs { background: #111; padding: 15px; border-radius: 5px; max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>Speech Recognition Diagnostic</h1>
+    
+    <div id="results"></div>
+    
+    <button onclick="runDiagnostic()">Run Diagnostic</button>
+    <button onclick="testSTT()">Test STT</button>
+    <button onclick="clearLogs()">Clear Logs</button>
+    
+    <div id="logs"></div>
+
+    <script>
+        let recognition = null;
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logDiv = document.getElementById('logs');
+            const color = type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#9ca3af';
+            logDiv.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+        }
+        
+        function addResult(title, status, details) {
+            const resultsDiv = document.getElementById('results');
+            const className = status === 'success' ? 'success' : status === 'error' ? 'error' : 'warning';
+            resultsDiv.innerHTML += `
+                <div class="result ${className}">
+                    <strong>${title}:</strong> ${details}
+                </div>
+            `;
+        }
+        
+        function runDiagnostic() {
+            document.getElementById('results').innerHTML = '';
+            log('🔍 Starting diagnostic...', 'info');
+            
+            // Browser info
+            addResult('Browser', 'info', navigator.userAgent);
+            
+            // Protocol check
+            const isSecure = window.location.protocol === 'https:' || window.location.hostname === 'localhost';
+            addResult('Secure Context', isSecure ? 'success' : 'error', 
+                `${window.location.protocol} - ${isSecure ? 'OK' : 'HTTPS required for production'}`);
+            
+            // Web Speech API support
+            const hasWebkit = !!window.webkitSpeechRecognition;
+            const hasStandard = !!window.SpeechRecognition;
+            const hasSupport = hasWebkit || hasStandard;
+            
+            addResult('SpeechRecognition', hasStandard ? 'success' : 'warning', 
+                hasStandard ? 'Standard API available' : 'Standard API not available');
+            addResult('webkitSpeechRecognition', hasWebkit ? 'success' : 'error', 
+                hasWebkit ? 'WebKit API available' : 'WebKit API not available');
+            addResult('Overall STT Support', hasSupport ? 'success' : 'error', 
+                hasSupport ? 'Speech recognition supported' : 'No speech recognition support');
+            
+            // MediaDevices support
+            const hasMediaDevices = !!navigator.mediaDevices;
+            const hasGetUserMedia = !!navigator.mediaDevices?.getUserMedia;
+            
+            addResult('MediaDevices', hasMediaDevices ? 'success' : 'error', 
+                hasMediaDevices ? 'Available' : 'Not available');
+            addResult('getUserMedia', hasGetUserMedia ? 'success' : 'error', 
+                hasGetUserMedia ? 'Available' : 'Not available');
+            
+            log('✅ Diagnostic complete', 'success');
+        }
+        
+        async function testSTT() {
+            log('🎤 Testing Speech Recognition...', 'info');
+            
+            // Check support
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                log('❌ Speech Recognition not supported', 'error');
+                return;
+            }
+            
+            // Check microphone permission
+            try {
+                log('🎤 Requesting microphone permission...', 'info');
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream.getTracks().forEach(track => track.stop());
+                log('✅ Microphone permission granted', 'success');
+            } catch (error) {
+                log(`❌ Microphone permission error: ${error.message}`, 'error');
+                return;
+            }
+            
+            // Create recognition instance
+            try {
+                recognition = new SpeechRecognition();
+                log('✅ SpeechRecognition instance created', 'success');
+            } catch (error) {
+                log(`❌ Failed to create SpeechRecognition: ${error.message}`, 'error');
+                return;
+            }
+            
+            // Configure recognition
+            recognition.lang = 'en-IN';
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.maxAlternatives = 1;
+            
+            log('⚙️ Recognition configured', 'info');
+            
+            // Set up event handlers
+            recognition.onstart = () => {
+                log('✅ Recognition started', 'success');
+            };
+            
+            recognition.onend = () => {
+                log('🔚 Recognition ended', 'info');
+            };
+            
+            recognition.onresult = (event) => {
+                const results = event.results;
+                const lastResult = results[results.length - 1];
+                if (lastResult) {
+                    const transcript = lastResult[0].transcript;
+                    const confidence = lastResult[0].confidence || 0;
+                    const isFinal = lastResult.isFinal;
+                    log(`🎤 ${isFinal ? 'Final' : 'Interim'}: "${transcript}" (confidence: ${confidence})`, 'success');
+                }
+            };
+            
+            recognition.onerror = (event) => {
+                log(`❌ Recognition error: ${event.error}`, 'error');
+            };
+            
+            recognition.onnomatch = () => {
+                log('⚠️ No speech detected', 'warning');
+            };
+            
+            // Start recognition
+            try {
+                log('🚀 Starting recognition...', 'info');
+                recognition.start();
+                
+                // Auto-stop after 10 seconds
+                setTimeout(() => {
+                    if (recognition) {
+                        log('⏰ Auto-stopping recognition after 10 seconds', 'info');
+                        recognition.stop();
+                    }
+                }, 10000);
+                
+            } catch (error) {
+                log(`❌ Failed to start recognition: ${error.message}`, 'error');
+            }
+        }
+        
+        // Run diagnostic on page load
+        window.onload = runDiagnostic;
+    </script>
+</body>
+</html>

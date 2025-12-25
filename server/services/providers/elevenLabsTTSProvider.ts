@@ -175,11 +175,29 @@ export class ElevenLabsTTSProvider implements TTSProvider {
     // Remove code blocks (ASCII art) - don't read them aloud
     humanized = humanized.replace(/```[\s\S]*?```/g, ' [diagram shown] ');
     
+    // Remove markdown headers (# ## ### etc.) - just keep the text
+    humanized = humanized.replace(/^#{1,6}\s+/gm, ''); // Remove # at start of lines
+    humanized = humanized.replace(/#{1,6}\s+/g, ''); // Remove # anywhere else
+    
     // Remove markdown formatting
     humanized = humanized.replace(/\*\*(.*?)\*\*/g, '$1'); // Bold
     humanized = humanized.replace(/\*(.*?)\*/g, '$1'); // Italic
     humanized = humanized.replace(/__(.*?)__/g, '$1'); // Bold
     humanized = humanized.replace(/_(.*?)_/g, '$1'); // Italic
+    
+    // Remove markdown links [text](url) -> text
+    humanized = humanized.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+    
+    // Remove markdown list markers
+    humanized = humanized.replace(/^[\s]*[-*+]\s+/gm, ''); // Unordered lists
+    humanized = humanized.replace(/^[\s]*\d+\.\s+/gm, ''); // Ordered lists
+    
+    // Remove emoji and special characters that might be read as symbols
+    humanized = humanized.replace(/[🎭🎁👨‍👩‍👧‍👦❤️📚🎯💡]/g, '');
+    
+    // Remove other markdown symbols
+    humanized = humanized.replace(/`([^`]+)`/g, '$1'); // Inline code
+    humanized = humanized.replace(/>/g, ''); // Blockquotes
     
     // Special mathematical symbols (not common in text)
     humanized = humanized.replace(/×/g, ' times ');

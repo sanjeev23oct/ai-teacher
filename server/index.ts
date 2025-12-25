@@ -2168,22 +2168,17 @@ app.get('/api/asl/test', (req: Request, res: Response) => {
   res.json({ message: 'ASL endpoint is working', timestamp: new Date().toISOString() });
 });
 
-app.post('/api/asl/score', authMiddleware, upload.single('audio'), async (req: Request, res: Response) => {
+app.post('/api/asl/score', authMiddleware, async (req: Request, res: Response) => {
   console.log('🎤 [ASL] Starting ASL scoring request...');
   try {
-    if (!req.file) {
-      console.log('❌ [ASL] No audio file provided');
-      return res.status(400).json({ error: 'No audio file provided' });
+    const { transcription, taskId, mode, languageCode } = req.body;
+    
+    if (!transcription) {
+      console.log('❌ [ASL] No transcription provided');
+      return res.status(400).json({ error: 'No transcription provided' });
     }
 
-    const { taskId, mode } = req.body;
-    console.log('📋 [ASL] Request details:', { taskId, mode, fileSize: req.file.size, mimeType: req.file.mimetype });
-    
-    const fs = require('fs');
-    
-    // Read audio file
-    const audioBuffer = fs.readFileSync(req.file.path);
-    console.log('📁 [ASL] Audio file read successfully, size:', audioBuffer.length, 'bytes');
+    console.log('📋 [ASL] Request details:', { taskId, mode, transcriptionLength: transcription.length });
     
     // Import services
     const aslScoringService = require('./services/aslScoringService');
@@ -2198,13 +2193,9 @@ app.post('/api/asl/score', authMiddleware, upload.single('audio'), async (req: R
     }
     
     console.log('✅ [ASL] Task found:', task.title);
+    console.log('✅ [ASL] Transcription received:', transcription.substring(0, 100) + '...');
     
-    // Transcribe audio
-    console.log('🎯 [ASL] Starting audio transcription...');
-    const transcription = await aslScoringService.transcribeAudio(audioBuffer);
-    console.log('✅ [ASL] Transcription completed:', transcription.substring(0, 100) + '...');
-    
-    // Score the response
+    // Score the response using the provided transcription
     console.log('📊 [ASL] Starting ASL scoring...');
     const result = await aslScoringService.scoreASLResponseDetailed({
       transcription,
@@ -2244,13 +2235,6 @@ app.post('/api/asl/score', authMiddleware, upload.single('audio'), async (req: R
       }
     }
     
-    // Clean up uploaded file
-    try {
-      fs.unlinkSync(req.file.path);
-    } catch (cleanupError) {
-      console.warn('Failed to cleanup uploaded file:', cleanupError);
-    }
-    
     res.json(result);
   } catch (error) {
     console.error('❌ [ASL] ASL scoring error:', error);
@@ -2258,19 +2242,8 @@ app.post('/api/asl/score', authMiddleware, upload.single('audio'), async (req: R
     console.error('❌ [ASL] Error details:', {
       message: error instanceof Error ? error.message : String(error),
       taskId: req.body?.taskId,
-      fileSize: req.file?.size,
-      mimeType: req.file?.mimetype
+      transcriptionLength: req.body?.transcription?.length
     });
-    
-    // Cleanup file on error too
-    if (req.file?.path) {
-      try {
-        const fs = require('fs');
-        fs.unlinkSync(req.file.path);
-      } catch (cleanupError) {
-        console.warn('Failed to cleanup uploaded file on error:', cleanupError);
-      }
-    }
     
     res.status(500).json({ error: 'Failed to score ASL response' });
   }
