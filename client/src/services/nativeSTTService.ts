@@ -29,7 +29,6 @@ export class NativeSTTService {
   private recognition: any = null;
   private isSupported: boolean = false;
   private isListening: boolean = false;
-  private shouldKeepListening: boolean = false;
   private callbacks: STTCallbacks = {};
   private options: STTOptions = {};
 
