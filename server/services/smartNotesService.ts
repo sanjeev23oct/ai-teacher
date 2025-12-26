@@ -135,21 +135,71 @@ Now generate the enhanced note in this exact JSON format:`;
 
   const result = await aiService.generateContent({ prompt });
   
-  // Parse JSON response
+  // Parse JSON response with more robust handling
   let jsonStr = result.text.trim();
+  
+  // First, try to find JSON within markdown code blocks
   if (jsonStr.includes('```json')) {
-    jsonStr = jsonStr.split('```json')[1].split('```')[0].trim();
+    const match = jsonStr.match(/```json\s*\n([\s\S]*?)\n\s*```/);
+    if (match && match[1]) {
+      jsonStr = match[1].trim();
+    }
   } else if (jsonStr.includes('```')) {
-    jsonStr = jsonStr.split('```')[1].split('```')[0].trim();
+    const match = jsonStr.match(/```\s*\n([\s\S]*?)\n\s*```/);
+    if (match && match[1]) {
+      jsonStr = match[1].trim();
+    }
   }
-
+  
+  // If still not valid JSON, try to extract JSON object from the response
+  if (!jsonStr.startsWith('{') && !jsonStr.startsWith('[')) {
+    // Look for JSON object pattern in the text
+    const jsonMatch = jsonStr.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/);
+    if (jsonMatch) {
+      jsonStr = jsonMatch[0];
+    }
+  }
+  
   let enhanced;
   try {
     enhanced = JSON.parse(jsonStr);
   } catch (parseError: any) {
     console.error('JSON parse error:', parseError.message);
-    console.error('Problematic JSON:', jsonStr.substring(0, 500));
-    throw new Error(`Failed to parse AI response as JSON: ${parseError.message}`);
+    console.error('Problematic response:', result.text.substring(0, 500));
+    console.error('Attempted to parse:', jsonStr.substring(0, 500));
+    
+    // Additional fallback: try to find JSON even within plain text
+    try {
+      // Try to extract any possible JSON object from the response
+      const text = result.text;
+      const start = text.indexOf('{');
+      const end = text.lastIndexOf('}');
+      if (start !== -1 && end !== -1 && start < end) {
+        const potentialJson = text.substring(start, end + 1);
+        enhanced = JSON.parse(potentialJson);
+        console.log('Successfully extracted JSON from within text');
+      } else {
+        // Fallback: create a basic response structure if JSON parsing fails
+        console.warn('Falling back to basic response structure');
+        enhanced = {
+          title: 'Enhanced Notes',
+          summary: 'Auto-generated summary',
+          subject: context?.subject || 'Other',
+          tags: ['auto-generated'],
+          enhancedNote: result.text, // Use the raw response as the enhanced note
+        };
+      }
+    } catch (secondParseError: any) {
+      // Final fallback
+      console.warn('Final fallback to basic response structure');
+      enhanced = {
+        title: 'Enhanced Notes',
+        summary: 'Auto-generated summary',
+        subject: context?.subject || 'Other',
+        tags: ['auto-generated'],
+        enhancedNote: result.text, // Use the raw response as the enhanced note
+      };
+    }
   }
 
   const enhancementData = {

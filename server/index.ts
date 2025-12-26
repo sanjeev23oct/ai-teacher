@@ -3299,6 +3299,23 @@ app.get('/api/admin/content-cache/stats', authMiddleware, adminMiddleware, async
 });
 
 // ===========================
+// ADMIN DASHBOARD ENDPOINTS
+// ===========================
+
+// Get admin dashboard metrics
+app.get('/api/admin/dashboard', authMiddleware, adminMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { adminDashboardService } = await import('./services/admin/adminDashboardService');
+    const metrics = await adminDashboardService.getDashboardMetrics();
+    
+    res.json(metrics);
+  } catch (error: any) {
+    console.error('Error fetching admin dashboard metrics:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch dashboard metrics' });
+  }
+});
+
+// ===========================
 // Smart Notes API Endpoints
 // ===========================
 

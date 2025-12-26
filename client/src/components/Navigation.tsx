@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mic, Upload, History, User, LogOut, HelpCircle, BookmarkCheck, Menu, X, Users, BookOpen, FileText, GraduationCap, Book } from 'lucide-react';
+import { Mic, Upload, History, User, LogOut, HelpCircle, BookmarkCheck, Menu, X, Users, BookOpen, FileText, GraduationCap, Book, BarChart3 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import LanguagePreferenceSelector from './LanguagePreferenceSelector';
 import { isCurrentUserAdmin } from '../utils/admin';
@@ -201,14 +201,24 @@ const Navigation: React.FC = () => {
                                             <span>Doubt History</span>
                                         </Link>
                                         {isCurrentUserAdmin(user?.email) && (
-                                            <Link
-                                                to="/admin/summaries"
-                                                onClick={() => setShowDropdown(false)}
-                                                className="flex items-center space-x-2 px-4 py-2 text-sm text-orange-400 hover:bg-background border-t border-gray-700"
-                                            >
-                                                <BookOpen className="h-4 w-4" />
-                                                <span>Admin: Summaries</span>
-                                            </Link>
+                                            <>
+                                                <Link
+                                                    to="/admin/summaries"
+                                                    onClick={() => setShowDropdown(false)}
+                                                    className="flex items-center space-x-2 px-4 py-2 text-sm text-orange-400 hover:bg-background border-t border-gray-700"
+                                                >
+                                                    <BookOpen className="h-4 w-4" />
+                                                    <span>Admin: Summaries</span>
+                                                </Link>
+                                                <Link
+                                                    to="/admin/usage"
+                                                    onClick={() => setShowDropdown(false)}
+                                                    className="flex items-center space-x-2 px-4 py-2 text-sm text-orange-400 hover:bg-background border-t border-gray-700"
+                                                >
+                                                    <BarChart3 className="h-4 w-4" />
+                                                    <span>Admin: Usage</span>
+                                                </Link>
+                                            </>
                                         )}
                                         <button
                                             onClick={handleLogout}
@@ -336,6 +346,26 @@ const Navigation: React.FC = () => {
                                         <HelpCircle className="h-4 w-4" />
                                         <span>Doubt History</span>
                                     </Link>
+                                    {isCurrentUserAdmin(user?.email) && (
+                                        <>
+                                            <Link
+                                                to="/admin/summaries"
+                                                onClick={() => setShowMobileMenu(false)}
+                                                className="flex items-center space-x-2 px-4 py-2 text-sm text-orange-400 hover:bg-background border-t border-gray-700"
+                                            >
+                                                <BookOpen className="h-4 w-4" />
+                                                <span>Admin: Summaries</span>
+                                            </Link>
+                                            <Link
+                                                to="/admin/usage"
+                                                onClick={() => setShowMobileMenu(false)}
+                                                className="flex items-center space-x-2 px-4 py-2 text-sm text-orange-400 hover:bg-background border-t border-gray-700"
+                                            >
+                                                <BarChart3 className="h-4 w-4" />
+                                                <span>Admin: Usage</span>
+                                            </Link>
+                                        </>
+                                    )}
                                     <button
                                         onClick={handleLogout}
                                         className="text-gray-300 hover:text-white w-full text-left px-3 py-2 rounded-md text-base font-medium flex items-center space-x-2"

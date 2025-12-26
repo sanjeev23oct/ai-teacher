@@ -22,6 +22,7 @@ import GroupStudyPage from './pages/GroupStudyPage';
 import NCERTExplainerPage from './pages/NCERTExplainerPage';
 import SmartNotesPage from './pages/SmartNotesPage';
 import AdminSummaryPage from './pages/AdminSummaryPage';
+import AdminUsagePage from './pages/AdminUsagePage';
 import DashboardDoubtCard from './components/DashboardDoubtCard';
 
 // Group Study Card (Now Available!)
@@ -341,6 +342,7 @@ function App() {
               <Route path="/smart-notes" element={<Layout><SmartNotesPage /></Layout>} />
               <Route path="/smart-notes/shared/:id" element={<Layout><SmartNotesPage /></Layout>} />
               <Route path="/admin/summaries" element={<Layout><AdminSummaryPage /></Layout>} />
+              <Route path="/admin/usage" element={<Layout><AdminUsagePage /></Layout>} />
             </Routes>
         </LanguageProvider>
       </AuthProvider>
