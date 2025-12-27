@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, MicOff, Loader2, RefreshCw, Users, User, Volume2, LogIn, Edit3 } from 'lucide-react';
+import { Mic, MicOff, Loader2, RefreshCw, Users, User, Volume2, LogIn } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { nativeSTTService, type STTResult } from '../services/nativeSTTService';
@@ -29,12 +29,6 @@ const ASLPracticePage: React.FC = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [practiceHistory, setPracticeHistory] = useState<ASLHistory[]>([]);
   const [showTranscription, setShowTranscription] = useState(false);
-  const [preparationTime, setPreparationTime] = useState(0);
-  const [isPreparingToRecord, setIsPreparingToRecord] = useState(false);
-  const [showSampleAnswer, setShowSampleAnswer] = useState(false);
-  const [isPlayingSample, setIsPlayingSample] = useState(false);
-  const [showDetailedFeedback, setShowDetailedFeedback] = useState(false);
-  const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
   const [customTask, setCustomTask] = useState<CustomASLTask>({
     title: '',
     prompt: '',
@@ -42,6 +36,12 @@ const ASLPracticePage: React.FC = () => {
     duration: 60,
     mode: 'solo'
   });
+  
+  // Additional state variables that are used in the component
+  const [showSampleAnswer, setShowSampleAnswer] = useState(false);
+  const [isPlayingSample, setIsPlayingSample] = useState(false);
+  const [showDetailedFeedback, setShowDetailedFeedback] = useState(false);
+  const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
   
   // STT-related state
   const [transcription, setTranscription] = useState<string>('');
@@ -918,46 +918,34 @@ const ASLPracticePage: React.FC = () => {
 
               {/* Timer and Record Button */}
               <div className="flex flex-col items-center mb-3">
-                {isPreparingToRecord ? (
-                  <>
-                    <div className="text-4xl sm:text-5xl font-bold mb-2 text-yellow-500">
-                      {preparationTime}s
-                    </div>
-                    <div className="p-5 sm:p-6 rounded-full bg-yellow-500 shadow-lg">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-full animate-pulse"></div>
-                    </div>
-                    <p className="text-xs text-gray-400 mt-2">Get ready to speak...</p>
-                  </>
-                ) : (
-                  <>
-                    <div className={`text-4xl sm:text-5xl font-bold mb-2 ${isRecording ? 'text-red-500' : 'text-gray-500'}`}>
-                      {timeLeft}s
-                    </div>
-                    
-                    <button
-                      onClick={isRecording ? stopRecording : startRecording}
-                      disabled={isProcessing || isPreparingToRecord}
-                      className={`relative p-5 sm:p-6 rounded-full transition-all ${
-                        isRecording
-                          ? 'bg-red-500 hover:bg-red-600'
-                          : 'bg-primary hover:bg-primary-hover'
-                      } disabled:opacity-50 shadow-lg`}
-                    >
-                      {isRecording ? (
-                        <>
-                          <div className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-75"></div>
-                          <MicOff className="relative w-8 h-8 sm:w-10 sm:h-10 text-white" />
-                        </>
-                      ) : (
-                        <Mic className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
-                      )}
-                    </button>
-                    
-                    <p className="text-xs text-gray-400 mt-2">
-                      {isRecording ? 'Tap to stop recording' : 'Tap to start speaking'}
-                    </p>
-                  </>
-                )}
+                <>
+                  <div className={`text-4xl sm:text-5xl font-bold mb-2 ${isRecording ? 'text-red-500' : 'text-gray-500'}`}>
+                    {timeLeft}s
+                  </div>
+                  
+                  <button
+                    onClick={isRecording ? stopRecording : startRecording}
+                    disabled={isProcessing}
+                    className={`relative p-5 sm:p-6 rounded-full transition-all ${
+                      isRecording
+                        ? 'bg-red-500 hover:bg-red-600'
+                        : 'bg-primary hover:bg-primary-hover'
+                    } disabled:opacity-50 shadow-lg`}
+                  >
+                    {isRecording ? (
+                      <>
+                        <div className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-75"></div>
+                        <MicOff className="relative w-8 h-8 sm:w-10 sm:h-10 text-white" />
+                      </>
+                    ) : (
+                      <Mic className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+                    )}
+                  </button>
+                  
+                  <p className="text-xs text-gray-400 mt-2">
+                    {isRecording ? 'Tap to stop recording' : 'Tap to start speaking'}
+                  </p>
+                </>
               </div>
 
               {isProcessing && (
