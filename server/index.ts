@@ -2249,6 +2249,89 @@ app.post('/api/asl/score', authMiddleware, async (req: Request, res: Response) =
   }
 });
 
+// Score custom ASL response
+app.post('/api/asl/score-custom', authMiddleware, async (req: Request, res: Response) => {
+  console.log('🎤 [ASL] Starting custom ASL scoring request...');
+  try {
+    const { transcription, customTask, languageCode } = req.body;
+    
+    if (!transcription) {
+      console.log('❌ [ASL] No transcription provided');
+      return res.status(400).json({ error: 'No transcription provided' });
+    }
+    
+    if (!customTask || !customTask.title || !customTask.prompt) {
+      console.log('❌ [ASL] Invalid custom task provided');
+      return res.status(400).json({ error: 'Valid custom task with title and prompt required' });
+    }
+
+    console.log('📋 [ASL] Custom task details:', { 
+      title: customTask.title, 
+      mode: customTask.mode,
+      transcriptionLength: transcription.length 
+    });
+    
+    // Import services
+    const aslScoringService = require('./services/aslScoringService');
+    
+    console.log('✅ [ASL] Custom task received:', customTask.title);
+    console.log('✅ [ASL] Transcription received:', transcription.substring(0, 100) + '...');
+    
+    // Score the custom response
+    console.log('📊 [ASL] Starting custom ASL scoring...');
+    const result = await aslScoringService.scoreCustomASLResponse({
+      transcription,
+      taskPrompt: customTask.prompt,
+      keywords: customTask.keywords || [],
+      duration: customTask.duration || 60
+    });
+    console.log('✅ [ASL] Custom scoring completed, score:', result.score);
+    
+    // Save practice to history (if user is authenticated)
+    if (req.user?.id) {
+      try {
+        const { PrismaClient } = require('@prisma/client');
+        const prisma = new PrismaClient();
+        
+        await prisma.aSLPractice.create({
+          data: {
+            userId: req.user.id,
+            taskId: `custom-${Date.now()}`, // Generate a custom task ID
+            taskTitle: customTask.title,
+            taskPrompt: customTask.prompt,
+            class: null, // No class for custom topics
+            mode: customTask.mode,
+            duration: customTask.duration || 60,
+            transcription,
+            score: result.score,
+            feedback: JSON.stringify(result.fixes),
+            fillerCount: aslScoringService.analyzeFillerWords(transcription).fillerCount,
+            detailedFeedback: result.detailedFeedback ? JSON.stringify(result.detailedFeedback) : null,
+            isCustom: true
+          }
+        });
+        
+        await prisma.$disconnect();
+      } catch (saveError) {
+        console.error('Error saving custom ASL practice:', saveError);
+        // Don't fail the request if saving fails
+      }
+    }
+    
+    res.json(result);
+  } catch (error) {
+    console.error('❌ [ASL] Custom ASL scoring error:', error);
+    console.error('❌ [ASL] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    console.error('❌ [ASL] Error details:', {
+      message: error instanceof Error ? error.message : String(error),
+      customTask: req.body?.customTask,
+      transcriptionLength: req.body?.transcription?.length
+    });
+    
+    res.status(500).json({ error: 'Failed to score custom ASL response' });
+  }
+});
+
 // ASL Follow-up Chat
 app.post('/api/asl/chat', authMiddleware, async (req: Request, res: Response) => {
   try {
@@ -3222,7 +3305,8 @@ app.get('/api/asl/history', authMiddleware, async (req: Request, res: Response) 
         class: true,
         mode: true,
         transcription: true,
-        detailedFeedback: true
+        detailedFeedback: true,
+        isCustom: true
       }
     });
     

@@ -38,7 +38,7 @@ export async function signup(data: SignupData) {
       email: data.email,
       passwordHash,
       grade: data.grade || null,
-      school: data.school || null
+      school: data.school || 'Not specified'  // Provide a default value instead of null
     }
   });
 

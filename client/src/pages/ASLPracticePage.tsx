@@ -1,65 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, MicOff, Loader2, RefreshCw, Users, User, Volume2, LogIn } from 'lucide-react';
+import { Mic, MicOff, Loader2, RefreshCw, Users, User, Volume2, LogIn, Edit3 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { nativeSTTService, type STTResult } from '../services/nativeSTTService';
-
-type Mode = 'solo' | 'pair';
-
-interface ASLTask {
-  id: string;
-  class: 9 | 10;
-  mode: 'solo' | 'pair';
-  title: string;
-  prompt: string;
-  keywords: string[];
-  duration: number;
-  sampleAnswer?: string;
-  tips?: string[];
-}
-
-interface ASLResult {
-  score: number;
-  fixes: string[];
-  transcription?: string;
-  detailedFeedback?: {
-    originalText: string;
-    improvements: Array<{
-      original: string;
-      suggestion: string;
-      severity: 'minor' | 'major' | 'critical';
-    }>;
-  };
-}
-
-interface ASLHistory {
-  id: string;
-  taskTitle: string;
-  score: number;
-  practicedAt: string;
-  class: number;
-  mode: string;
-  transcription?: string;
-  detailedFeedback?: {
-    originalText: string;
-    improvements: Array<{
-      original: string;
-      suggestion: string;
-      severity: 'minor' | 'major' | 'critical';
-    }>;
-  };
-}
-
-interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: number;
-}
+import { aslService } from '../services/aslService';
+import type { ASLTask, ASLResult, ASLHistory, ChatMessage, Mode, CustomASLTask } from '../types/aslTypes';
+import CustomASLTaskForm from '../components/ASL/CustomASLTaskForm';
 
 const ASLPracticePage: React.FC = () => {
   const { languageCode } = useLanguage();
   const { user } = useAuth();
-  const [selectedClass, setSelectedClass] = useState<9 | 10>(9);
+  const [selectedClass, setSelectedClass] = useState<9 | 10 | 'custom'>(9);
   const [mode, setMode] = useState<Mode>('solo');
   const [tasks, setTasks] = useState<ASLTask[]>([]);
   const [selectedTask, setSelectedTask] = useState<ASLTask | null>(null);
@@ -84,11 +35,21 @@ const ASLPracticePage: React.FC = () => {
   const [isPlayingSample, setIsPlayingSample] = useState(false);
   const [showDetailedFeedback, setShowDetailedFeedback] = useState(false);
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
+  const [customTask, setCustomTask] = useState<CustomASLTask>({
+    title: '',
+    prompt: '',
+    keywords: [],
+    duration: 60,
+    mode: 'solo'
+  });
   
   // STT-related state
   const [transcription, setTranscription] = useState<string>('');
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState<string>('');
+  
+  // Ref to hold the current transcription value to avoid stale closure
+  const transcriptionRef = useRef<string>('');
   
   const timerRef = useRef<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -96,9 +57,28 @@ const ASLPracticePage: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
 
+  // Keep the ref in sync with the state
+  useEffect(() => {
+    transcriptionRef.current = transcription;
+  }, [transcription]);
+
   // Fetch tasks when class or mode changes
   useEffect(() => {
-    fetchTasks();
+    if (selectedClass !== 'custom') {
+      fetchTasks();
+    } else {
+      // When custom is selected, clear the task list and initialize with common topic
+      setTasks([]);
+      setSelectedTask(null);
+      // Set a default custom topic to make it easier for users
+      setCustomTask({
+        title: 'English Tenses',
+        prompt: 'Explain the use of present continuous tense with examples',
+        keywords: ['tense', 'present', 'continuous', 'examples'],
+        duration: 60,
+        mode: mode
+      });
+    }
   }, [selectedClass, mode]);
 
   // Fetch practice history when user is available
@@ -110,12 +90,10 @@ const ASLPracticePage: React.FC = () => {
 
   const fetchTasks = async () => {
     try {
-      const response = await fetch(`/api/asl/tasks?class=${selectedClass}&mode=${mode}`);
-      if (response.ok) {
-        const data = await response.json();
-        setTasks(data);
-        setSelectedTask(data[0] || null);
-      }
+      const classNum = selectedClass === 'custom' ? undefined : selectedClass;
+      const tasks = await aslService.fetchTasks(classNum, mode);
+      setTasks(tasks);
+      setSelectedTask(tasks[0] || null);
     } catch (err) {
       console.error('Failed to fetch tasks:', err);
     }
@@ -123,36 +101,19 @@ const ASLPracticePage: React.FC = () => {
 
   const fetchPracticeHistory = async () => {
     try {
-      const response = await fetch('/api/asl/history', {
-        credentials: 'include'
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        // Check if data has history property
-        if (data && Array.isArray(data.history)) {
-          // Parse detailedFeedback JSON strings
-          const parsedHistory = data.history.map((item: any) => ({
-            ...item,
-            detailedFeedback: item.detailedFeedback ? 
-              (typeof item.detailedFeedback === 'string' ? 
-                JSON.parse(item.detailedFeedback) : 
-                item.detailedFeedback) : 
-              null
-          }));
-          setPracticeHistory(parsedHistory);
-        } else {
-          console.warn('Unexpected response format:', data);
-          setPracticeHistory([]);
-        }
-      } else {
-        // Handle HTTP errors
-        const errorData = await response.json().catch(() => ({}));
-        console.error('HTTP Error fetching practice history:', response.status, errorData);
-        setPracticeHistory([]);
-      }
+      const history = await aslService.fetchPracticeHistory();
+      // Parse detailedFeedback JSON strings
+      const parsedHistory = history.map((item: any) => ({
+        ...item,
+        detailedFeedback: item.detailedFeedback ? 
+          (typeof item.detailedFeedback === 'string' ? 
+            JSON.parse(item.detailedFeedback) : 
+            item.detailedFeedback) : 
+          null
+      }));
+      setPracticeHistory(parsedHistory);
     } catch (err) {
-      console.error('Network error fetching practice history:', err);
+      console.error('Failed to fetch practice history:', err);
       setPracticeHistory([]);
     }
   };
@@ -166,29 +127,6 @@ const ASLPracticePage: React.FC = () => {
     };
   }, []);
 
-  const startPreparation = () => {
-    if (!user) {
-      alert('Please login or create an account to practice ASL');
-      window.location.href = '/login?redirect=/asl-practice';
-      return;
-    }
-
-    setIsPreparingToRecord(true);
-    setPreparationTime(15); // 15 seconds preparation time
-    
-    const prepTimer = window.setInterval(() => {
-      setPreparationTime((prev) => {
-        if (prev <= 1) {
-          clearInterval(prepTimer);
-          setIsPreparingToRecord(false);
-          startRecording();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  };
-
   const startRecording = async () => {
     // Check authentication
     if (!user) {
@@ -197,7 +135,7 @@ const ASLPracticePage: React.FC = () => {
       return;
     }
 
-    if (!selectedTask) return;
+    if (!selectedTask && selectedClass !== 'custom') return;
 
     try {
       console.log('🎤 Starting ASL recording with native STT...');
@@ -253,13 +191,14 @@ const ASLPracticePage: React.FC = () => {
 
       // Clear previous transcription
       setTranscription('');
+      transcriptionRef.current = ''; // Also update the ref
       setInterimTranscript('');
       setIsTranscribing(true);
 
       // Start speech recognition
       const sttOptions = {
         language: languageCode === 'hi' ? 'hi-IN' : 'en-IN',
-        continuous: true,
+        continuous: false,  // Changed from true to false to prevent auto-restart issues
         interimResults: true,
         maxAlternatives: 1
       };
@@ -273,6 +212,7 @@ const ASLPracticePage: React.FC = () => {
           setTranscription(prev => {
             const newText = prev.trim() + (prev.trim() ? ' ' : '') + result.transcript.trim();
             console.log('📝 Updated transcription:', newText);
+            transcriptionRef.current = newText; // Update the ref as well
             return newText;
           });
           setInterimTranscript('');
@@ -284,7 +224,8 @@ const ASLPracticePage: React.FC = () => {
         onStart: () => {
           console.log('🎤 STT Started successfully');
           setIsRecording(true);
-          const duration = selectedTask?.duration || (mode === 'solo' ? 60 : 30);
+          setIsTranscribing(true);
+          const duration = selectedTask?.duration || customTask.duration || (mode === 'solo' ? 60 : 30);
           setTimeLeft(duration);
           
           // Start timer
@@ -301,7 +242,11 @@ const ASLPracticePage: React.FC = () => {
         onEnd: () => {
           console.log('🎤 STT Ended');
           setIsTranscribing(false);
-          handleTranscriptionComplete();
+          setIsRecording(false);
+          // Process the final transcription after a short delay to ensure all callbacks are processed
+          setTimeout(() => {
+            handleTranscriptionComplete(transcriptionRef.current);
+          }, 300);
         },
         onError: (error: string) => {
           console.error('❌ STT Error:', error);
@@ -316,6 +261,7 @@ const ASLPracticePage: React.FC = () => {
         console.error('❌ Failed to start STT service');
         alert('Failed to start speech recognition. Please try again.');
         setIsTranscribing(false);
+        setIsRecording(false);
       } else {
         console.log('✅ STT service started successfully');
       }
@@ -324,11 +270,15 @@ const ASLPracticePage: React.FC = () => {
       console.error('❌ Error starting recording:', error);
       alert('Failed to start recording. Please check your microphone.');
       setIsTranscribing(false);
+      setIsRecording(false);
     }
   };
 
   const stopRecording = () => {
+    console.log('🛑 Stopping recording...');
+    
     if (isRecording || isTranscribing) {
+      console.log('🛑 Stopping STT service...');
       // Stop speech recognition
       nativeSTTService.stopListening();
       
@@ -336,65 +286,67 @@ const ASLPracticePage: React.FC = () => {
       setIsTranscribing(false);
       
       if (timerRef.current) {
+        console.log('🛑 Clearing timer...');
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
       
       if (animationRef.current) {
+        console.log('🛑 Canceling animation frame...');
         cancelAnimationFrame(animationRef.current);
         animationRef.current = null;
       }
       
       if (audioContextRef.current) {
+        console.log('🛑 Closing audio context...');
         audioContextRef.current.close();
         audioContextRef.current = null;
       }
+      
+      // Ensure timer is completely stopped
+      setTimeLeft(0);
+      console.log('🛑 Recording stopped completely');
+    } else {
+      console.log('🛑 Recording was not active');
     }
   };
 
-  const handleTranscriptionComplete = async () => {
-    if (!selectedTask) return;
-
-    const finalTranscript = transcription.trim();
+  const handleTranscriptionComplete = async (finalTranscription?: string) => {
+    // Use the passed transcription or fall back to the ref value
+    const transcriptToUse = finalTranscription !== undefined ? finalTranscription : transcriptionRef.current;
+    console.log('📝 Transcription complete:', transcriptToUse);
+    const finalTranscript = transcriptToUse.trim();
     if (!finalTranscript) {
-      alert('No speech was detected. Please try again.');
+      console.log('⚠️ No speech was detected in final transcript:', { transcription: transcriptToUse, interimTranscript });
+      // Don't alert if we're still in the process of transcribing
+      if (!isRecording && !isTranscribing) {
+        alert('No speech was detected. Please try again.');
+      }
       return;
     }
 
     setIsProcessing(true);
     
     try {
-      // Send transcription to server for scoring
-      const response = await fetch('/api/asl/score', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          transcription: finalTranscript,
-          taskId: selectedTask.id,
-          mode: mode,
-          languageCode: languageCode
-        })
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('Server error:', errorData);
-        throw new Error(errorData.error || 'Scoring failed');
+      let result;
+      if (selectedClass === 'custom') {
+        // Score custom task
+        result = await aslService.scoreCustomASLResponse(finalTranscript, customTask, languageCode);
+      } else {
+        // Score standard task
+        if (!selectedTask) return;
+        result = await aslService.scoreASLResponse(finalTranscript, selectedTask.id, mode, languageCode);
       }
       
-      const data = await response.json();
-      console.log('Scoring result:', data);
-      setResult(data);
+      console.log('Scoring result:', result);
+      setResult(result);
       
       // Store result for current student in pair mode
       if (mode === 'pair') {
         if (currentStudent === 1) {
-          setStudent1Result(data);
+          setStudent1Result(result);
         } else {
-          setStudent2Result(data);
+          setStudent2Result(result);
         }
       }
 
@@ -460,7 +412,7 @@ const ASLPracticePage: React.FC = () => {
   const handleTryAgain = () => {
     setResult(null);
     setChatMessages([]);
-    setTimeLeft(selectedTask?.duration || (mode === 'solo' ? 60 : 30));
+    setTimeLeft(selectedTask?.duration || customTask.duration || (mode === 'solo' ? 60 : 30));
     
     // Clear current student's result in pair mode
     if (mode === 'pair') {
@@ -475,7 +427,7 @@ const ASLPracticePage: React.FC = () => {
   const switchStudent = () => {
     setCurrentStudent(currentStudent === 1 ? 2 : 1);
     setResult(currentStudent === 1 ? student2Result : student1Result);
-    setTimeLeft(selectedTask?.duration || 30);
+    setTimeLeft(selectedTask?.duration || customTask.duration || 30);
     setChatMessages([]); // Clear chat when switching students
   };
 
@@ -506,7 +458,7 @@ const ASLPracticePage: React.FC = () => {
   };
 
   const sendMessage = async (message: string) => {
-    if (!message.trim() || !result || !selectedTask) return;
+    if (!message.trim() || !result || (!selectedTask && selectedClass !== 'custom')) return;
 
     const userMessage: ChatMessage = {
       role: 'user',
@@ -519,28 +471,27 @@ const ASLPracticePage: React.FC = () => {
     setIsSendingMessage(true);
 
     try {
-      const response = await fetch('/api/asl/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: message.trim(),
-          languageCode,
-          context: {
-            taskTitle: selectedTask.title,
-            taskPrompt: selectedTask.prompt,
+      const context = selectedClass === 'custom' 
+        ? {
+            taskTitle: customTask.title,
+            taskPrompt: customTask.prompt,
             score: result.score,
             fixes: result.fixes,
             transcription: result.transcription,
             mode,
             currentStudent: mode === 'pair' ? currentStudent : undefined
-          },
-          history: chatMessages
-        })
-      });
+          }
+        : {
+            taskTitle: selectedTask?.title || '',
+            taskPrompt: selectedTask?.prompt || '',
+            score: result.score,
+            fixes: result.fixes,
+            transcription: result.transcription,
+            mode,
+            currentStudent: mode === 'pair' ? currentStudent : undefined
+          };
 
-      if (!response.ok) throw new Error('Chat failed');
-
-      const data = await response.json();
+      const data = await aslService.sendChatMessage(message.trim(), languageCode, context, chatMessages);
       
       const assistantMessage: ChatMessage = {
         role: 'assistant',
@@ -634,6 +585,32 @@ const ASLPracticePage: React.FC = () => {
     }
   };
 
+  const handleCustomTaskSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customTask.title || !customTask.prompt) {
+      alert('Please provide both title and prompt for your custom topic');
+      return;
+    }
+    
+    // Create a temporary ASLTask object for the custom task
+    const customASLTask: ASLTask = {
+      id: `custom-${Date.now()}`,
+      title: customTask.title,
+      prompt: customTask.prompt,
+      keywords: customTask.keywords || [],
+      duration: customTask.duration,
+      mode: customTask.mode,
+      isCustom: true
+    };
+    
+    setSelectedTask(customASLTask);
+  };
+
+  const handleKeywordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const keywords = e.target.value.split(',').map(k => k.trim()).filter(k => k);
+    setCustomTask({ ...customTask, keywords });
+  };
+
   return (
     <div className="max-w-3xl mx-auto p-3 sm:p-4">
       {/* Authentication Required Message */}
@@ -671,11 +648,19 @@ const ASLPracticePage: React.FC = () => {
         <div className="flex gap-2 items-center">
           <select
             value={selectedClass}
-            onChange={(e) => setSelectedClass(Number(e.target.value) as 9 | 10)}
+            onChange={(e) => {
+              const value = e.target.value === 'custom' ? 'custom' : Number(e.target.value);
+              setSelectedClass(value as 9 | 10 | 'custom');
+              // When switching to custom, also update the custom task mode to match current mode
+              if (value === 'custom') {
+                setCustomTask(prev => ({ ...prev, mode: mode }));
+              }
+            }}
             className="px-3 py-1.5 bg-gray-900 border border-gray-700 rounded text-white text-sm"
           >
             <option value={9}>Class 9</option>
             <option value={10}>Class 10</option>
+            <option value="custom">Any Topic</option>
           </select>
           
           <button
@@ -714,26 +699,38 @@ const ASLPracticePage: React.FC = () => {
           </button>
         </div>
 
-        {/* Task Selection and History Button */}
-        <div className="flex gap-2">
-          <select
-            value={selectedTask?.id || ''}
-            onChange={(e) => setSelectedTask(tasks.find(t => t.id === e.target.value) || null)}
-            className="flex-1 px-3 py-1.5 bg-gray-900 border border-gray-700 rounded text-white text-sm"
-          >
-            {tasks.map(task => (
-              <option key={task.id} value={task.id}>{task.title}</option>
-            ))}
-          </select>
-          {user && (
-            <button
-              onClick={() => setShowHistory(!showHistory)}
-              className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 rounded text-white text-sm transition-colors"
+        {/* Custom Task Form - Only shown when custom is selected */}
+        {selectedClass === 'custom' && (
+          <CustomASLTaskForm
+            customTask={customTask}
+            setCustomTask={setCustomTask}
+            onSubmit={handleCustomTaskSubmit}
+            onKeywordChange={handleKeywordChange}
+          />
+        )}
+
+        {/* Task Selection and History Button - Only for standard tasks */}
+        {selectedClass !== 'custom' && (
+          <div className="flex gap-2">
+            <select
+              value={selectedTask?.id || ''}
+              onChange={(e) => setSelectedTask(tasks.find(t => t.id === e.target.value) || null)}
+              className="flex-1 px-3 py-1.5 bg-gray-900 border border-gray-700 rounded text-white text-sm"
             >
-              History ({practiceHistory.length})
-            </button>
-          )}
-        </div>
+              {tasks.map(task => (
+                <option key={task.id} value={task.id}>{task.title}</option>
+              ))}
+            </select>
+            {user && (
+              <button
+                onClick={() => setShowHistory(!showHistory)}
+                className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 rounded text-white text-sm transition-colors"
+              >
+                History ({practiceHistory.length})
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Student Selector for Pair Mode */}
         {mode === 'pair' && (
@@ -781,7 +778,7 @@ const ASLPracticePage: React.FC = () => {
                     <div className="flex-1 min-w-0">
                       <p className="text-white text-sm font-medium truncate">{practice.taskTitle}</p>
                       <p className="text-gray-400 text-xs">
-                        Class {practice.class} • {practice.mode} • {new Date(practice.practicedAt).toLocaleDateString()}
+                        {practice.class ? `Class ${practice.class}` : 'Custom Topic'} • {practice.mode} • {new Date(practice.practicedAt).toLocaleDateString()}
                       </p>
                     </div>
                     <div className="flex items-center gap-1">
@@ -840,8 +837,8 @@ const ASLPracticePage: React.FC = () => {
       <div className="bg-surface rounded-lg border border-gray-800 p-3 sm:p-4">
         {!result ? (
           <>
-            {/* Task Display */}
-            {selectedTask && (
+            {/* Task Display - Only for standard tasks */}
+            {selectedTask && selectedClass !== 'custom' && (
               <div className="mb-3">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1">
@@ -892,6 +889,23 @@ const ASLPracticePage: React.FC = () => {
               </div>
             )}
 
+            {/* Custom Task Display - Only for custom tasks */}
+            {selectedClass === 'custom' && selectedTask && (
+              <div className="mb-3">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1">
+                    <h2 className="text-base sm:text-lg font-semibold text-white mb-1">
+                      {customTask.title}
+                    </h2>
+                    <p className="text-gray-300 text-sm mb-1">{customTask.prompt}</p>
+                    <p className="text-xs text-primary">
+                      Duration: {customTask.duration}s
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Recording Area */}
             <div className="mb-3">
               {/* Waveform Canvas */}
@@ -921,7 +935,7 @@ const ASLPracticePage: React.FC = () => {
                     </div>
                     
                     <button
-                      onClick={isRecording ? stopRecording : startPreparation}
+                      onClick={isRecording ? stopRecording : startRecording}
                       disabled={isProcessing || isPreparingToRecord}
                       className={`relative p-5 sm:p-6 rounded-full transition-all ${
                         isRecording
@@ -940,7 +954,7 @@ const ASLPracticePage: React.FC = () => {
                     </button>
                     
                     <p className="text-xs text-gray-400 mt-2">
-                      {isRecording ? 'Tap to stop recording' : 'Tap to start (15s prep time)'}
+                      {isRecording ? 'Tap to stop recording' : 'Tap to start speaking'}
                     </p>
                   </>
                 )}
@@ -967,14 +981,16 @@ const ASLPracticePage: React.FC = () => {
               )}
             </div>
 
-            {/* New Task Button */}
-            <button
-              onClick={handleNewTask}
-              className="w-full py-2 bg-gray-700 hover:bg-gray-600 rounded text-white transition-all text-sm"
-            >
-              <RefreshCw className="inline w-4 h-4 mr-1" />
-              New Task
-            </button>
+            {/* New Task Button - Only for standard tasks */}
+            {selectedClass !== 'custom' && (
+              <button
+                onClick={handleNewTask}
+                className="w-full py-2 bg-gray-700 hover:bg-gray-600 rounded text-white transition-all text-sm"
+              >
+                <RefreshCw className="inline w-4 h-4 mr-1" />
+                New Task
+              </button>
+            )}
           </>
         ) : (
           <>
@@ -1029,7 +1045,7 @@ const ASLPracticePage: React.FC = () => {
                     <div className="flex items-start gap-2">
                       <span className="text-primary font-semibold text-lg">{index + 1}.</span>
                       <p className="text-gray-300 leading-relaxed">{fix}</p>
-                    </div>
+                  </div>
                   </div>
                 ))}
               </div>
@@ -1104,13 +1120,15 @@ const ASLPracticePage: React.FC = () => {
                 >
                   Try Again
                 </button>
-                <button
-                  onClick={handleNewTask}
-                  className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white transition-all text-sm"
-                >
-                  <RefreshCw className="inline w-4 h-4 mr-1" />
-                  New Task
-                </button>
+                {selectedClass !== 'custom' && (
+                  <button
+                    onClick={handleNewTask}
+                    className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white transition-all text-sm"
+                  >
+                    <RefreshCw className="inline w-4 h-4 mr-1" />
+                    New Task
+                  </button>
+                )}
               </div>
             </div>
 

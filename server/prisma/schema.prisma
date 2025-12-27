@@ -508,8 +508,9 @@ model ASLPractice {
   taskId           String
   taskTitle        String
   taskPrompt       String   @db.Text
-  class            Int      // 9 or 10
+  class            Int?     // 9 or 10, optional for custom topics
   mode             String   // "solo" or "pair"
+  isCustom         Boolean  @default(false) // Whether this is a custom topic
   
   // Recording details
   duration         Int      // seconds

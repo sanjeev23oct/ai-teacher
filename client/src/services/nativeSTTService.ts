@@ -31,6 +31,7 @@ export class NativeSTTService {
   private isListening: boolean = false;
   private callbacks: STTCallbacks = {};
   private options: STTOptions = {};
+  private shouldStop: boolean = false; // Flag to prevent auto-restart
 
   constructor() {
     this.initializeRecognition();
@@ -77,6 +78,7 @@ export class NativeSTTService {
     this.recognition.onstart = () => {
       console.log('✅ [STT] Speech recognition started');
       this.isListening = true;
+      this.shouldStop = false; // Reset the stop flag when starting
       this.callbacks.onStart?.();
     };
 
@@ -85,11 +87,12 @@ export class NativeSTTService {
       console.log('🎤 [STT] Speech recognition ended');
       this.isListening = false;
       
-      // If we were supposed to be listening continuously, restart
-      if (this.options.continuous && this.callbacks.onStart) {
+      // If we were supposed to be listening continuously and haven't been explicitly stopped,
+      // and we have an onStart callback (indicating we should continue), then restart
+      if (this.options.continuous && !this.shouldStop && this.callbacks.onStart) {
         console.log('🔄 [STT] Auto-restarting continuous recognition...');
         setTimeout(() => {
-          if (!this.isListening) {
+          if (!this.isListening && !this.shouldStop) {
             try {
               this.recognition.start();
             } catch (error) {
@@ -251,7 +254,8 @@ export class NativeSTTService {
     if (!this.recognition || !this.isListening) {
       return;
     }
-
+    
+    this.shouldStop = true; // Set the flag to prevent auto-restart
     try {
       this.recognition.stop();
     } catch (error) {
@@ -266,7 +270,8 @@ export class NativeSTTService {
     if (!this.recognition || !this.isListening) {
       return;
     }
-
+    
+    this.shouldStop = true; // Set the flag to prevent auto-restart
     try {
       this.recognition.abort();
     } catch (error) {

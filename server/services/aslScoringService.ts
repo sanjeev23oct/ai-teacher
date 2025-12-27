@@ -240,6 +240,63 @@ Now score this response and provide exactly 3 fixes. Return ONLY valid JSON.`;
 }
 
 /**
+ * Score custom ASL response (for general topics)
+ */
+export async function scoreCustomASLResponse(params: {
+  transcription: string;
+  taskPrompt: string;
+  keywords: string[];
+  duration: number;
+}): Promise<ASLScoringResult> {
+  const { transcription, taskPrompt, keywords, duration } = params;
+
+  // Build scoring prompt with context for custom topics
+  const prompt = `${ASL_SCORING_PROMPT}
+
+CUSTOM SPEAKING TASK:
+"${taskPrompt}"
+
+EXPECTED KEYWORDS: ${keywords.join(', ')}
+
+STUDENT'S RESPONSE (${duration}s):
+"${transcription}"
+
+Now score this response and provide exactly 3 fixes. Return ONLY valid JSON.`;
+
+  try {
+    const aiResult = await aiService.generateContent({ prompt });
+    const response = aiResult.text;
+    
+    // Parse JSON response
+    let jsonStr = response;
+    if (response.includes('```json')) {
+      jsonStr = response.split('```json')[1].split('```')[0];
+    } else if (response.includes('```')) {
+      jsonStr = response.split('```')[1].split('```')[0];
+    }
+    
+    const result = JSON.parse(jsonStr.trim());
+    
+    // Validate response
+    if (!result.score || !result.fixes || result.fixes.length !== 3) {
+      throw new Error('Invalid scoring response format');
+    }
+    
+    // Ensure score is 1-5
+    result.score = Math.max(1, Math.min(5, result.score));
+    
+    return {
+      score: result.score,
+      fixes: result.fixes,
+      transcription
+    };
+  } catch (error) {
+    console.error('Custom ASL scoring error:', error);
+    throw new Error('Failed to score custom ASL response');
+  }
+}
+
+/**
  * Transcribe audio using mock transcription for testing
  * NOTE: This function is deprecated - we now use client-side native STT
  * @deprecated Use client-side nativeSTTService instead
